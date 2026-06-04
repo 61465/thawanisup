@@ -1,0 +1,24 @@
+{
+  "name": "whatsapp-cafe-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Commerce Bot — قابل للنسخ لأي متجر محلي عربي",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "simulate": "node test/simulate.js",
+    "test": "node test/flow.test.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

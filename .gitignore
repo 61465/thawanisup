@@ -1,0 +1,61 @@
+# ════════════════════════════════════════════════════════════════
+# WhatsApp Commerce Bot - .gitignore
+# ════════════════════════════════════════════════════════════════
+
+# Environment files (تحوي tokens سرية!)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs
+logs/
+*.log
+orders.jsonl
+orders-backup-*.jsonl
+
+# Generated invoices (created at runtime)
+data/invoices/*.png
+data/orders.jsonl
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursorignore
+
+# Build artifacts
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Local session backups (إن وُجدت)
+sessions-backup.json
+
+# Railway/Render config (إذا كان فيه أسرار)
+.railway/
+.render/
