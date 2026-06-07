@@ -818,7 +818,17 @@ tr:hover td{background:#fafcfa}
             </select>
           </div>
           <div class="field">
-            <label>رسوم التوصيل</label>
+            <label>نوع النشاط التجاري</label>
+            <select id="s_businessType" onchange="toggleDeliveryFeeS()">
+              <option value="delivery">🚗 توصيل (مطعم، بقالة)</option>
+              <option value="pickup">🏪 استلام من المحل (كافيه، مخبز)</option>
+              <option value="homeService">🏠 خدمة منزلية (صيانة، تنظيف)</option>
+              <option value="walkin">💆 زيارة المحل (صالون، عيادة، تعليم)</option>
+            </select>
+            <span class="hint">يتحكم في طريقة أخذ الطلب من العميل</span>
+          </div>
+          <div class="field" id="s_deliveryFeeRow">
+            <label>رسوم التوصيل / الخدمة</label>
             <input id="s_deliveryFee" type="number" placeholder="10">
           </div>
           <div class="field">
@@ -1211,6 +1221,12 @@ async function manageSubscription() {
 }
 
 // ─── Navigation ─────────────────────────────────────────────────────────────
+function toggleDeliveryFeeS() {
+  const bt  = document.getElementById("s_businessType")?.value || "delivery";
+  const row = document.getElementById("s_deliveryFeeRow");
+  if (row) row.style.display = (bt === "pickup" || bt === "walkin") ? "none" : "";
+}
+
 function showTab(tab) {
   ["dash","menu","orders","settings","customers","broadcast","whatsapp"].forEach(t => {
     const sec = document.getElementById(t + "Section");
@@ -1685,9 +1701,11 @@ async function submitReject() {
 async function loadSettings() {
   try {
     const { store } = await api("GET", "/store/profile");
-    document.getElementById("s_storeName").value   = store.storeName || "";
-    document.getElementById("s_currency").value    = store.currency || "ر.س";
-    document.getElementById("s_deliveryFee").value = store.deliveryFee ?? 10;
+    document.getElementById("s_storeName").value      = store.storeName || "";
+    document.getElementById("s_currency").value       = store.currency || "ر.س";
+    document.getElementById("s_businessType").value   = store.businessType || "delivery";
+    document.getElementById("s_deliveryFee").value    = store.deliveryFee ?? 10;
+    toggleDeliveryFeeS();
     document.getElementById("s_start").value       = store.workingHoursStart ?? 0;
     document.getElementById("s_end").value         = store.workingHoursEnd ?? 24;
     document.getElementById("s_welcome").value     = store.welcomeMessage || "";
@@ -1735,6 +1753,7 @@ async function saveSettings() {
   const payload = {
     storeName:        document.getElementById("s_storeName").value.trim(),
     currency:         document.getElementById("s_currency").value || "ر.س",
+    businessType:     document.getElementById("s_businessType").value || "delivery",
     deliveryFee:      parseFloat(document.getElementById("s_deliveryFee").value) || 0,
     workingHoursStart:parseInt(document.getElementById("s_start").value) || 0,
     workingHoursEnd:  parseInt(document.getElementById("s_end").value) || 24,

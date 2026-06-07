@@ -333,6 +333,24 @@ function formatHour(h) {
   return `${hour12} ${period}`;
 }
 
+// ─── Business Type Helpers ────────────────────────────────────────────────────
+function getBusinessType(store) {
+  return store?.businessType || "delivery";
+}
+
+// Returns labels based on businessType
+// needsLocation: whether to ask customer for address
+// feeLabel: null = hide fee entirely
+// timeLabel: Arabic word for "when do you want ____?"
+function businessLabels(btype) {
+  switch (btype) {
+    case "pickup":      return { needsLocation: false, feeLabel: null,            timeLabel: "الاستلام",  locationPrompt: null };
+    case "homeService": return { needsLocation: true,  feeLabel: "رسوم الخدمة",   timeLabel: "الخدمة",    locationPrompt: "اكتب عنوانك للخدمة" };
+    case "walkin":      return { needsLocation: false, feeLabel: null,            timeLabel: "الموعد",    locationPrompt: null };
+    default:            return { needsLocation: true,  feeLabel: "رسوم التوصيل",  timeLabel: "التوصيل",   locationPrompt: "اكتب عنوانك أو مكان الاستلام" };
+  }
+}
+
 // ─── Pending Rating Requests ──────────────────────────────────────────────────
 // phone → { storeId, orderId, storeName, timer }
 const pendingRatings = new Map();
@@ -1032,9 +1050,28 @@ async function handleCollectName(from, msg, session) {
       buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
     });
   }
-  sessionManager.update(from, { step: "COLLECT_LOCATION", customerName: name });
+  const { store } = storeCtx.getStore() || {};
+  const btype  = getBusinessType(store);
+  const labels = businessLabels(btype);
+
+  sessionManager.update(from, { customerName: name, customerLocation: null });
+
+  // pickup & walkin: skip location step entirely
+  if (!labels.needsLocation) {
+    sessionManager.update(from, { step: "SCHEDULE_ORDER" });
+    return sendButtons(from, {
+      body:    `شكراً ${name} 😊\n\nمتى تريد ${labels.timeLabel}؟`,
+      buttons: [
+        { id: "SCHED_NOW",  title: "⚡ الآن" },
+        { id: "SCHED_TIME", title: "🕐 وقت محدد" },
+        { id: "BACK_CART",  title: "🔙 تعديل الطلب" },
+      ],
+    });
+  }
+
+  sessionManager.update(from, { step: "COLLECT_LOCATION" });
   return sendButtons(from, {
-    body:    `شكراً ${name} 😊\n\nالآن *اكتب عنوانك أو مكان الاستلام* 📍\n\nيمكنك:\n• كتابة اسم الحي أو العنوان\n• أو مشاركة موقعك من واتساب 📌`,
+    body:    `شكراً ${name} 😊\n\nالآن *${labels.locationPrompt}* 📍\n\nيمكنك:\n• كتابة اسم الحي أو العنوان\n• أو مشاركة موقعك من واتساب 📌`,
     buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
   });
 }
@@ -1068,6 +1105,9 @@ async function handleCollectLocation(from, msg, session) {
 }
 
 async function handleScheduleOrder(from, msg, session) {
+  const { store } = storeCtx.getStore() || {};
+  const { timeLabel } = businessLabels(getBusinessType(store));
+
   if (msg === "SCHED_NOW") {
     sessionManager.update(from, { scheduledTime: null });
     return showOrderSummary(from, sessionManager.get(from));
@@ -1075,23 +1115,23 @@ async function handleScheduleOrder(from, msg, session) {
   if (msg === "SCHED_TIME") {
     sessionManager.update(from, { step: "COLLECT_TIME" });
     return sendList(from, {
-      body:       `🕐 *متى تريد الاستلام؟*\n\nاختر وقتاً سريعاً أو اكتب الوقت بنفسك:`,
+      body:       `🕐 *متى تريد ${timeLabel}؟*\n\nاختر وقتاً سريعاً أو اكتب الوقت بنفسك:`,
       buttonText: "اختر الوقت",
       sections: [{
-        title: "أوقات الاستلام",
+        title: `أوقات ${timeLabel}`,
         rows: [
           { id: "TIME_30",   title: "⏱️ بعد 30 دقيقة",   description: "أقرب وقت متاح" },
           { id: "TIME_60",   title: "⏱️ بعد ساعة",        description: "" },
           { id: "TIME_90",   title: "⏱️ بعد ساعة ونصف",  description: "" },
           { id: "TIME_120",  title: "⏱️ بعد ساعتين",      description: "" },
-          { id: "BACK_SCHED",title: "🔙 رجوع",             description: "العودة لاختيار نوع الوقت" },
+          { id: "BACK_SCHED",title: "🔙 رجوع",             description: "" },
         ],
       }],
       footer: "أو اكتب الوقت مثل: 7:30 مساء",
     });
   }
   return sendButtons(from, {
-    body:    "متى تريد الاستلام؟",
+    body:    `متى تريد ${timeLabel}؟`,
     buttons: [
       { id: "SCHED_NOW",  title: "⚡ الآن" },
       { id: "SCHED_TIME", title: "🕐 وقت محدد" },
@@ -1117,11 +1157,13 @@ async function handleCollectTime(from, msg, session) {
 
   const parsed = orderScheduler.parseArabicTime(msg);
   if (!parsed) {
+    const { store: storeInner } = storeCtx.getStore() || {};
+    const { timeLabel: tl } = businessLabels(getBusinessType(storeInner));
     return sendList(from, {
       body:       `❌ لم أفهم الوقت.\n\nاختر وقتاً سريعاً أو اكتب مثل: *7:30 مساء*`,
       buttonText: "اختر الوقت",
       sections: [{
-        title: "أوقات الاستلام",
+        title: `أوقات ${tl}`,
         rows: [
           { id: "TIME_30",    title: "⏱️ بعد 30 دقيقة",  description: "" },
           { id: "TIME_60",    title: "⏱️ بعد ساعة",       description: "" },
@@ -1142,23 +1184,30 @@ async function showOrderSummary(from, session) {
 
   const { store } = storeCtx.getStore() || {};
   const currency   = store?.currency || CURRENCY;
-  const fee        = store?.deliveryFee != null ? Number(store.deliveryFee) : deliveryFee;
-  const cart       = session.cart || [];
+  const btype      = getBusinessType(store);
+  const labels     = businessLabels(btype);
+
+  // fee only applies when businessType requires it
+  const fee        = labels.feeLabel
+    ? (store?.deliveryFee != null ? Number(store.deliveryFee) : deliveryFee)
+    : 0;
+
+  const cart        = session.cart || [];
   const rawSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount   = session.appliedDiscount || 0;
-  const grandTotal = Math.max(0, rawSubtotal - discount) + fee;
+  const discount    = session.appliedDiscount || 0;
+  const grandTotal  = Math.max(0, rawSubtotal - discount) + fee;
 
   const lines  = cart.map(i => `• ${i.name} × ${i.qty} ........... ${(i.price*i.qty).toFixed(2)} ${currency}`);
   const invoice =
     `🧾 *ملخص طلبك:*\n\n` +
     `الاسم: ${session.customerName}\n` +
-    `العنوان: ${session.customerLocation}\n` +
-    (session.scheduledTime ? `⏰ الاستلام: *${session.scheduledTime}*\n` : "") +
+    (session.customerLocation ? `العنوان: ${session.customerLocation}\n` : "") +
+    (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "") +
     `\n${lines.join("\n")}\n` +
     `──────────────\n` +
     `المجموع: ${rawSubtotal.toFixed(2)} ${currency}\n` +
     (discount > 0 ? `🎟️ الخصم (${session.discountLabel || "كوبون"}): -${discount.toFixed(2)} ${currency}\n` : "") +
-    `رسوم التوصيل: ${fee.toFixed(2)} ${currency}\n` +
+    (labels.feeLabel ? `${labels.feeLabel}: ${fee.toFixed(2)} ${currency}\n` : "") +
     `*الإجمالي الكلي: ${grandTotal.toFixed(2)} ${currency}*\n\n` +
     `طريقة الدفع: عند الاستلام 💵`;
 
@@ -1191,7 +1240,11 @@ async function handleConfirmOrder(from, msg, session) {
   if (msg === "CONFIRM_YES") {
     const { store, storeId } = storeCtx.getStore() || {};
     const currency  = store?.currency || CURRENCY;
-    const fee       = store?.deliveryFee ?? deliveryFee;
+    const btype     = getBusinessType(store);
+    const labels    = businessLabels(btype);
+    const fee       = labels.feeLabel
+      ? (store?.deliveryFee ?? deliveryFee)
+      : 0;
     const rawSubtotal = (session.cart || []).reduce((s, i) => s + i.price * i.qty, 0);
     const discount  = session.appliedDiscount || 0;
     const subtotal  = Math.max(0, rawSubtotal - discount);
@@ -1248,8 +1301,8 @@ async function handleConfirmOrder(from, msg, session) {
         `رقم الطلب: *${orderId}*\n` +
         `العميل: *${session.customerName}*\n` +
         `الهاتف: ${phoneNum(from)}\n` +
-        `العنوان: ${session.customerLocation}\n` +
-        (session.scheduledTime ? `⏰ الاستلام: *${session.scheduledTime}*\n` : "") +
+        (session.customerLocation ? `العنوان: ${session.customerLocation}\n` : "") +
+        (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "") +
         `\n${orderLines}\n\n` +
         `──────────\n` +
         `💰 الإجمالي: *${session.grandTotal?.toFixed(2)} ${currency}*` +
