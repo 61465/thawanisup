@@ -1086,16 +1086,7 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
           <span class="hint">هذه الكلمة يستخدمها العميل للدخول على store-admin.html برقم جواله</span>
         </div>
         <div class="field">
-          <label>نوع النشاط التجاري</label>
-          <select id="f_businessType" onchange="toggleDeliveryFeeF()">
-            <option value="delivery">🚗 توصيل (مطعم، بقالة)</option>
-            <option value="pickup">🏪 استلام من المحل (كافيه، مخبز)</option>
-            <option value="homeService">🏠 خدمة منزلية (صيانة، تنظيف)</option>
-            <option value="walkin">💆 زيارة المحل (صالون، عيادة، تعليم)</option>
-          </select>
-        </div>
-        <div class="field" id="f_deliveryFeeRow">
-          <label>رسوم التوصيل / الخدمة (ر.س)</label>
+          <label>رسوم التوصيل (ر.س)</label>
           <input id="f_deliveryFee" type="number" placeholder="10">
         </div>
         <div class="field">
@@ -1661,8 +1652,7 @@ function openStoreModal(id = null) {
   const nextMonth = new Date(Date.now() + 30*86400000).toISOString().slice(0,10);
 
   document.getElementById("f_storeName").value        = store?.storeName || "";
-  document.getElementById("f_businessType").value     = store?.businessType || "delivery";
-  toggleDeliveryFeeF();
+
   document.getElementById("f_currency").value         = store?.currency || "ر.س";
   document.getElementById("f_ownerName").value        = store?.ownerName || "";
   document.getElementById("f_ownerPhone").value       = store?.ownerPhone || "";
@@ -1713,7 +1703,6 @@ async function saveStore() {
     currency:                document.getElementById("f_currency").value || "ر.س",
     ownerName:               document.getElementById("f_ownerName").value.trim(),
     ownerPhone:              document.getElementById("f_ownerPhone").value.trim(),
-    businessType:            document.getElementById("f_businessType").value || "delivery",
     deliveryFee:             parseFloat(document.getElementById("f_deliveryFee").value) || 0,
     workingHoursStart:       parseInt(document.getElementById("f_start").value) || 0,
     workingHoursEnd:         parseInt(document.getElementById("f_end").value) || 24,
@@ -2046,12 +2035,6 @@ ${base}/store-admin.html
 9 صباحاً – 10 مساءً يومياً
 
 بعد الانتهاء أرسل كلمة *جاهز* وسنجري اختباراً فورياً 🚀`;
-}
-
-function toggleDeliveryFeeF() {
-  const bt  = document.getElementById("f_businessType")?.value || "delivery";
-  const row = document.getElementById("f_deliveryFeeRow");
-  if (row) row.style.display = (bt === "pickup" || bt === "walkin") ? "none" : "";
 }
 
 function copyOnboarding() {
