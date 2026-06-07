@@ -287,7 +287,7 @@ app.get("/menu-image/:storeId", async (req, res) => {
     });
 
     if (!fs.existsSync(filePath)) {
-      return res.status(500).json({ error: "فشل توليد صورة المنيو" });
+      return res.status(500).json({ error: "فشل توليد صورة القائمة" });
     }
 
     _menuCache.set(storeId, { filePath, generatedAt: Date.now() });
@@ -297,7 +297,7 @@ app.get("/menu-image/:storeId", async (req, res) => {
     res.sendFile(filePath);
   } catch (err) {
     console.error("Public menu image error:", err.message);
-    res.status(500).json({ error: "خطأ في توليد صورة المنيو" });
+    res.status(500).json({ error: "خطأ في توليد صورة القائمة" });
   }
 });
 
@@ -548,7 +548,7 @@ async function sendWelcome(from) {
   return sendButtons(from, {
     body: welcome,
     buttons: [
-      { id: "SEE_MENU",    title: "🍽️ عرض القائمة" },
+      { id: "SEE_MENU",    title: "📋 عرض القائمة" },
       { id: "MY_CART",     title: "🛒 سلة مشترياتي" },
       { id: "CONTACT_US",  title: "📞 تواصل معنا" },
     ],
@@ -587,13 +587,13 @@ async function sendCategoryMenu(from) {
   }));
 
   rows.push(
-    { id: "MENU_IMAGE", title: "🖼️ المنيو كاملاً بالصور",  description: "صورة شاملة لجميع المنتجات" },
-    { id: "MENU_PDF",   title: "📄 المنيو كملف PDF مصوّر",  description: "ملف قابل للتحميل والمشاركة" },
+    { id: "MENU_IMAGE", title: "🖼️ الكتالوج كاملاً بالصور",  description: "صورة شاملة لجميع المنتجات والخدمات" },
+    { id: "MENU_PDF",   title: "📄 الكتالوج كملف PDF مصوّر", description: "ملف قابل للتحميل والمشاركة" },
     { id: "BACK_MAIN",  title: "🏠 القائمة الرئيسية",       description: "العودة للقائمة الرئيسية" }
   );
 
   return sendList(from, {
-    body:     "اختر من القائمة التالية 🍽️",
+    body:     "اختر من القائمة التالية:",
     sections: [{ title: "الأصناف المتوفرة", rows }],
   });
 }
@@ -606,12 +606,12 @@ async function handleCategorySelection(from, msg, session) {
 
 async function sendFullMenuMedia(from, type) {
   const { storeId, store } = storeCtx.getStore() || {};
-  if (!store) return sendText(from, "عذراً، تعذّر تحميل المنيو. حاول لاحقاً.");
+  if (!store) return sendText(from, "عذراً، تعذّر تحميل القائمة. حاول لاحقاً.");
 
   try {
     await sendText(from, type === "MENU_PDF"
-      ? "📄 جاري إعداد ملف المنيو... لحظة من فضلك"
-      : "🖼️ جاري إعداد صورة المنيو... لحظة من فضلك"
+      ? "📄 جاري إعداد الكتالوج... لحظة من فضلك"
+      : "🖼️ جاري إعداد صورة القائمة... لحظة من فضلك"
     );
 
     const { filePath } = await generateMenuImage({
@@ -625,13 +625,13 @@ async function sendFullMenuMedia(from, type) {
     });
 
     const caption = type === "MENU_PDF"
-      ? `📄 منيو ${store.storeName} الكامل\n\nاضغط للتكبير أو حفظ الصورة 💾`
-      : `🖼️ منيو ${store.storeName}\n\nجميع المنتجات المتوفرة`;
+      ? `📄 كتالوج ${store.storeName} الكامل\n\nاضغط للتكبير أو حفظ الصورة 💾`
+      : `🖼️ قائمة ${store.storeName}\n\nجميع المنتجات والخدمات المتوفرة`;
 
     await sendImage(from, filePath, caption);
   } catch(e) {
     console.error(`[sendFullMenuMedia] ${storeId}:`, e.message);
-    await sendText(from, "عذراً، تعذّر إنشاء المنيو الآن. حاول لاحقاً أو اختر صنفاً من القائمة.");
+    await sendText(from, "عذراً، تعذّر إنشاء القائمة الآن. حاول لاحقاً أو اختر صنفاً مباشرة.");
   }
 }
 
@@ -648,7 +648,7 @@ async function showProductsPage(from, cat, page) {
   const pageSize   = 9;
   const totalPages = Math.ceil(products.length / pageSize);
   const pageItems  = products.slice(page * pageSize, (page + 1) * pageSize);
-  const catInfo    = (store?.categories || []).find(c => c.id === cat) || { name: cat, emoji: "🍽️" };
+  const catInfo    = (store?.categories || []).find(c => c.id === cat) || { name: cat, emoji: "📋" };
 
   sessionManager.update(from, { step: "PRODUCT", currentCategory: cat, currentPage: page });
 
@@ -768,7 +768,7 @@ async function showCart(from, session) {
   if (cart.length === 0) {
     return sendButtons(from, {
       body:    "🛒 سلتك فارغة حالياً!\n\nهل تريد تصفح القائمة؟",
-      buttons: [{ id: "SEE_MENU", title: "🍽️ عرض القائمة" }],
+      buttons: [{ id: "SEE_MENU", title: "📋 عرض القائمة" }],
     });
   }
 
@@ -857,7 +857,7 @@ async function handleCartEdit(from, msg, session) {
       sessionManager.update(from, { step: "MAIN_MENU" });
       return sendButtons(from, {
         body:    "🗑️ تم حذف المنتج.\n\n🛒 سلتك فارغة الآن.\n\nهل تريد تصفح القائمة؟",
-        buttons: [{ id: "SEE_MENU", title: "🍽️ عرض القائمة" }],
+        buttons: [{ id: "SEE_MENU", title: "📋 عرض القائمة" }],
       });
     }
     return showCartEditMenu(from, sessionManager.get(from));
@@ -1034,7 +1034,7 @@ async function handleCollectName(from, msg, session) {
   }
   sessionManager.update(from, { step: "COLLECT_LOCATION", customerName: name });
   return sendButtons(from, {
-    body:    `شكراً ${name} 😊\n\nالآن *اكتب عنوان التوصيل* 📍\n\nيمكنك:\n• كتابة اسم الحي أو العنوان\n• أو مشاركة موقعك من واتساب 📌`,
+    body:    `شكراً ${name} 😊\n\nالآن *اكتب عنوانك أو مكان الاستلام* 📍\n\nيمكنك:\n• كتابة اسم الحي أو العنوان\n• أو مشاركة موقعك من واتساب 📌`,
     buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
   });
 }
@@ -1050,7 +1050,7 @@ async function handleCollectLocation(from, msg, session) {
   const location = msg.trim().slice(0, 500);
   if (!isValidLocation(location)) {
     return sendButtons(from, {
-      body:    "❌ من فضلك أرسل عنوان التوصيل أو شارك موقعك من واتساب.",
+      body:    "❌ من فضلك أرسل عنوانك أو مكان الاستلام، أو شارك موقعك من واتساب.",
       buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
     });
   }
@@ -1363,7 +1363,7 @@ async function handleOrderTracking(from, orderId) {
   const statusMap = {
     pending_confirmation: "⏳ بانتظار التأكيد",
     confirmed:            "✅ تم التأكيد — جاري التحضير",
-    preparing:            "👨‍🍳 قيد التحضير",
+    preparing:            "🔄 قيد التنفيذ",
     out_for_delivery:     "🚴 في الطريق إليك",
     delivered:            "🎉 تم التوصيل",
     cancelled:            "❌ ملغي",

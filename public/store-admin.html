@@ -555,7 +555,7 @@ tr:hover td{background:#fafcfa}
             <div style="font-weight:700;font-size:14px;color:var(--primary);margin-bottom:10px">✅ ما ستحصل عليه:</div>
             <div style="font-size:13px;color:var(--text);display:flex;flex-direction:column;gap:8px">
               <span>🏪 متجر واتساب جاهز للاستقبال</span>
-              <span>🍽️ قائمة منتجات تفاعلية بالأسعار</span>
+              <span>📋 قائمة منتجات وخدمات تفاعلية بالأسعار</span>
               <span>📦 نظام طلبات وفواتير تلقائية</span>
               <span>🏆 نقاط ولاء تُكافئ عملاءك</span>
             </div>
@@ -625,15 +625,15 @@ tr:hover td{background:#fafcfa}
       </div>
     </div>
 
-    <!-- ── الخطوة 4: المنيو ── -->
+    <!-- ── الخطوة 4: القائمة ── -->
     <div id="wz4" style="display:none">
       <div class="wz-body">
-        <div class="wz-h">🍽️ قائمة المنيو</div>
-        <div class="wz-sub">أضف أصنافك ومنتجاتك — يمكنك إضافتها الآن أو لاحقاً</div>
+        <div class="wz-h">📋 قائمة المنتجات والخدمات</div>
+        <div class="wz-sub">أضف أصنافك ومنتجاتك أو خدماتك — يمكنك إضافتها الآن أو لاحقاً</div>
         <div style="background:var(--primary-lt);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px">
-          <div style="font-size:42px;margin-bottom:8px">🍽️</div>
+          <div style="font-size:42px;margin-bottom:8px">📋</div>
           <div id="wz_productCount" style="font-weight:800;color:var(--primary);font-size:16px;margin-bottom:4px">جاري التحميل...</div>
-          <div style="font-size:12px;color:var(--gray)">ستجد المنيو الكامل في تبويب "المنيو" بعد الإعداد</div>
+          <div style="font-size:12px;color:var(--gray)">ستجد القائمة الكاملة في تبويب "القائمة" بعد الإعداد</div>
         </div>
         <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="wzOpenMenu()">
           ➕ إضافة أول منتج الآن
@@ -695,7 +695,7 @@ tr:hover td{background:#fafcfa}
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" id="tabDash"     onclick="showTab('dash')">📊 لوحة التحكم</button>
-    <button class="tab"        id="tabMenu"     onclick="showTab('menu')">🍽️ المنيو</button>
+    <button class="tab"        id="tabMenu"     onclick="showTab('menu')">📋 القائمة</button>
     <button class="tab"        id="tabOrders"   onclick="showTab('orders')">📦 الطلبات</button>
     <button class="tab"        id="tabSettings"  onclick="showTab('settings')">⚙️ إعدادات المتجر</button>
     <button class="tab"        id="tabCustomers" onclick="showTab('customers')">👥 العملاء</button>
@@ -750,11 +750,11 @@ tr:hover td{background:#fafcfa}
     <!-- ── Menu ── -->
     <section id="menuSection" style="display:none">
       <div class="card-header" style="margin-bottom:20px;flex-wrap:wrap;gap:10px">
-        <h2 style="font-size:20px;font-weight:800;color:var(--primary)">🍽️ إدارة المنيو</h2>
+        <h2 style="font-size:20px;font-weight:800;color:var(--primary)">📋 إدارة القائمة والمنتجات</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openCatModal()">➕ صنف</button>
           <button class="btn btn-primary btn-sm" onclick="openProductModal()">➕ منتج</button>
-          <button class="btn btn-outline btn-sm" onclick="generateMenuImage()" title="توليد صورة منيو شاملة لجميع المنتجات">🖼️ صورة المنيو</button>
+          <button class="btn btn-outline btn-sm" onclick="generateMenuImage()" title="توليد صورة قائمة شاملة لجميع المنتجات والخدمات">🖼️ صورة القائمة</button>
         </div>
       </div>
 
@@ -792,7 +792,7 @@ tr:hover td{background:#fafcfa}
         <div class="form-grid">
           <div class="field">
             <label>اسم المتجر</label>
-            <input id="s_storeName" placeholder="مثال: مطعم الأصالة">
+            <input id="s_storeName" placeholder="مثال: صالون الأصالة أو مطعم النخيل">
           </div>
           <div class="field">
             <label>العملة</label>
@@ -1962,7 +1962,7 @@ function finishWizard() {
 
 // ─── Menu Image Generator ──────────────────────────────────────────────────────
 async function generateMenuImage() {
-  showToast("🖼️ جاري توليد صورة المنيو...", "");
+  showToast("🖼️ جاري توليد صورة القائمة...", "");
   try {
     const res = await fetch(`${BASE}/store/menu-image`, {
       headers: { "x-store-token": STORE_TOKEN },
@@ -1977,7 +1977,7 @@ async function generateMenuImage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast("✅ تم تحميل صورة المنيو!", "success");
+    showToast("✅ تم تحميل صورة القائمة!", "success");
   } catch (e) {
     showToast("فشل توليد الصورة، تأكد من وجود منتجات", "error");
   }
