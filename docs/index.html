@@ -675,9 +675,9 @@ footer a:hover{opacity:.8}
       <!-- Success -->
       <div class="reg-success" id="regSuccess">
         <div class="reg-success-icon">🎉</div>
-        <h3>تم إرسال طلبك بنجاح!</h3>
-        <p>فُتحت نافذة واتساب تلقائياً — إذا لم تُفتح <a id="regWaLink" href="#" style="color:var(--green);font-weight:700">اضغط هنا</a><br><br>سيرد عليك فريق BotHatim خلال دقائق لإتمام الإعداد وإرسال تفاصيل الدفع 💚</p>
-        <a class="btn-wa" id="regWaDirect" href="https://wa.me/966508572902" target="_blank" style="display:inline-flex;margin:0 auto">💬 تحدث معنا مباشرة</a>
+        <h3>تم استلام طلبك بنجاح!</h3>
+        <p>وصل طلبك لفريق BotHatim وسيتم مراجعته خلال ساعات قليلة ⏱<br><br>بعد الموافقة ستصلك رسالة واتساب مباشرة تحتوي رابط لوحة التحكم + كلمة المرور 💚</p>
+        <a class="btn-wa" href="https://wa.me/966508572902" target="_blank" style="display:inline-flex;margin:0 auto">💬 تحدث معنا مباشرة</a>
       </div>
     </div>
   </div>
@@ -906,24 +906,29 @@ function pickPlan(plan,el){
   document.querySelectorAll(".rp-card").forEach(c=>c.classList.remove("sel"));
   if(el)el.classList.add("sel");
 }
-function submitReg(){
-  const pn={starter:"🌱 الأساسية — 80 ر.س/شهر",pro:"⭐ الاحترافية — 150 ر.س/شهر",premium:"👑 المتقدمة — 250 ر.س/شهر"};
-  const msg=`🤖 *طلب اشتراك جديد — BotHatim*\n\n`+
-    `👤 *الاسم:* ${regD.name}\n`+
-    `📱 *الواتساب:* ${regD.phone}\n`+
-    `🏪 *اسم المتجر:* ${regD.store}\n`+
-    `🍽️ *نوع المشروع:* ${regD.type}\n`+
-    `📍 *المدينة:* ${regD.city||"—"}\n`+
-    `💳 *الباقة المطلوبة:* ${pn[regD.plan]}\n\n`+
-    `— أُرسل من صفحة BotHatim`;
-  const waUrl=`https://wa.me/966508572902?text=${encodeURIComponent(msg)}`;
-  document.getElementById("regWaLink").href=waUrl;
-  document.getElementById("regWaDirect").href=waUrl;
-  window.open(waUrl,"_blank");
-  document.getElementById("regBody").style.display="none";
-  document.getElementById("regTabs").style.display="none";
-  document.getElementById("regSuccess").style.display="block";
-  document.getElementById("regSuccess").scrollIntoView({behavior:"smooth",block:"center"});
+async function submitReg(){
+  const btn=document.querySelector(".btn-rn");
+  if(btn){btn.disabled=true;btn.textContent="⏳ جاري الإرسال...";}
+  try{
+    const SERVER_URL="https://eng-formed-shoulder-operator.trycloudflare.com";
+    const r=await fetch(SERVER_URL+"/api/register-request",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({name:regD.name,phone:regD.phone,store:regD.store,type:regD.type,city:regD.city,plan:regD.plan})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||"فشل الإرسال");
+    document.getElementById("regBody").style.display="none";
+    document.getElementById("regTabs").style.display="none";
+    document.getElementById("regSuccess").style.display="block";
+    document.getElementById("regSuccess").scrollIntoView({behavior:"smooth",block:"center"});
+  }catch(e){
+    alert("حدث خطأ: "+e.message+"\nسيتم تحويلك لواتساب كبديل.");
+    const pn={starter:"🌱 الأساسية — 80 ر.س/شهر",pro:"⭐ الاحترافية — 150 ر.س/شهر",premium:"👑 المتقدمة — 250 ر.س/شهر"};
+    const msg=`🤖 طلب اشتراك جديد — BotHatim\n\nالاسم: ${regD.name}\nواتساب: ${regD.phone}\nالمتجر: ${regD.store}\nنوع المشروع: ${regD.type}\nالمدينة: ${regD.city||"—"}\nالباقة: ${pn[regD.plan]}`;
+    window.open(`https://wa.me/966508572902?text=${encodeURIComponent(msg)}`,"_blank");
+    if(btn){btn.disabled=false;btn.textContent="📱 أرسل طلب الاشتراك";}
+  }
 }
 
 // ══ PLANS ══
