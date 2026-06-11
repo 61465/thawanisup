@@ -614,7 +614,15 @@ footer a:hover{opacity:.8}
           <h3 class="reg-h">👋 أهلاً بك!</h3>
           <p class="reg-s">أخبرنا بك لنتواصل معك على واتساب ونُعدّ بوتك</p>
           <div class="rfield"><label>اسمك الكريم *</label><input id="r_name" type="text" placeholder=""></div>
-          <div class="rfield"><label>رقم واتساب (مع رمز الدولة) *</label><input id="r_phone" type="tel" placeholder="" style="direction:ltr;text-align:left"></div>
+          <div class="rfield">
+            <label>رقم واتساب مع رمز الدولة *</label>
+            <input id="r_phone" type="tel" placeholder="مثال: +201278632120 أو 966508572902" style="direction:ltr;text-align:left">
+            <div style="font-size:12px;color:#6b7280;margin-top:6px;line-height:1.6">
+              ⚠️ <strong>يجب إدخال الرقم مع رمز الدولة</strong> (بدون 0 في البداية)<br>
+              <span style="color:#16a34a">✓</span> صحيح: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block">+201278632120</code> أو <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block">966508572902</code><br>
+              <span style="color:#dc2626">✗</span> خطأ: <code style="background:#fef2f2;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block">01278632120</code> (محلي بدون رمز دولة)
+            </div>
+          </div>
           <div class="reg-acts"><button class="btn-rn" onclick="regNext(1)">التالي ←</button></div>
         </div>
         <!-- Step 2 -->
@@ -925,9 +933,22 @@ function goRegister(plan){
 function regNext(step){
   if(step===1){
     regD.name=document.getElementById("r_name").value.trim();
-    regD.phone=document.getElementById("r_phone").value.trim().replace(/[\s\+\-\(\)]/g,"");
+    let rawPhone=document.getElementById("r_phone").value.trim();
+    // normalize: إزالة المسافات، الشرطات، +، () + إزالة 00 من البداية
+    let phone=rawPhone.replace(/[\s\-\(\)]/g,"").replace(/^\+/,"").replace(/^00/,"");
+    regD.phone=phone;
     if(!regD.name){alert("يرجى إدخال اسمك الكريم");return;}
-    if(!regD.phone||regD.phone.length<9){alert("يرجى إدخال رقم واتساب صحيح");return;}
+    if(!phone||phone.length<9){alert("يرجى إدخال رقم واتساب صحيح");return;}
+    // التحقق من رمز الدولة (يجب ألا يبدأ بـ 0)
+    if(phone.startsWith("0")){
+      alert("❌ الرقم يجب أن يكون مع رمز الدولة وبدون 0 في البداية\n\nمثال صحيح:\n  +201278632120 (مصر)\n  966508572902 (السعودية)\n\nالرقم الذي أدخلته يبدأ بـ 0 (محلي)");
+      return;
+    }
+    // طول معقول لرمز دولة + رقم
+    if(phone.length<10||phone.length>15){
+      alert("طول الرقم غير صحيح. يجب أن يكون 10-15 رقماً مع رمز الدولة");
+      return;
+    }
   }else if(step===2){
     regD.store=document.getElementById("r_store").value.trim();
     regD.type=document.getElementById("r_type").value;
