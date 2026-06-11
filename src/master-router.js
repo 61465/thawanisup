@@ -990,7 +990,7 @@ router.post("/api/register-request", registerLimiter, async (req, res) => {
   const clientMsg =
 `🎉 *أهلاً ${cleanName}!*
 
-شكراً لاهتمامك بـ *ثواني | Thawani* — منصة بوت WhatsApp للمتاجر 🤖
+شكراً لاهتمامك بـ *منصة ثواني* — منصة بوت WhatsApp للمتاجر 🤖
 
 ✅ *تم استلام طلبك بنجاح*
 
@@ -1142,7 +1142,7 @@ router.post("/master/approve-request/:id", auth, async (req, res) => {
   const welcomeMsg =
 `🎉 *مبروك ${pr.name}!*
 
-تم تفعيل اشتراكك في *ثواني | Thawani* بنجاح ✅
+تم تفعيل اشتراكك في *منصة ثواني* بنجاح ✅
 *البوت الخاص بك جاهز للعمل الآن* 🚀
 
 ━━━━━━━━━━━━━━━━━━━━━

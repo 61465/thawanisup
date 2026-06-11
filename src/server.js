@@ -769,7 +769,7 @@ async function reverseGeocode(lat, lng) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6000);
     const r = await fetch(url, {
-      headers: { "User-Agent": "ثواني | Thawani/1.0 (WhatsApp Store Bot)" },
+      headers: { "User-Agent": "منصة ثواني/1.0 (WhatsApp Store Bot)" },
       signal: controller.signal,
     });
     clearTimeout(timer);
