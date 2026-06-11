@@ -842,16 +842,24 @@ router.post("/store/upload-image", auth, (req, res) => {
   }
 });
 
-function updateOrderStatus(storeId, orderId, status) {
+function updateOrderStatus(storeId, orderId, status, extraMeta) {
   const file = storeId === "nakheel_001"
     ? path.join(DATA_DIR, "orders.jsonl")
     : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
   if (!fs.existsSync(file)) return false;
   const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
+  const stamp = new Date().toISOString();
   const updated = lines.map(l => {
     try {
       const obj = JSON.parse(l);
-      if (obj.orderId === orderId) obj.status = status;
+      if (obj.orderId === orderId) {
+        obj.status = status;
+        obj.statusUpdatedAt = stamp;
+        if (status === "completed" || status === "delivered" || status === "done") obj.deliveredAt = obj.deliveredAt || stamp;
+        if (status === "rejected")  obj.rejectedAt  = stamp;
+        if (status === "cancelled") obj.cancelledAt = stamp;
+        if (extraMeta && typeof extraMeta === "object") Object.assign(obj, extraMeta);
+      }
       return JSON.stringify(obj);
     } catch { return l; }
   });
@@ -1119,8 +1127,9 @@ router.post("/store/orders/:orderId/reject", auth, async (req, res) => {
   const order  = orders.find(o => o.orderId === orderId);
   if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
   if (order.status === "rejected") return res.status(400).json({ error: "الطلب مرفوض مسبقاً" });
+  if (order.status === "cancelled") return res.status(400).json({ error: "الطلب ملغي بالفعل" });
 
-  updateOrderStatus(req.storeId, orderId, "rejected");
+  updateOrderStatus(req.storeId, orderId, "rejected", { rejectReason: String(reason).slice(0, 300) });
 
   const storeName = getStore(req.storeId)?.storeName || "المتجر";
 
@@ -1133,6 +1142,41 @@ router.post("/store/orders/:orderId/reject", auth, async (req, res) => {
       `نأسف على الإزعاج، يسعدنا خدمتك في وقت آخر 🙏\n\n` +
       `*${storeName}*`;
     try { await waMgr.sendMessage(req.storeId, order.customerPhone, rejectMsg); } catch {}
+  }
+
+  res.json({ ok: true });
+});
+
+// ─── Cancel order — من المالك أو من العميل (عبر البوت) ───────────────────────
+router.post("/store/orders/:orderId/cancel", auth, async (req, res) => {
+  const { orderId } = req.params;
+  const { reason, by } = req.body || {};
+  const orders = readOrders(req.storeId);
+  const order  = orders.find(o => o.orderId === orderId);
+  if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
+  if (["cancelled","rejected","completed","delivered","done"].includes(order.status)) {
+    return res.status(400).json({ error: "لا يمكن إلغاء طلب " + order.status });
+  }
+
+  const cancelledBy = by === "customer" ? "customer" : "store";
+  const reasonClean = String(reason || (cancelledBy === "customer" ? "ألغى العميل الطلب" : "ألغى المالك الطلب")).slice(0, 300);
+  updateOrderStatus(req.storeId, orderId, "cancelled", { cancelledBy, cancelReason: reasonClean });
+
+  const store = getStore(req.storeId);
+  const storeName = store?.storeName || "المتجر";
+
+  // notify the other party
+  if (cancelledBy === "store" && order.customerPhone) {
+    try {
+      await waMgr.sendMessage(req.storeId, order.customerPhone,
+        `🚫 *تم إلغاء طلبك*\n\nرقم الطلب: *${orderId}*\nالسبب: ${reasonClean}\n\nيسعدنا خدمتك مرة أخرى 🌸\n\n*${storeName}*`);
+    } catch {}
+  }
+  if (cancelledBy === "customer" && store?.ownerPhone) {
+    try {
+      await waMgr.sendMessage(req.storeId, store.ownerPhone,
+        `🚫 *العميل ألغى طلبه*\n\nالطلب: *${orderId}*\nالعميل: ${order.customerName || order.customerPhone}\nالسبب: ${reasonClean}`);
+    } catch {}
   }
 
   res.json({ ok: true });

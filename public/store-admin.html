@@ -91,6 +91,10 @@ input,select,textarea{font-family:inherit}
 
 /* ─── Buttons ────────────────────────────────────────── */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:10px;border:none;font-size:14px;font-weight:600;transition:all 0.18s;cursor:pointer}
+.ord-filter{flex-shrink:0;padding:7px 14px;border-radius:20px;border:1.5px solid #e5e7eb;background:#fff;color:#6b7280;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:.18s;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.ord-filter:hover{border-color:#9ca3af;color:#374151}
+.ord-filter.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(27,94,32,.25)}
+.ord-filter .cnt{font-size:11px;opacity:.85;font-weight:600}
 .btn:hover{transform:translateY(-1px)}
 .btn-primary{background:var(--primary);color:#fff}
 .btn-primary:hover{background:var(--primary-md)}
@@ -819,6 +823,15 @@ tr:hover td{background:#fafcfa}
             <button class="btn btn-outline btn-sm" onclick="createTestOrder()" title="ينشئ طلب اختباري لتجربة tab الطلبات">🧪 طلب اختبار</button>
             <button class="btn btn-outline btn-sm" onclick="loadOrders()">🔄 تحديث</button>
           </div>
+        </div>
+        <!-- فلاتر حالة الطلبات -->
+        <div id="orderFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 14px;overflow-x:auto;padding:2px 0">
+          <button class="ord-filter active" data-status="all"      onclick="setOrderFilter('all')">📋 الكل <span class="cnt"></span></button>
+          <button class="ord-filter"        data-status="pending"  onclick="setOrderFilter('pending')">⏳ بانتظار <span class="cnt"></span></button>
+          <button class="ord-filter"        data-status="confirmed" onclick="setOrderFilter('confirmed')">✅ مؤكدة <span class="cnt"></span></button>
+          <button class="ord-filter"        data-status="completed" onclick="setOrderFilter('completed')">🏁 مكتملة <span class="cnt"></span></button>
+          <button class="ord-filter"        data-status="rejected"  onclick="setOrderFilter('rejected')">❌ مرفوضة <span class="cnt"></span></button>
+          <button class="ord-filter"        data-status="cancelled" onclick="setOrderFilter('cancelled')">🚫 ملغية <span class="cnt"></span></button>
         </div>
         <div class="table-wrap" id="ordersTable">
           <div class="empty-state"><div class="icon">⏳</div><p>جاري التحميل...</p></div>
@@ -2385,8 +2398,17 @@ async function handleVideoFile(input) {
     vid.style.display = "";
     document.getElementById("vidRemoveBtn").style.display = "";
     document.getElementById("vidDrop").style.display = "none";
-    progress.innerHTML = `✅ تم الرفع بنجاح (${(r.size/1024/1024).toFixed(1)}MB)`;
-    setTimeout(() => { progress.style.display = "none"; }, 2500);
+    progress.innerHTML = `✅ تم الرفع — <b style="color:#dc2626">اضغط "💾 حفظ المنتج" أسفل النافذة لربطه</b>`;
+    progress.style.background = "#fef3c7";
+    progress.style.border = "1px solid #fbbf24";
+    progress.style.padding = "10px";
+    // Highlight save button
+    const saveBtn = document.querySelector('[onclick*="saveProduct"]');
+    if (saveBtn) {
+      saveBtn.style.animation = "pulse 1.2s ease-in-out 3";
+      saveBtn.style.boxShadow = "0 0 0 4px rgba(220,38,38,.3)";
+      setTimeout(() => { saveBtn.style.boxShadow = ""; }, 4000);
+    }
   } catch (e) {
     progress.innerHTML = `<span style="color:#dc2626">❌ ${e?.error || "فشل الرفع"}</span>`;
   }
@@ -3170,14 +3192,63 @@ async function createTestOrder() {
   }
 }
 
+let _ORDERS_CACHE = [];
+let _ORDERS_FILTER = "all";
+
+function setOrderFilter(status) {
+  _ORDERS_FILTER = status;
+  document.querySelectorAll(".ord-filter").forEach(b => {
+    b.classList.toggle("active", b.dataset.status === status);
+  });
+  renderOrdersTable();
+}
+
+function _matchesFilter(o, filter) {
+  if (filter === "all") return true;
+  if (filter === "pending")   return o.status === "pending_confirmation";
+  if (filter === "confirmed") return ["confirmed","preparing","out_for_delivery","in_progress","awaiting_review","ready_pickup"].includes(o.status);
+  if (filter === "completed") return ["completed","delivered","done","tasleem"].includes(o.status);
+  if (filter === "rejected")  return o.status === "rejected";
+  if (filter === "cancelled") return o.status === "cancelled";
+  return true;
+}
+
+function _updateFilterCounts() {
+  const counts = { all: 0, pending: 0, confirmed: 0, completed: 0, rejected: 0, cancelled: 0 };
+  for (const o of _ORDERS_CACHE) {
+    counts.all++;
+    if (_matchesFilter(o, "pending"))   counts.pending++;
+    if (_matchesFilter(o, "confirmed")) counts.confirmed++;
+    if (_matchesFilter(o, "completed")) counts.completed++;
+    if (_matchesFilter(o, "rejected"))  counts.rejected++;
+    if (_matchesFilter(o, "cancelled")) counts.cancelled++;
+  }
+  document.querySelectorAll(".ord-filter").forEach(b => {
+    const s = b.dataset.status;
+    const c = b.querySelector(".cnt");
+    if (c) c.textContent = counts[s] ? "(" + counts[s] + ")" : "";
+  });
+}
+
 async function loadOrders() {
   document.getElementById("ordersTable").innerHTML = `<div class="empty-state"><div class="icon">⏳</div><p>جاري التحميل...</p></div>`;
   try {
     const { orders } = await api("GET", "/store/orders");
-    if (!orders.length) {
-      document.getElementById("ordersTable").innerHTML = `<div class="empty-state" style="padding:48px"><div class="icon">📭</div><h3>لا توجد طلبات بعد</h3><p>ستظهر الطلبات هنا فور وصولها عبر البوت</p></div>`;
-      return;
-    }
+    _ORDERS_CACHE = orders || [];
+    _updateFilterCounts();
+    renderOrdersTable();
+  } catch (e) {
+    document.getElementById("ordersTable").innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>فشل التحميل</p></div>`;
+  }
+}
+
+function renderOrdersTable() {
+  const orders = _ORDERS_CACHE.filter(o => _matchesFilter(o, _ORDERS_FILTER));
+  if (!orders.length) {
+    document.getElementById("ordersTable").innerHTML = `<div class="empty-state" style="padding:48px"><div class="icon">📭</div><h3>لا توجد طلبات ${_ORDERS_FILTER === 'all' ? '' : 'في هذه الحالة'}</h3><p>${_ORDERS_FILTER === 'all' ? 'ستظهر الطلبات هنا فور وصولها عبر البوت' : 'جرّب فلتراً آخر'}</p></div>`;
+    return;
+  }
+  {
     const currency = localStorage.getItem("store_currency") || "ر.س";
     const rows = orders.map(o => {
       const items    = (o.items||[]).map(i=>`${i.name}×${i.qty}`).join("، ");
@@ -3185,13 +3256,23 @@ async function loadOrders() {
       const isPending = o.status === "pending_confirmation";
       const isConfirmed = o.status === "confirmed";
       const isRejected  = o.status === "rejected";
-      const statusBadge = isPending
-        ? `<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">⏳ بانتظار التأكيد</span>`
-        : isConfirmed
-        ? `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">✅ مؤكد</span>`
-        : isRejected
-        ? `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">❌ مرفوض</span>`
-        : `<span style="background:#f3f4f6;color:var(--gray);padding:3px 10px;border-radius:999px;font-size:12px">مكتمل</span>`;
+      const isCancelled = o.status === "cancelled";
+      let statusBadge =
+        isPending  ? `<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">⏳ بانتظار التأكيد</span>` :
+        isConfirmed? `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">✅ مؤكد</span>` :
+        isRejected ? `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">❌ مرفوض</span>` :
+        isCancelled? `<span style="background:#f3e8ff;color:#6b21a8;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">🚫 ملغي</span>` :
+        ["completed","delivered","done","tasleem"].includes(o.status) ?
+                     `<span style="background:#d1fae5;color:#065f46;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700">🏁 مكتمل</span>` :
+                     `<span style="background:#f3f4f6;color:var(--gray);padding:3px 10px;border-radius:999px;font-size:12px">${esc(o.status||"")}</span>`;
+      // أضف سبب رفض/إلغاء + من قام به
+      if (isRejected && o.rejectReason) {
+        statusBadge += `<div style="font-size:11px;color:#991b1b;margin-top:4px;line-height:1.5">📋 <b>السبب:</b> ${esc(o.rejectReason)}</div>`;
+      }
+      if (isCancelled) {
+        const byWhom = o.cancelledBy === "customer" ? "العميل" : "المتجر";
+        statusBadge += `<div style="font-size:11px;color:#6b21a8;margin-top:4px;line-height:1.5">🚫 ألغى ${byWhom}${o.cancelReason ? ': ' + esc(o.cancelReason) : ''}</div>`;
+      }
       const cfg     = window.AI_CONFIG || {};
       const compLbl = cfg.completionLabel || "تم الإنجاز";
       const compEmoji = cfg.completionEmoji || "✅";
@@ -3222,6 +3303,10 @@ async function loadOrders() {
       } else if (o.status === "preparing" || o.status === "out_for_delivery" || o.status === "in_progress" || o.status === "ready_pickup" || o.status === "awaiting_review") {
         workflowBtns = `
           <button onclick="completeOrder('${esc(o.orderId)}')" style="background:#10b981;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit">${compEmoji} ${compLbl}</button>`;
+      }
+      // زر "إلغاء" متاح طالما الطلب لم يُكتمل/يُرفض/يُلغَ بالفعل
+      if (["pending_confirmation","confirmed","preparing","out_for_delivery","in_progress","awaiting_review","ready_pickup"].includes(o.status)) {
+        workflowBtns += `<button onclick="cancelOrder('${esc(o.orderId)}')" style="background:#6b21a8;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit">🚫 إلغاء</button>`;
       }
       const confirmBtn = workflowBtns ? `<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${workflowBtns}</div>` : "";
       return `<tr>
@@ -3255,7 +3340,20 @@ async function loadOrders() {
       <thead><tr><th>رقم الطلب</th><th>العميل</th><th class="col-hide">العنوان</th><th>المنتجات</th><th>الإجمالي</th><th class="col-hide">التاريخ</th><th>الحالة</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
-  } catch (e) { if (e.status===401) doLogout(); }
+  }
+}
+
+async function cancelOrder(orderId) {
+  const reason = prompt("سبب إلغاء الطلب " + orderId + ":\n(سيُرسَل للعميل عبر واتساب)", "إلغاء بناءً على طلب المتجر");
+  if (reason === null) return;
+  if (!reason.trim()) return showToast("يرجى ذكر سبب الإلغاء", "error");
+  try {
+    await api("POST", "/store/orders/" + orderId + "/cancel", { reason: reason.trim(), by: "store" });
+    showToast("🚫 تم إلغاء الطلب وإشعار العميل", "success");
+    loadOrders();
+  } catch (e) {
+    showToast(e?.error || e?.message || "فشل الإلغاء", "error");
+  }
 }
 
 async function confirmOrder(orderId) {

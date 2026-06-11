@@ -1027,6 +1027,66 @@ async function handleMessage(from, incoming) {
       `🙋 *تم تنبيه المسؤول*\n\nسيتواصل معك مسؤول قريباً جداً.\n\n_البوت متوقف الآن لهذه المحادثة — اكتب لنا مباشرة._`);
   }
 
+  // ── Cancel last order: العميل يكتب "إلغاء" أو "إلغاء طلبي" ─────────────────
+  const CANCEL_TRIGGERS = /^(إلغاء|الغاء|إلغاء طلبي|الغاء طلبي|إلغاء الطلب|الغاء الطلب|cancel|cancel order)$/i;
+  if (CANCEL_TRIGGERS.test(String(incoming).trim())) {
+    try {
+      const phone = phoneNum(from);
+      const ordersFile = storeId === "nakheel_001"
+        ? path.join(__dirname, "..", "data", "orders.jsonl")
+        : path.join(__dirname, "..", "data", `orders_${storeId}.jsonl`);
+      if (!fs.existsSync(ordersFile)) {
+        return sendText(from, "ليس لديك طلبات نشطة للإلغاء.");
+      }
+      const lines = fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean);
+      const customerOrders = [];
+      for (const l of lines) {
+        try {
+          const o = JSON.parse(l);
+          const oPhone = String(o.customerPhone || "").replace(/\D/g, "");
+          if (oPhone === phone) customerOrders.push(o);
+        } catch {}
+      }
+      // ابحث عن آخر طلب قابل للإلغاء (pending_confirmation أو confirmed قبل أن يبدأ التحضير)
+      const cancellable = customerOrders
+        .filter(o => ["pending_confirmation","confirmed"].includes(o.status))
+        .sort((a,b) => (b.timestamp || "").localeCompare(a.timestamp || ""))[0];
+      if (!cancellable) {
+        return sendText(from,
+          `ليس لديك طلب قابل للإلغاء.\n\nالطلبات المُجهَّزة أو المسلَّمة لا يمكن إلغاؤها — تواصل مع المتجر مباشرة بكتابة *مسؤول*.`);
+      }
+      // حدّث الـ status
+      const stamp = new Date().toISOString();
+      const updated = lines.map(l => {
+        try {
+          const o = JSON.parse(l);
+          if (o.orderId === cancellable.orderId) {
+            o.status = "cancelled";
+            o.cancelledAt = stamp;
+            o.cancelledBy = "customer";
+            o.cancelReason = "ألغى العميل الطلب من واتساب";
+            o.statusUpdatedAt = stamp;
+          }
+          return JSON.stringify(o);
+        } catch { return l; }
+      });
+      fs.writeFileSync(ordersFile, updated.join("\n") + "\n", "utf8");
+      // أبلغ المالك
+      try {
+        const ownerJid = (store?.ownerPhone || "").replace(/[^\d]/g, "") + "@s.whatsapp.net";
+        if (ownerJid && ownerJid !== "@s.whatsapp.net") {
+          await waMgr.sendMessage(storeId, ownerJid,
+            `🚫 *العميل ألغى طلبه*\n\nالطلب: *${cancellable.orderId}*\nالعميل: ${cancellable.customerName || phone}\nالإجمالي: ${cancellable.total} ${cancellable.currency || "ر.س"}\n\nالطلب نُقل لقائمة الملغية.`);
+        }
+      } catch {}
+      // تأكيد للعميل
+      return sendText(from,
+        `✅ *تم إلغاء طلبك*\n\nالطلب: *${cancellable.orderId}*\nالإجمالي: ${cancellable.total} ${cancellable.currency || "ر.س"}\n\nيسعدنا خدمتك مرة أخرى 🌸\nاكتب أي رسالة للبدء من جديد.`);
+    } catch (e) {
+      console.error("[cancel] failed:", e.message);
+    }
+  }
+
   // إذا العميل في handoff state، البوت يسكت تماماً
   try {
     const fs = require("fs");
@@ -2557,6 +2617,7 @@ async function handleConfirmOrder(from, msg, session) {
       `الإجمالي: *${session.grandTotal?.toFixed(2)} ${currency}*\n\n` +
       (previewPoints > 0 ? `🏆 ستكسب *${previewPoints}* نقطة عند قبول الطلب\n\n` : "") +
       `طلبك قيد المراجعة، سيتم التواصل معك قريباً.\n` +
+      `_لإلغاء الطلب اكتب: *الغاء*_\n\n` +
       `شكراً لاختيارك *${storeName}* 💚`
     );
 
