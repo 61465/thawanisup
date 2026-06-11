@@ -1056,9 +1056,17 @@ router.post("/store/orders/:orderId/reject", auth, async (req, res) => {
 
 // ─── Broadcast (Pro+) ────────────────────────────────────────────────────────
 router.get("/store/broadcast/count", auth, (req, res) => {
-  const { getStoreCustomerPhones } = require("./broadcast");
+  const { getStoreCustomerPhones, checkCooldown, MAX_PER_RUN, COOLDOWN_HOURS } = require("./broadcast");
   const count = getStoreCustomerPhones(req.storeId).length;
-  res.json({ count });
+  const cd = checkCooldown(req.storeId);
+  res.json({
+    count,
+    sendLimit: MAX_PER_RUN,
+    willSend: Math.min(count, MAX_PER_RUN),
+    cooldownReady: cd.ok,
+    cooldownHoursLeft: cd.hoursLeft || 0,
+    cooldownTotalHours: COOLDOWN_HOURS,
+  });
 });
 
 router.post("/store/broadcast", auth, async (req, res) => {
@@ -1072,20 +1080,35 @@ router.post("/store/broadcast", auth, async (req, res) => {
   }
 
   const message = (req.body?.message || "").trim();
-  if (!message)        return res.status(400).json({ error: "الرسالة فارغة" });
+  if (!message)              return res.status(400).json({ error: "الرسالة فارغة" });
   if (message.length > 1000) return res.status(400).json({ error: "الرسالة أكثر من 1000 حرف" });
 
-  const { broadcast, getStoreCustomerPhones } = require("./broadcast");
+  const { broadcast, getStoreCustomerPhones, checkCooldown, MAX_PER_RUN, COOLDOWN_HOURS } = require("./broadcast");
+
+  const cd = checkCooldown(req.storeId);
+  if (!cd.ok) {
+    return res.status(429).json({
+      error: `يجب الانتظار ${cd.hoursLeft} ساعة قبل البث التالي (للحماية من حظر واتساب). الحد: بث واحد كل ${COOLDOWN_HOURS} ساعة.`,
+      cooldownHoursLeft: cd.hoursLeft,
+    });
+  }
+
   const count = getStoreCustomerPhones(req.storeId).length;
+  if (count === 0) return res.status(400).json({ error: "لا يوجد عملاء حقيقيون للإرسال إليهم بعد" });
 
-  if (count === 0) return res.status(400).json({ error: "لا يوجد عملاء للإرسال إليهم بعد" });
+  const willSend = Math.min(count, MAX_PER_RUN);
 
-  // أرسل في الخلفية دون إبطاء الاستجابة
   broadcast(req.storeId, message)
-    .then(r => console.log(`📢 broadcast ${req.storeId}: ${r.sent}/${r.total}`))
+    .then(r => console.log(`📢 broadcast ${req.storeId}: ${r.sent}/${r.total}${r.stopped ? " stopped:"+r.stopped : ""}`))
     .catch(e => console.error(`❌ broadcast ${req.storeId}:`, e.message));
 
-  res.json({ ok: true, recipients: count, message: `جاري الإرسال لـ ${count} عميل 📢` });
+  const estimatedMin = Math.ceil((willSend * 11.5) / 60);
+  res.json({
+    ok: true,
+    recipients: willSend,
+    estimatedMinutes: estimatedMin,
+    message: `جاري الإرسال لـ ${willSend} عميل (${estimatedMin} دقيقة تقريباً) 📢`,
+  });
 });
 
 // ─── Menu Image (authenticated) ──────────────────────────────────────────────

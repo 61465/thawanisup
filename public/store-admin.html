@@ -442,18 +442,38 @@ tr:hover td{background:#fafcfa}
       <p style="color:#6b7280;margin-bottom:20px">البث المجمع متاح في باقة الاحترافية والمتقدمة فقط</p>
     </div>
     <div id="broadcastForm">
-      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:#92400e">
-        ⚠️ <strong>تنبيه:</strong> البث يُرسَل لجميع العملاء الذين طلبوا سابقاً من متجرك. استخدمه بحكمة لتجنب الإزعاج.
+      <div style="background:#fef2f2;border:2px solid #dc2626;border-radius:12px;padding:16px 18px;margin-bottom:16px;font-size:13.5px;color:#7f1d1d;line-height:1.8">
+        🚨 <strong>تحذير مهم لتجنب حظر رقم متجرك من واتساب:</strong>
+        <ul style="margin:8px 0 0 18px;padding:0">
+          <li>سقف <strong>50 رسالة/بث</strong> + <strong>6 ساعات</strong> بين كل بث (لحماية حسابك)</li>
+          <li>عشوائية 8-15 ثانية بين كل رسالة (محاكاة سلوك بشري)</li>
+          <li>لا ترسل لعملاء لم يطلبوا منك قبلاً ← هذا أساس عدم الحظر</li>
+          <li>تجنب الروابط الترويجية الصريحة في البث الأول</li>
+          <li>الرسالة تُضاف لها تلقائياً "_للإيقاف: اكتب stop_" (مطلوب قانونياً)</li>
+        </ul>
       </div>
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-weight:700;margin-bottom:8px;color:#374151">عدد العملاء:</label>
-        <span id="broadcastCount" style="font-size:22px;font-weight:800;color:var(--primary)">—</span>
-        <span style="color:#6b7280;margin-right:6px">عميل</span>
+      <div id="broadcastCooldownBanner" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:12px;margin-bottom:14px;color:#78350f;font-size:13px"></div>
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+        <div>
+          <div style="color:#166534;font-size:12px;font-weight:600">عملاء حقيقيون</div>
+          <span id="broadcastCount" style="font-size:24px;font-weight:800;color:#166534">—</span>
+        </div>
+        <div>
+          <div style="color:#15803d;font-size:12px;font-weight:600">سيُرسل لـ</div>
+          <span id="broadcastWillSend" style="font-size:24px;font-weight:800;color:#15803d">—</span>
+        </div>
+        <div>
+          <div style="color:#6b7280;font-size:12px;font-weight:600">السقف/بث</div>
+          <span id="broadcastLimit" style="font-size:18px;font-weight:700;color:#6b7280">50</span>
+        </div>
       </div>
       <div style="margin-bottom:20px">
         <label style="display:block;font-weight:700;margin-bottom:8px;color:#374151">نص الرسالة:</label>
+        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;color:#1e40af">
+          💡 <strong>نصيحة:</strong> استخدم <code style="background:#fff;padding:1px 5px;border-radius:4px">{{name}}</code> ليُستبدل تلقائياً باسم العميل (يقلل احتمال الحظر بقوة).
+        </div>
         <textarea id="broadcastMsg" rows="5"
-          placeholder="مثال: 🎉 عرض خاص اليوم! خصم 20% على جميع المشروبات الباردة. الفترة: 4 مساءً - 8 مساءً"
+          placeholder="مثال: مرحباً {{name}}! 🎉 لدينا عرض جديد عليك مما تحبه. شرفنا قريباً 🌟"
           style="width:100%;padding:14px;border:2px solid #e5e7eb;border-radius:12px;font-family:inherit;font-size:15px;resize:vertical;direction:rtl;box-sizing:border-box"
           oninput="updateBroadcastCounter(this)"
         ></textarea>
@@ -463,7 +483,7 @@ tr:hover td{background:#fafcfa}
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="sendBroadcast()" id="broadcastSendBtn">
-          📢 إرسال للجميع
+          📢 إرسال (بعد الموافقة على التحذير)
         </button>
         <button class="btn btn-outline" onclick="loadBroadcastCount()">🔄 تحديث العدد</button>
       </div>
@@ -3442,7 +3462,19 @@ function initBroadcast() {
 async function loadBroadcastCount() {
   try {
     const r = await api("GET", "/store/broadcast/count");
-    document.getElementById("broadcastCount").textContent = r.count ?? 0;
+    document.getElementById("broadcastCount").textContent    = r.count ?? 0;
+    document.getElementById("broadcastWillSend").textContent = r.willSend ?? 0;
+    document.getElementById("broadcastLimit").textContent    = r.sendLimit ?? 50;
+    const banner = document.getElementById("broadcastCooldownBanner");
+    const btn = document.getElementById("broadcastSendBtn");
+    if (!r.cooldownReady && r.cooldownHoursLeft > 0) {
+      banner.style.display = "";
+      banner.innerHTML = `⏱️ <strong>cooldown نشط</strong> — يمكنك البث التالي بعد <strong>${r.cooldownHoursLeft}</strong> ساعة. (الحد: بث واحد كل ${r.cooldownTotalHours} ساعة لحماية حسابك من الحظر).`;
+      if (btn) { btn.disabled = true; btn.textContent = `⏱️ انتظر ${r.cooldownHoursLeft}h`; }
+    } else {
+      banner.style.display = "none";
+      if (btn) { btn.disabled = false; btn.textContent = "📢 إرسال (بعد الموافقة على التحذير)"; }
+    }
   } catch {}
 }
 
@@ -3455,25 +3487,26 @@ async function sendBroadcast() {
   if (!msg) return showToast("أدخل نص الرسالة أولاً", "error");
   if (msg.length > 1000) return showToast("الرسالة أطول من 1000 حرف", "error");
 
-  const count = parseInt(document.getElementById("broadcastCount").textContent) || 0;
-  if (count === 0) return showToast("لا يوجد عملاء بعد", "error");
+  const willSend = parseInt(document.getElementById("broadcastWillSend").textContent) || 0;
+  if (willSend === 0) return showToast("لا يوجد عملاء حقيقيون للإرسال", "error");
 
-  if (!confirm(`سيُرسَل للـ ${count} عميل. متأكد؟`)) return;
+  const estMin = Math.ceil((willSend * 11.5) / 60);
+  if (!confirm(`سيُرسَل لـ ${willSend} عميل خلال ${estMin} دقيقة تقريباً.\n\nبالضغط على موافق فأنت تتحمل مسؤولية احتمال حظر رقمك من واتساب إن كان المحتوى ترويجياً مبالغاً أو لمن لم يطلبوا قبلاً.\n\nمتأكد؟`)) return;
 
   const btn = document.getElementById("broadcastSendBtn");
   btn.disabled = true;
-  btn.textContent = "جاري الإرسال...";
+  btn.textContent = "📤 جاري الإرسال...";
 
   try {
     const r = await api("POST", "/store/broadcast", { message: msg });
     showToast(r.message || "تم بدء الإرسال ✅", "success");
     document.getElementById("broadcastMsg").value = "";
     document.getElementById("broadcastCharCount").textContent = "0";
+    setTimeout(loadBroadcastCount, 1500);
   } catch (e) {
-    showToast(e?.message || "فشل الإرسال", "error");
-  } finally {
+    showToast(e?.error || e?.message || "فشل الإرسال", "error");
     btn.disabled = false;
-    btn.textContent = "📢 إرسال للجميع";
+    btn.textContent = "📢 إرسال (بعد الموافقة على التحذير)";
   }
 }
 
