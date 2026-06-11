@@ -733,6 +733,8 @@ tr:hover td{background:#fafcfa}
     <button class="tab"        id="tabBroadcast" onclick="showTab('broadcast')">📢 بث رسالة</button>
     <button class="tab"        id="tabLoyalty"   onclick="showTab('loyalty')">🏆 نقاط الولاء</button>
     <button class="tab"        id="tabArchive"   onclick="showTab('archive')">📚 الأرشيف</button>
+    <button class="tab"        id="tabRejections" onclick="showTab('rejections')">⚠️ أسباب الرفض</button>
+    <button class="tab"        id="tabInventory" onclick="showTab('inventory')" style="display:none">📦 المخزون</button>
     <button class="tab"        id="tabAccounting" onclick="showTab('accounting')">💼 الحسابات</button>
     <button class="tab"        id="tabWhatsapp"  onclick="showTab('whatsapp')">📱 ربط واتساب</button>
   </div>
@@ -1326,6 +1328,77 @@ tr:hover td{background:#fafcfa}
 
     <!-- ── Archive ── -->
     <section id="archiveSection" style="display:none"></section>
+
+    <!-- ══════════════ ⚠️ Rejections & Cancellations ══════════════ -->
+    <section id="rejectionsSection" style="display:none">
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:var(--primary);margin:0">⚠️ تقرير أسباب الرفض والإلغاء</h2>
+            <p style="color:#6b7280;font-size:13px;margin:4px 0 0">حلّل لماذا تخسر طلبات لتُحسّن الخدمة</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="rejDays" onchange="loadRejections()" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px">
+              <option value="1">اليوم</option>
+              <option value="7">آخر 7 أيام</option>
+              <option value="30" selected>آخر 30 يوم</option>
+              <option value="90">آخر 90 يوم</option>
+              <option value="365">السنة كلها</option>
+            </select>
+            <button class="btn btn-outline" onclick="loadRejections()">🔄 تحديث</button>
+          </div>
+        </div>
+      </div>
+      <div id="rejKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px"></div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="font-size:15px;font-weight:800;margin-bottom:10px;color:#991b1b">❌ الطلبات المرفوضة (من المتجر)</h3>
+        <div id="rejList"></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="font-size:15px;font-weight:800;margin-bottom:10px;color:#6b21a8">🚫 الطلبات الملغية</h3>
+        <div id="cancelList"></div>
+      </div>
+      <div class="card" id="topCancellersCard" style="margin-bottom:14px;display:none">
+        <h3 style="font-size:15px;font-weight:800;margin-bottom:10px;color:#7c2d12">⚠️ عملاء يلغون بكثرة</h3>
+        <p style="color:#6b7280;font-size:12px;margin-bottom:10px">قد ترغب في تواصل مع هؤلاء أو تطبيق سياسة خاصة</p>
+        <div id="topCancellersList"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ 📦 Inventory ══════════════ -->
+    <section id="inventorySection" style="display:none">
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:var(--primary);margin:0">📦 المخزون</h2>
+            <p style="color:#6b7280;font-size:13px;margin:4px 0 0">تتبع كميات منتجاتك — تحديث سريع inline</p>
+          </div>
+          <button class="btn btn-outline" onclick="loadInventory()">🔄 تحديث</button>
+        </div>
+      </div>
+      <div id="invKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px"></div>
+      <div class="card">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="ord-filter active" data-inv="all" onclick="setInvFilter('all')">📋 الكل</button>
+          <button class="ord-filter" data-inv="out" onclick="setInvFilter('out')">🚫 نفد</button>
+          <button class="ord-filter" data-inv="low" onclick="setInvFilter('low')">⚠️ منخفض</button>
+          <button class="ord-filter" data-inv="ok" onclick="setInvFilter('ok')">✅ متوفر</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:#f3f4f6">
+                <th style="padding:10px;text-align:right">المنتج</th>
+                <th style="padding:10px;text-align:center">الكمية المتاحة</th>
+                <th style="padding:10px;text-align:center">الحالة</th>
+                <th style="padding:10px;text-align:center">تحديث سريع</th>
+              </tr>
+            </thead>
+            <tbody id="invTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <!-- ══════════════════════ Accounting / مدير الحسابات ══════════════════════ -->
     <section id="accountingSection" style="display:none">
@@ -1995,7 +2068,7 @@ function toggleDeliveryFeeS() {
 }
 
 function showTab(tab) {
-  ["dash","menu","orders","settings","customers","broadcast","loyalty","whatsapp","archive","accounting"].forEach(t => {
+  ["dash","menu","orders","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory"].forEach(t => {
     const sec = document.getElementById(t + "Section");
     const btn = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1));
     if (sec) sec.style.display = t === tab ? "" : "none";
@@ -2014,7 +2087,122 @@ function showTab(tab) {
   if (tab === "loyalty")    loadLoyalty();
   if (tab === "archive")    loadArchives();
   if (tab === "accounting") initAccounting();
+  if (tab === "rejections") loadRejections();
+  if (tab === "inventory")  loadInventory();
   if (tab === "whatsapp")   { loadWaStatus(); startWaQrPolling(); }
+}
+
+// ═════════════════ ⚠️ Rejections / Cancellations ═════════════════
+async function loadRejections() {
+  const days = document.getElementById("rejDays")?.value || "30";
+  try {
+    const r = await api("GET", "/store/orders/rejected-summary?days=" + days);
+    const fmt = (n) => (n || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 });
+    document.getElementById("rejKpis").innerHTML = `
+      <div style="background:linear-gradient(135deg,#fee2e2,#fecaca);padding:14px;border-radius:12px"><div style="color:#7f1d1d;font-size:12px;font-weight:700">مرفوض</div><div style="font-size:24px;font-weight:900;color:#7f1d1d">${r.rejected.total}</div><div style="font-size:11px;color:#991b1b">خسارة: ${fmt(r.rejected.totalLostRevenue)} ر.س</div></div>
+      <div style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff);padding:14px;border-radius:12px"><div style="color:#581c87;font-size:12px;font-weight:700">ملغي</div><div style="font-size:24px;font-weight:900;color:#581c87">${r.cancelled.total}</div><div style="font-size:11px;color:#6b21a8">خسارة: ${fmt(r.cancelled.totalLostRevenue)} ر.س</div></div>
+      <div style="background:linear-gradient(135deg,#fed7aa,#fdba74);padding:14px;border-radius:12px"><div style="color:#7c2d12;font-size:12px;font-weight:700">إجمالي الخسارة</div><div style="font-size:24px;font-weight:900;color:#7c2d12">${fmt(r.rejected.totalLostRevenue + r.cancelled.totalLostRevenue)} ر.س</div><div style="font-size:11px;color:#9a3412">في ${r.days} يوم</div></div>
+    `;
+    document.getElementById("rejList").innerHTML = renderReasonsTable(r.rejected.reasons, "#991b1b");
+    document.getElementById("cancelList").innerHTML = renderReasonsTable(r.cancelled.reasons, "#6b21a8");
+    const topCard = document.getElementById("topCancellersCard");
+    if (r.topCancellingCustomers?.length) {
+      topCard.style.display = "";
+      document.getElementById("topCancellersList").innerHTML = r.topCancellingCustomers.map(c => `
+        <div style="display:flex;justify-content:space-between;padding:10px;background:#fef2f2;border-radius:8px;margin-bottom:6px">
+          <div><b>${esc(c.name)}</b> <span style="color:#6b7280;font-size:12px">(${esc(c.phone)})</span></div>
+          <div style="color:#7c2d12;font-weight:700">${c.count} إلغاء · ${fmt(c.lostRevenue)} ر.س</div>
+        </div>`).join("");
+    } else { topCard.style.display = "none"; }
+  } catch (e) {
+    document.getElementById("rejKpis").innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#dc2626;padding:20px">تعذّر التحميل</div>`;
+  }
+}
+function renderReasonsTable(reasons, color) {
+  if (!reasons?.length) return `<div style="padding:30px;text-align:center;color:#9ca3af">لا توجد بيانات</div>`;
+  const total = reasons.reduce((s, r) => s + r.count, 0);
+  return `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:#f9fafb"><th style="padding:10px;text-align:right">السبب</th><th style="padding:10px;text-align:center">العدد</th><th style="padding:10px;text-align:center">النسبة</th><th style="padding:10px;text-align:center">الخسارة</th></tr></thead>
+    <tbody>${reasons.map(r => {
+      const pct = total ? ((r.count / total) * 100).toFixed(1) : 0;
+      return `<tr style="border-bottom:1px solid #f3f4f6">
+        <td style="padding:10px"><b style="color:${color}">${esc(r.reason)}</b></td>
+        <td style="padding:10px;text-align:center;font-weight:800">${r.count}</td>
+        <td style="padding:10px;text-align:center">
+          <div style="display:flex;align-items:center;gap:6px;justify-content:center">
+            <div style="width:60px;height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color}"></div></div>
+            <span style="font-size:11px;color:#6b7280">${pct}%</span>
+          </div>
+        </td>
+        <td style="padding:10px;text-align:center;color:${color};font-weight:700">${r.lostRevenue.toFixed(0)} ر.س</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table>`;
+}
+
+// ═════════════════ 📦 Inventory ═════════════════
+let _INV_FILTER = "all";
+let _INV_CACHE = [];
+function setInvFilter(f) {
+  _INV_FILTER = f;
+  document.querySelectorAll('#inventorySection .ord-filter').forEach(b => b.classList.toggle('active', b.dataset.inv === f));
+  renderInventoryTable();
+}
+async function loadInventory() {
+  try {
+    const r = await api("GET", "/store/inventory");
+    _INV_CACHE = r.products || [];
+    const s = r.summary || {};
+    document.getElementById("invKpis").innerHTML = `
+      <div style="background:#fee2e2;padding:12px;border-radius:10px"><div style="color:#7f1d1d;font-size:11px;font-weight:700">نفد</div><div style="font-size:22px;font-weight:900;color:#7f1d1d">${s.outOfStock||0}</div></div>
+      <div style="background:#fef3c7;padding:12px;border-radius:10px"><div style="color:#78350f;font-size:11px;font-weight:700">منخفض</div><div style="font-size:22px;font-weight:900;color:#78350f">${s.lowStock||0}</div></div>
+      <div style="background:#dcfce7;padding:12px;border-radius:10px"><div style="color:#14532d;font-size:11px;font-weight:700">متوفر</div><div style="font-size:22px;font-weight:900;color:#14532d">${s.inStock||0}</div></div>
+      <div style="background:#dbeafe;padding:12px;border-radius:10px"><div style="color:#1e3a8a;font-size:11px;font-weight:700">∞ غير محدود</div><div style="font-size:22px;font-weight:900;color:#1e3a8a">${s.unlimited||0}</div></div>
+    `;
+    renderInventoryTable();
+  } catch (e) { showToast(e?.error || "فشل تحميل المخزون", "error"); }
+}
+function renderInventoryTable() {
+  let list = _INV_CACHE;
+  if (_INV_FILTER === "out") list = list.filter(p => p.outOfStock);
+  else if (_INV_FILTER === "low") list = list.filter(p => p.lowStock);
+  else if (_INV_FILTER === "ok") list = list.filter(p => !p.outOfStock && !p.lowStock);
+  const tbody = document.getElementById("invTbody");
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="4" style="padding:30px;text-align:center;color:#9ca3af">لا توجد منتجات</td></tr>`; return; }
+  tbody.innerHTML = list.map(p => {
+    const status = p.outOfStock ? '<span style="background:#fee2e2;color:#7f1d1d;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700">🚫 نفد</span>'
+      : p.lowStock ? '<span style="background:#fef3c7;color:#78350f;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700">⚠️ منخفض</span>'
+      : p.stock === null ? '<span style="background:#dbeafe;color:#1e3a8a;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700">∞ غير محدود</span>'
+      : '<span style="background:#dcfce7;color:#14532d;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700">✅ متوفر</span>';
+    const stockVal = p.stock === null ? "" : p.stock;
+    return `<tr style="border-bottom:1px solid #f3f4f6">
+      <td style="padding:10px;font-weight:600">${esc(p.name)}</td>
+      <td style="padding:10px;text-align:center">
+        <input type="number" min="0" value="${stockVal}" placeholder="∞" onblur="updateInventory('${esc(p.id)}', this.value, 'set')"
+          style="width:80px;padding:6px;border:1px solid #d1d5db;border-radius:6px;text-align:center;font-weight:700">
+      </td>
+      <td style="padding:10px;text-align:center">${status}</td>
+      <td style="padding:10px;text-align:center">
+        <button class="btn btn-outline" style="padding:4px 9px;font-size:11px" onclick="updateInventory('${esc(p.id)}', 1, 'add')" title="إضافة 1">+1</button>
+        <button class="btn btn-outline" style="padding:4px 9px;font-size:11px" onclick="updateInventory('${esc(p.id)}', 1, 'sub')" title="نقص 1">-1</button>
+        <button class="btn btn-outline" style="padding:4px 9px;font-size:11px;color:#dc2626" onclick="updateInventory('${esc(p.id)}', null, 'set')" title="جعله غير محدود">∞</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+async function updateInventory(productId, value, mode) {
+  const body = { mode };
+  if (value === null) body.stock = null;
+  else {
+    const n = parseInt(value, 10);
+    if (!Number.isFinite(n) || n < 0) return showToast("القيمة غير صحيحة", "error");
+    body.stock = n;
+  }
+  try {
+    await api("PATCH", "/store/inventory/" + productId, body);
+    showToast("✅ تم تحديث المخزون", "success");
+    loadInventory();
+  } catch (e) { showToast(e?.error || "فشل التحديث", "error"); }
 }
 
 // ═══════════════════ Accounting / مدير الحسابات ═══════════════════

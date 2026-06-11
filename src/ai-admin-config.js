@@ -99,6 +99,8 @@ inventory, staffSched, timeTracker, hourlyBill, appointBook, routePlan, invoices
   "completionLabel": "النص الذي يظهر للستور عند الإنهاء (مثال: 'تم التوصيل' لكافيه، 'تم التسليم' لبرمجة، 'تمت الخدمة' لصالون)",
   "completionEmoji": "ايموجي للإنهاء (📦 ✅ 💅)",
 
+  "hasInventory": boolean (true إذا كان البيزنس فيه stock فعلي مثل: مقاهي، مطاعم، متاجر تجارية، صيدليات، عيادات لها مستلزمات، كافيهات، توصيل طعام، super markets. false إذا كان: برمجة، استشارات، صالونات خدمات، تصميم، تعليم — أي خدمة بلا منتجات قابلة للنفاد),
+
   "menuLayout": {
     "showQuantityButtons": boolean,
     "showCartIcon":        boolean,

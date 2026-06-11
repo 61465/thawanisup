@@ -166,6 +166,9 @@ window.loadBusinessAdaption = async function () {
       console.log("[biz] AI config loaded:", r.adminConfig.label, "|", r.adminConfig.tabs?.length, "tabs |", r.adminConfig.features?.length, "features");
       window.AI_CONFIG = r.adminConfig;
       bt = window.applyBusinessAdaption(r.adminConfig);
+      // أظهر/أخفِ tab المخزون حسب طبيعة البيزنس
+      const invTab = document.getElementById("tabInventory");
+      if (invTab) invTab.style.display = r.adminConfig.hasInventory ? "" : "none";
       if (Array.isArray(r.adminConfig.tabs))     applyTabsOrder(r.adminConfig.tabs);
       if (Array.isArray(r.adminConfig.dashboardCards) && r.adminConfig.dashboardCards.length) renderDashboardCards(r.adminConfig.dashboardCards);
       if (Array.isArray(r.adminConfig.quickActions) && r.adminConfig.quickActions.length) renderQuickActions(r.adminConfig.quickActions);
@@ -277,7 +280,7 @@ const TAB_ALIAS = {
 };
 
 // Core tabs — تظهر دائماً بصرف النظر عن AI config (إن كانت متاحة لباقة المتجر)
-const CORE_TABS = ["dash", "broadcast", "loyalty", "customers", "archive", "accounting", "settings", "whatsapp"];
+const CORE_TABS = ["dash", "broadcast", "loyalty", "customers", "archive", "rejections", "inventory", "accounting", "settings", "whatsapp"];
 
 function applyTabsOrder(orderedTabIds) {
   const tabContainer = document.querySelector(".tabs");

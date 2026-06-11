@@ -1147,6 +1147,125 @@ router.post("/store/orders/:orderId/reject", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Rejected/Cancelled summary — تقرير أسباب الرفض والإلغاء ────────────────
+router.get("/store/orders/rejected-summary", auth, (req, res) => {
+  const days = Math.min(365, Math.max(1, parseInt(req.query.days) || 30));
+  const cutoff = Date.now() - days * 86400_000;
+
+  const orders = readOrders(req.storeId);
+  const rejected  = orders.filter(o => o.status === "rejected"  && new Date(o.timestamp || 0).getTime() >= cutoff);
+  const cancelled = orders.filter(o => o.status === "cancelled" && new Date(o.timestamp || 0).getTime() >= cutoff);
+
+  // group reasons
+  const groupReasons = (list, reasonField) => {
+    const map = new Map();
+    let totalLost = 0;
+    for (const o of list) {
+      const reason = String(o[reasonField] || "بدون سبب").trim().slice(0, 120);
+      const key = reason.toLowerCase();
+      const cur = map.get(key) || { reason, count: 0, lostRevenue: 0, lastSeen: null, examples: [] };
+      cur.count++;
+      cur.lostRevenue += Number(o.total || 0);
+      cur.lastSeen = o.timestamp || cur.lastSeen;
+      if (cur.examples.length < 3) cur.examples.push({ orderId: o.orderId, customer: o.customerName || o.customerPhone, total: o.total, when: o.timestamp });
+      map.set(key, cur);
+      totalLost += Number(o.total || 0);
+    }
+    return {
+      total: list.length,
+      totalLostRevenue: Math.round(totalLost * 100) / 100,
+      reasons: [...map.values()].sort((a, b) => b.count - a.count),
+    };
+  };
+
+  // الزبائن الأكثر إلغاءً (top abusers)
+  const byCustomer = new Map();
+  for (const o of cancelled.filter(x => x.cancelledBy === "customer")) {
+    const phone = String(o.customerPhone || "").replace(/\D/g, "");
+    if (!phone) continue;
+    const cur = byCustomer.get(phone) || { phone, name: o.customerName || phone, count: 0, lostRevenue: 0 };
+    cur.count++;
+    cur.lostRevenue += Number(o.total || 0);
+    byCustomer.set(phone, cur);
+  }
+  const topCancellingCustomers = [...byCustomer.values()]
+    .filter(c => c.count >= 2)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  res.json({
+    days,
+    rejected:  groupReasons(rejected,  "rejectReason"),
+    cancelled: groupReasons(cancelled, "cancelReason"),
+    topCancellingCustomers,
+  });
+});
+
+// ─── Inventory — جرد المخزون ─────────────────────────────────────────────────
+router.get("/store/inventory", auth, (req, res) => {
+  const store = getStore(req.storeId);
+  if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
+  const products = (store.products || []).map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    price: Number(p.price) || 0,
+    stock: typeof p.stock === "number" ? p.stock : null, // null = لا محدود
+    available: p.available !== false,
+    imageUrl: p.imageUrl || null,
+    lowStock: typeof p.stock === "number" && p.stock > 0 && p.stock < 5,
+    outOfStock: p.stock === 0 || p.available === false,
+  }));
+  // sort: out-of-stock أولاً، ثم low-stock، ثم العادي
+  products.sort((a, b) => (b.outOfStock ? 2 : b.lowStock ? 1 : 0) - (a.outOfStock ? 2 : a.lowStock ? 1 : 0));
+  const summary = {
+    total: products.length,
+    outOfStock: products.filter(p => p.outOfStock).length,
+    lowStock:   products.filter(p => p.lowStock).length,
+    unlimited:  products.filter(p => p.stock === null).length,
+    inStock:    products.filter(p => typeof p.stock === "number" && p.stock >= 5).length,
+  };
+  res.json({ products, summary });
+});
+
+// PATCH /store/inventory/:productId — تعديل سريع للمخزون
+router.patch("/store/inventory/:productId", auth, (req, res) => {
+  const store = getStore(req.storeId);
+  if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
+  const product = (store.products || []).find(p => p.id === req.params.productId);
+  if (!product) return res.status(404).json({ error: "المنتج غير موجود" });
+
+  const { stock, available, mode } = req.body || {};
+  const patch = {};
+
+  if (stock !== undefined) {
+    if (stock === null) patch.stock = null;
+    else {
+      const n = parseInt(stock, 10);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "المخزون يجب أن يكون رقم موجب أو null" });
+      // mode: 'set' (default), 'add', 'sub'
+      if (mode === "add") patch.stock = (typeof product.stock === "number" ? product.stock : 0) + n;
+      else if (mode === "sub") patch.stock = Math.max(0, (typeof product.stock === "number" ? product.stock : 0) - n);
+      else patch.stock = n;
+    }
+  }
+  if (typeof available === "boolean") patch.available = available;
+
+  const products = (store.products || []).map(p =>
+    p.id === req.params.productId ? { ...p, ...patch } : p
+  );
+  updateStore(req.storeId, { products });
+
+  audit({
+    actor: { type: "store", id: req.storeId },
+    action: "inventory.update",
+    target: { type: "product", id: req.params.productId },
+    meta: { storeId: req.storeId, oldStock: product.stock, newStock: patch.stock, available: patch.available },
+  }, req);
+
+  res.json({ ok: true, product: { id: product.id, name: product.name, ...patch } });
+});
+
 // ─── Cancel order — من المالك أو من العميل (عبر البوت) ───────────────────────
 router.post("/store/orders/:orderId/cancel", auth, async (req, res) => {
   const { orderId } = req.params;
