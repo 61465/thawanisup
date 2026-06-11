@@ -104,10 +104,18 @@ app.use("/store/",        apiLimiter);
 app.use("/api/",          apiLimiter);
 app.use("/master/login",  loginLimiter);
 
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "60mb" })); // raised for video uploads (videos enforce 50MB inside endpoint)
+app.use(express.raw({ type: "video/*", limit: "60mb" }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/invoices",     express.static(path.join(__dirname, "..", "data", "invoices"),  { maxAge:"1d" }));
 app.use("/store-images", express.static(path.join(__dirname, "..", "data", "images")));
+app.use("/store-videos", express.static(path.join(__dirname, "..", "data", "videos"), {
+  maxAge: "7d",
+  setHeaders: (res) => {
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=604800");
+  },
+}));
 
 // ─── Env ──────────────────────────────────────────────────────────────────────
 const {

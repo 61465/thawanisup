@@ -779,6 +779,47 @@ router.post("/store/loyalty/:phone/coupon", auth, (req, res) => {
   }
 });
 
+// ─── Video Upload (from device gallery) ───────────────────────────────────────
+router.post("/store/upload-video", auth, (req, res) => {
+  const { base64, ext = "mp4" } = req.body || {};
+  if (!base64) return res.status(400).json({ error: "لا يوجد فيديو" });
+
+  const safeExt  = ["mp4", "webm", "mov", "m4v"].includes(String(ext).toLowerCase()) ? String(ext).toLowerCase() : "mp4";
+  const filename = `${req.storeId}_${Date.now()}.${safeExt}`;
+  const videosDir = path.join(DATA_DIR, "videos");
+  const filepath  = path.join(videosDir, filename);
+
+  try {
+    fs.mkdirSync(videosDir, { recursive: true });
+    const buffer = Buffer.from(base64.replace(/^data:video\/\w+;base64,/, ""), "base64");
+    if (buffer.length > 50 * 1024 * 1024) {
+      return res.status(413).json({ error: "حجم الفيديو أكبر من 50MB. اضغطه أو ارفع رابط YouTube بدلاً منه." });
+    }
+    fs.writeFileSync(filepath, buffer);
+    res.json({ ok: true, url: `/store-videos/${filename}`, size: buffer.length });
+  } catch (err) {
+    console.error("Video upload error:", err.message);
+    res.status(500).json({ error: "فشل رفع الفيديو" });
+  }
+});
+
+// optional: delete a previously uploaded video file
+router.delete("/store/upload-video", auth, (req, res) => {
+  const url = String(req.query.url || "").trim();
+  const m = url.match(/^\/store-videos\/([\w\-]+\.(mp4|webm|mov|m4v))$/);
+  if (!m) return res.status(400).json({ error: "رابط الفيديو غير صحيح" });
+  const filename = m[1];
+  // الملف يبدأ بـ storeId — تأمين العزل
+  if (!filename.startsWith(req.storeId + "_")) return res.status(403).json({ error: "لا يمكن حذف فيديو متجر آخر" });
+  const filepath = path.join(DATA_DIR, "videos", filename);
+  try {
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "فشل الحذف" });
+  }
+});
+
 // ─── Image Upload ─────────────────────────────────────────────────────────────
 router.post("/store/upload-image", auth, (req, res) => {
   const { base64, ext = "jpg" } = req.body || {};

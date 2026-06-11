@@ -1219,17 +1219,44 @@ tr:hover td{background:#fafcfa}
 
         <!-- 🎬 فيديو توضيحي / استعراضي -->
         <div class="field full" style="margin-top:14px;padding:14px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px">
-          <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <label style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
             <span>🎬 فيديو توضيحي/استعراضي (اختياري)</span>
             <button type="button" class="btn" style="padding:5px 12px;font-size:12px;background:#16a34a;color:#fff" onclick="getAIVideoRecommendation()">🤖 اقترح نوع الفيديو</button>
           </label>
-          <input type="url" id="pm_videoUrl" placeholder="https://youtube.com/watch?v=... أو رابط مباشر mp4"
-            style="width:100%;padding:10px;border:1px solid #fcd34d;border-radius:8px;font-size:13px;direction:ltr;text-align:left;background:#fff;margin-top:6px;box-sizing:border-box">
+
+          <!-- Switcher: رابط أو ملف -->
+          <div style="display:flex;gap:6px;background:#fff;padding:4px;border-radius:8px;margin-bottom:10px">
+            <button type="button" id="vidTabLink" class="vidTab" onclick="switchVideoMode('link')"
+              style="flex:1;padding:8px;border:none;background:#16a34a;color:#fff;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px">🔗 رابط</button>
+            <button type="button" id="vidTabFile" class="vidTab" onclick="switchVideoMode('file')"
+              style="flex:1;padding:8px;border:none;background:transparent;color:#78350f;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px">📁 من الملفات/المعرض</button>
+          </div>
+
+          <!-- وضع URL -->
+          <div id="vidModeLink">
+            <input type="url" id="pm_videoUrl" placeholder="https://youtube.com/watch?v=... أو رابط مباشر mp4"
+              style="width:100%;padding:10px;border:1px solid #fcd34d;border-radius:8px;font-size:13px;direction:ltr;text-align:left;background:#fff;box-sizing:border-box">
+          </div>
+
+          <!-- وضع رفع ملف -->
+          <div id="vidModeFile" style="display:none">
+            <div onclick="document.getElementById('pm_videoFile').click()" id="vidDrop"
+              style="border:2px dashed #fcd34d;background:#fff;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.2s">
+              <div style="font-size:36px">🎬</div>
+              <div style="color:#78350f;font-weight:700;margin-top:6px;font-size:13.5px">اضغط لاختيار فيديو من جهازك</div>
+              <div style="color:#9ca3af;font-size:11px;margin-top:4px">MP4, WebM, MOV — أقصى 50MB</div>
+            </div>
+            <input type="file" id="pm_videoFile" accept="video/*" style="display:none" onchange="handleVideoFile(this)">
+            <div id="vidUploadProgress" style="display:none;margin-top:8px;padding:8px;background:#fff;border-radius:8px;font-size:12px;color:#374151"></div>
+            <video id="vidPreview" controls style="display:none;width:100%;max-height:240px;margin-top:8px;border-radius:8px;background:#000"></video>
+            <button type="button" id="vidRemoveBtn" style="display:none;margin-top:6px;padding:6px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700" onclick="removeUploadedVideo()">🗑️ إزالة الفيديو</button>
+          </div>
+
           <input type="text" id="pm_videoCaption" placeholder="عنوان قصير للفيديو (اختياري)" maxlength="200"
             style="width:100%;padding:10px;border:1px solid #fcd34d;border-radius:8px;font-size:13px;background:#fff;margin-top:8px;box-sizing:border-box">
           <div id="pm_videoAIRec" style="display:none;margin-top:10px;padding:10px;background:#fff;border:1px solid #86efac;border-radius:8px;font-size:12.5px;line-height:1.7"></div>
           <div style="margin-top:6px;color:#78350f;font-size:11px">
-            💡 يدعم: YouTube, Vimeo, Google Drive، أو رابط mp4 مباشر — يُعرض للعميل في صفحة المنتج
+            💡 يدعم: YouTube, Vimeo, Drive، MP4 مباشر، أو رفع فيديو من جهازك (مفيد للموبايل)
           </div>
           <div style="margin-top:6px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;line-height:1.6">
             📐 <strong>الأبعاد المثالية:</strong> 800×800 بكسل (مربعة) — يظهر المنتج بشكل احترافي في الواتساب<br>
@@ -2315,6 +2342,70 @@ function escapeHtml(s) {
   return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 }
 
+// ─── Video Upload (file/gallery) ───────────────────────────────
+function switchVideoMode(mode) {
+  document.getElementById("vidModeLink").style.display = mode === "link" ? "" : "none";
+  document.getElementById("vidModeFile").style.display = mode === "file" ? "" : "none";
+  const linkBtn = document.getElementById("vidTabLink");
+  const fileBtn = document.getElementById("vidTabFile");
+  if (linkBtn && fileBtn) {
+    const active = "background:#16a34a;color:#fff";
+    const idle   = "background:transparent;color:#78350f";
+    linkBtn.style.cssText = `flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;${mode==='link'?active:idle}`;
+    fileBtn.style.cssText = `flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;${mode==='file'?active:idle}`;
+  }
+}
+
+async function handleVideoFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!file.type.startsWith("video/")) return showToast("اختر ملف فيديو فقط", "error");
+  if (file.size > 50 * 1024 * 1024) return showToast("الفيديو أكبر من 50MB. اضغطه أو ارفع رابط YouTube بدلاً منه", "error");
+
+  const progress = document.getElementById("vidUploadProgress");
+  progress.style.display = "";
+  progress.innerHTML = `⏳ جاري رفع الفيديو (${(file.size/1024/1024).toFixed(1)}MB)...`;
+
+  try {
+    // اقرأ الملف إلى base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+    const r = await api("POST", "/store/upload-video", { base64, ext });
+
+    // ضع الرابط في pm_videoUrl + اعرض المعاينة
+    document.getElementById("pm_videoUrl").value = r.url;
+    const vid = document.getElementById("vidPreview");
+    vid.src = r.url;
+    vid.style.display = "";
+    document.getElementById("vidRemoveBtn").style.display = "";
+    document.getElementById("vidDrop").style.display = "none";
+    progress.innerHTML = `✅ تم الرفع بنجاح (${(r.size/1024/1024).toFixed(1)}MB)`;
+    setTimeout(() => { progress.style.display = "none"; }, 2500);
+  } catch (e) {
+    progress.innerHTML = `<span style="color:#dc2626">❌ ${e?.error || "فشل الرفع"}</span>`;
+  }
+}
+
+async function removeUploadedVideo() {
+  const url = document.getElementById("pm_videoUrl").value;
+  if (url && url.startsWith("/store-videos/")) {
+    try { await api("DELETE", "/store/upload-video?url=" + encodeURIComponent(url)); } catch {}
+  }
+  document.getElementById("pm_videoUrl").value = "";
+  document.getElementById("vidPreview").style.display = "none";
+  document.getElementById("vidPreview").src = "";
+  document.getElementById("vidRemoveBtn").style.display = "none";
+  document.getElementById("vidDrop").style.display = "";
+  document.getElementById("pm_videoFile").value = "";
+  document.getElementById("vidUploadProgress").style.display = "none";
+}
+
 // ─── AI Video Recommendation ───────────────────────────────────
 async function getAIVideoRecommendation() {
   const id = document.getElementById("pm_id").value;
@@ -2706,6 +2797,23 @@ function openProductModal(id = null) {
   document.getElementById("pm_videoUrl").value    = p?.videoUrl || "";
   document.getElementById("pm_videoCaption").value = p?.videoCaption || "";
   document.getElementById("pm_videoAIRec").style.display = "none";
+  // اعرض الوضع المناسب: لو الرابط داخلي (/store-videos/) → وضع الملف مع معاينة
+  const isUploaded = !!(p?.videoUrl && p.videoUrl.startsWith("/store-videos/"));
+  switchVideoMode(isUploaded ? "file" : "link");
+  if (isUploaded) {
+    const vid = document.getElementById("vidPreview");
+    vid.src = p.videoUrl;
+    vid.style.display = "";
+    document.getElementById("vidRemoveBtn").style.display = "";
+    document.getElementById("vidDrop").style.display = "none";
+  } else {
+    document.getElementById("vidPreview").style.display = "none";
+    document.getElementById("vidPreview").src = "";
+    document.getElementById("vidRemoveBtn").style.display = "none";
+    document.getElementById("vidDrop").style.display = "";
+  }
+  document.getElementById("vidUploadProgress").style.display = "none";
+  document.getElementById("pm_videoFile").value = "";
 
   // Category select
   const sel = document.getElementById("pm_category");
