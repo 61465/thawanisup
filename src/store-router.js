@@ -15,6 +15,7 @@ const loyalty      = require("./loyalty");
 const couponsMod   = require("./coupons");
 const firestoreAuth = require("./firestore-auth");
 const waMgr        = require("./whatsapp-manager");
+const { audit }    = require("./audit-log");
 const bcrypt        = require("bcrypt");
 
 const BCRYPT_RE = /^\$2[aby]?\$\d{2}\$/;
@@ -134,7 +135,10 @@ router.post("/store/login", async (req, res) => {
     }
   }
 
-  if (!storeId) return res.status(403).json({ error: "رقم الجوال أو كلمة المرور خاطئة" });
+  if (!storeId) {
+    audit({ actor: { type: "store" }, action: "login.fail", ok: false, meta: { phone: String(phone).slice(0, 6) + "***" } }, req);
+    return res.status(403).json({ error: "رقم الجوال أو كلمة المرور خاطئة" });
+  }
 
   // ── Always read store data from stores.json (single source of truth) ─────────
   const { stores: allStores } = readStores();
@@ -157,6 +161,7 @@ router.post("/store/login", async (req, res) => {
 
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, { storeId, createdAt: Date.now() });
+  audit({ actor: { type: "store", id: storeId }, action: "login.success" }, req);
   res.json({ ok: true, token, storeId, storeName });
 });
 

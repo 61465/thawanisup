@@ -21,7 +21,15 @@ const path           = require("path");
 const { randomUUID, randomBytes, createHash } = require("crypto");
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "nexus-cafe-weborder-secret-2026";
+if (!process.env.JWT_SECRET) {
+  console.error("[FATAL] JWT_SECRET missing in .env — refusing to start with insecure default");
+  process.exit(1);
+}
+if (process.env.JWT_SECRET.length < 48) {
+  console.error("[FATAL] JWT_SECRET must be at least 48 chars (use crypto.randomBytes(64).toString('hex'))");
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // DEBUG_POLLS=1 لإظهار تفاصيل فشل فك تشفير الاستطلاعات (طبيعي يفشل كثيراً)
 const DEBUG_POLLS = process.env.DEBUG_POLLS === "1";

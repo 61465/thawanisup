@@ -40,6 +40,18 @@ const { PLANS }     = require("./plans");
 const waMgr         = require("./whatsapp-manager");
 const firestoreAuth = require("./firestore-auth");
 const { generateAdminConfig } = require("./ai-admin-config");
+const twoFA        = require("./two-fa");
+const { audit }    = require("./audit-log");
+
+// stricter rate limiter for master login (5 attempts / 15min / IP)
+const masterLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات دخول كثيرة، حاول بعد 15 دقيقة" },
+  skipSuccessfulRequests: true,
+});
 
 const router    = express.Router();
 const DATA_DIR  = path.join(__dirname, "..", "data");
@@ -342,14 +354,77 @@ async function verifyMasterPassword(plain) {
 }
 
 // ─── Login / Logout ───────────────────────────────────────────────────────────
-router.post("/master/login", async (req, res) => {
+router.post("/master/login", masterLoginLimiter, async (req, res) => {
   const pass = (req.body?.password || "").trim();
+  const otp  = String(req.body?.otp || "").trim();
   if (!pass) return res.status(400).json({ error: "كلمة المرور مطلوبة" });
+
   const ok = await verifyMasterPassword(pass);
-  if (!ok) return res.status(403).json({ error: "كلمة المرور خاطئة" });
+  if (!ok) {
+    audit({ actor: { type: "master" }, action: "login.fail", ok: false, meta: { reason: "bad_password" } }, req);
+    return res.status(403).json({ error: "كلمة المرور خاطئة" });
+  }
+
+  if (twoFA.isEnabled("master")) {
+    if (!otp) return res.status(401).json({ error: "رمز التحقق الثنائي مطلوب", twoFARequired: true });
+    if (!twoFA.verifyLogin("master", otp)) {
+      audit({ actor: { type: "master" }, action: "login.fail", ok: false, meta: { reason: "bad_otp" } }, req);
+      return res.status(403).json({ error: "رمز التحقق غير صحيح" });
+    }
+  }
+
   const token = crypto.randomBytes(32).toString("hex");
   sessions.set(token, Date.now());
-  res.json({ ok: true, token });
+  audit({ actor: { type: "master" }, action: "login.success" }, req);
+  res.json({ ok: true, token, twoFAEnabled: twoFA.isEnabled("master") });
+});
+
+// ─── 2FA endpoints ────────────────────────────────────────────────────────────
+router.get("/master/2fa/status", auth, (req, res) => {
+  res.json({ enabled: twoFA.isEnabled("master") });
+});
+
+router.post("/master/2fa/setup", auth, (req, res) => {
+  if (twoFA.isEnabled("master")) return res.status(400).json({ error: "2FA مفعّل بالفعل، عطّله أولاً" });
+  const { secret, url } = twoFA.setupSecret("master", "ThawaniMaster");
+  audit({ actor: { type: "master", id: "master" }, action: "2fa.setup" }, req);
+  res.json({ secret, otpauthUrl: url });
+});
+
+router.post("/master/2fa/enable", auth, (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "رمز التحقق مطلوب" });
+  const r = twoFA.enableForUser("master", token);
+  if (!r.ok) {
+    audit({ actor: { type: "master", id: "master" }, action: "2fa.enable", ok: false, meta: { reason: r.error } }, req);
+    return res.status(400).json({ error: r.error });
+  }
+  audit({ actor: { type: "master", id: "master" }, action: "2fa.enable" }, req);
+  res.json({ ok: true, backupCodes: r.backupCodes });
+});
+
+router.post("/master/2fa/disable", auth, (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "رمز التحقق مطلوب" });
+  const r = twoFA.disableForUser("master", token);
+  if (!r.ok) return res.status(400).json({ error: r.error });
+  audit({ actor: { type: "master", id: "master" }, action: "2fa.disable" }, req);
+  res.json({ ok: true });
+});
+
+// ─── Audit log viewer (master only) ───────────────────────────────────────────
+router.get("/master/audit", auth, (req, res) => {
+  const { readAuditMonth, listAuditFiles } = require("./audit-log");
+  const month = String(req.query.month || "").trim();
+  const target = month || (listAuditFiles()[0] || "").replace(".jsonl", "");
+  if (!target) return res.json({ months: [], entries: [] });
+  const entries = readAuditMonth(target, {
+    action: req.query.action || undefined,
+    actor: req.query.actor || undefined,
+    failedOnly: req.query.failedOnly === "1",
+    limit: parseInt(req.query.limit) || 200,
+  });
+  res.json({ months: listAuditFiles().map(f => f.replace(".jsonl", "")), current: target, entries });
 });
 
 // ─── Master change password ───────────────────────────────────────────────────
@@ -362,6 +437,7 @@ router.put("/master/password", auth, async (req, res) => {
   try {
     const hash = await bcrypt.hash(String(newPassword), BCRYPT_ROUNDS);
     saveMasterHash(hash);
+    audit({ actor: { type: "master", id: "master" }, action: "password.change" }, req);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: "فشل التحديث: " + e.message });

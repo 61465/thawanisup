@@ -786,7 +786,11 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
     <div id="loginError" class="login-error">كلمة المرور خاطئة ❌</div>
     <div class="login-field">
       <label>كلمة المرور</label>
-      <input id="loginPass" type="password" placeholder="••••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <input id="loginPass" type="password" placeholder="••••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field" id="loginOtpField" style="display:none">
+      <label>🛡️ رمز التحقق الثنائي (6 أرقام)</label>
+      <input id="loginOtp" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="text-align:center;letter-spacing:6px;font-size:18px" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-submit" onclick="doLogin()">دخول ←</button>
   </div>
@@ -835,6 +839,12 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
       </button>
     </nav>
     <div class="sidebar-footer">
+      <button class="logout-btn" style="margin-bottom:8px;background:#0f766e" onclick="open2FAModal()">
+        <span>🛡️</span><span>التحقق الثنائي 2FA</span>
+      </button>
+      <button class="logout-btn" style="margin-bottom:8px;background:#374151" onclick="openAuditModal()">
+        <span>📋</span><span>سجل التدقيق</span>
+      </button>
       <button class="logout-btn" style="margin-bottom:8px;background:#1e293b" onclick="openMasterPwdModal()">
         <span>🔐</span><span>تغيير كلمة المرور</span>
       </button>
@@ -843,6 +853,60 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
       </button>
     </div>
   </aside>
+
+<!-- 2FA Modal -->
+<div id="twoFAModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:14px;max-width:480px;width:92%;padding:24px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800">🛡️ التحقق الثنائي (2FA)</h2>
+      <button style="background:none;border:none;font-size:22px;cursor:pointer" onclick="document.getElementById('twoFAModal').style.display='none'">✕</button>
+    </div>
+    <div id="twoFAStatus" style="padding:12px;border-radius:10px;background:#f3f4f6;margin-bottom:14px;font-size:13px"></div>
+    <div id="twoFASetup" style="display:none">
+      <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:10px;font-size:12px;color:#78350f;line-height:1.7;margin-bottom:12px">
+        1️⃣ ثبّت تطبيق <b>Google Authenticator</b> أو <b>Authy</b><br>
+        2️⃣ امسح الرمز ضوئياً أو أدخل المفتاح يدوياً<br>
+        3️⃣ أدخل الرمز المكون من 6 أرقام لتفعيل الحماية
+      </div>
+      <div id="twoFAQR" style="display:flex;justify-content:center;margin:10px 0"></div>
+      <div style="background:#f9fafb;border:1px dashed #9ca3af;border-radius:8px;padding:10px;text-align:center;font-family:monospace;font-size:13px;letter-spacing:2px;margin-bottom:12px;user-select:all" id="twoFASecret">—</div>
+      <input id="twoFAToken" inputmode="numeric" maxlength="6" pattern="\d{6}" placeholder="رمز 6 أرقام" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:18px;text-align:center;letter-spacing:6px;margin-bottom:12px">
+      <button onclick="enable2FA()" style="width:100%;padding:12px;background:#0f766e;color:#fff;border:none;border-radius:8px;font-weight:800;cursor:pointer">✅ تفعيل 2FA</button>
+    </div>
+    <div id="twoFAEnabled" style="display:none">
+      <div style="background:#d1fae5;border:1px solid #10b981;border-radius:8px;padding:12px;color:#064e3b;font-size:13px;line-height:1.7;margin-bottom:12px">
+        ✅ التحقق الثنائي مفعّل. ستحتاج رمز 6 أرقام عند كل تسجيل دخول.
+      </div>
+      <input id="twoFADisableToken" inputmode="numeric" maxlength="6" placeholder="رمز 6 أرقام لإلغاء التفعيل" style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;text-align:center;letter-spacing:6px;margin-bottom:12px">
+      <button onclick="disable2FA()" style="width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">⚠️ إلغاء التفعيل</button>
+    </div>
+    <div id="twoFABackupCodes" style="display:none;margin-top:14px;padding:12px;background:#fef9c3;border:1px solid #facc15;border-radius:8px;font-size:13px">
+      <b>⚠️ احفظ هذه الرموز الاحتياطية الآن (تُستخدم مرة واحدة لكل رمز):</b>
+      <pre id="twoFABackupCodesList" style="font-family:monospace;font-size:14px;line-height:1.9;margin:10px 0;user-select:all"></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Log Modal -->
+<div id="auditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:14px;max-width:900px;width:95%;padding:20px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:18px;font-weight:800">📋 سجل التدقيق الأمني</h2>
+      <button style="background:none;border:none;font-size:22px;cursor:pointer" onclick="document.getElementById('auditModal').style.display='none'">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <select id="auditMonth" onchange="loadAudit()" style="padding:8px;border:1px solid #d1d5db;border-radius:8px"></select>
+      <select id="auditAction" onchange="loadAudit()" style="padding:8px;border:1px solid #d1d5db;border-radius:8px">
+        <option value="">كل العمليات</option>
+        <option value="login">تسجيل دخول</option>
+        <option value="password">تغيير كلمة المرور</option>
+        <option value="2fa">2FA</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="auditFailedOnly" onchange="loadAudit()"> الفاشلة فقط</label>
+    </div>
+    <div id="auditList" style="font-size:12px;font-family:monospace;max-height:60vh;overflow-y:auto;border:1px solid #e5e7eb;border-radius:8px"></div>
+  </div>
+</div>
 
 <!-- Master Password Modal -->
 <div id="mpwdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)document.getElementById('mpwdModal').style.display='none'">
@@ -1764,19 +1828,118 @@ function showApp() {
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 async function doLogin() {
   const pass = document.getElementById("loginPass").value.trim();
+  const otp  = (document.getElementById("loginOtp")?.value || "").trim();
   if (!pass) return;
+  const errEl = document.getElementById("loginError");
 
   try {
-    const r = await api("POST", "/master/login", { password: pass }, false);
+    const body = otp ? { password: pass, otp } : { password: pass };
+    const res = await fetch(BASE + "/master/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const r = await res.json();
+    if (res.status === 401 && r.twoFARequired) {
+      document.getElementById("loginOtpField").style.display = "";
+      document.getElementById("loginOtp").focus();
+      errEl.textContent = "🛡️ أدخل رمز التحقق الثنائي";
+      errEl.style.display = "";
+      return;
+    }
+    if (!res.ok || !r.ok) {
+      errEl.textContent = r.error || "كلمة المرور خاطئة ❌";
+      errEl.style.display = "";
+      return;
+    }
     TOKEN = r.token;
     localStorage.setItem("master_token", TOKEN);
-    document.getElementById("loginError").style.display = "none";
+    errEl.style.display = "none";
     document.getElementById("loginPass").value = "";
+    if (document.getElementById("loginOtp")) document.getElementById("loginOtp").value = "";
+    document.getElementById("loginOtpField").style.display = "none";
     showApp();
     refreshAll();
-  } catch {
-    document.getElementById("loginError").style.display = "";
+  } catch (e) {
+    errEl.textContent = "تعذّر الاتصال — حاول لاحقاً";
+    errEl.style.display = "";
   }
+}
+
+// ─── 2FA UI ────────────────────────────────────────────────────────────────────
+async function open2FAModal() {
+  document.getElementById("twoFAModal").style.display = "flex";
+  document.getElementById("twoFASetup").style.display = "none";
+  document.getElementById("twoFAEnabled").style.display = "none";
+  document.getElementById("twoFABackupCodes").style.display = "none";
+  document.getElementById("twoFAStatus").innerHTML = "جاري التحميل…";
+  try {
+    const r = await api("GET", "/master/2fa/status");
+    if (r.enabled) {
+      document.getElementById("twoFAStatus").innerHTML = "✅ <b>مفعّل</b> — التحقق الثنائي يحمي حسابك";
+      document.getElementById("twoFAEnabled").style.display = "";
+    } else {
+      document.getElementById("twoFAStatus").innerHTML = "⚠️ <b>غير مفعّل</b> — يُوصى بشدة بتفعيله";
+      const s = await api("POST", "/master/2fa/setup");
+      document.getElementById("twoFASecret").textContent = s.secret;
+      document.getElementById("twoFAQR").innerHTML =
+        `<img alt="QR" style="border:8px solid #fff;background:#fff" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(s.otpauthUrl)}">`;
+      document.getElementById("twoFASetup").style.display = "";
+    }
+  } catch (e) {
+    document.getElementById("twoFAStatus").textContent = "خطأ في التحميل";
+  }
+}
+async function enable2FA() {
+  const token = document.getElementById("twoFAToken").value.trim();
+  if (!/^\d{6}$/.test(token)) return alert("أدخل رمز 6 أرقام");
+  try {
+    const r = await api("POST", "/master/2fa/enable", { token });
+    document.getElementById("twoFASetup").style.display = "none";
+    document.getElementById("twoFAEnabled").style.display = "";
+    document.getElementById("twoFAStatus").innerHTML = "✅ <b>مفعّل بنجاح</b>";
+    document.getElementById("twoFABackupCodes").style.display = "";
+    document.getElementById("twoFABackupCodesList").textContent = (r.backupCodes || []).join("\n");
+  } catch (e) { alert("فشل التفعيل — تحقّق من الرمز"); }
+}
+async function disable2FA() {
+  const token = document.getElementById("twoFADisableToken").value.trim();
+  if (!token) return alert("أدخل رمز التحقق");
+  if (!confirm("هل أنت متأكد من إلغاء تفعيل 2FA؟ سيقلّل أمان حسابك")) return;
+  try {
+    await api("POST", "/master/2fa/disable", { token });
+    alert("✅ تم إلغاء التفعيل");
+    open2FAModal();
+  } catch { alert("فشل — رمز خاطئ"); }
+}
+
+// ─── Audit Log UI ──────────────────────────────────────────────────────────────
+async function openAuditModal() {
+  document.getElementById("auditModal").style.display = "flex";
+  await loadAudit();
+}
+async function loadAudit() {
+  const month = document.getElementById("auditMonth").value || "";
+  const action = document.getElementById("auditAction").value || "";
+  const failedOnly = document.getElementById("auditFailedOnly").checked ? "1" : "";
+  const qs = new URLSearchParams({ month, action, failedOnly, limit: "200" });
+  try {
+    const r = await api("GET", "/master/audit?" + qs.toString());
+    const sel = document.getElementById("auditMonth");
+    if (!sel.dataset.loaded) {
+      sel.innerHTML = (r.months || []).map(m => `<option value="${m}">${m}</option>`).join("");
+      sel.value = r.current || "";
+      sel.dataset.loaded = "1";
+    }
+    const colorFor = e => e.ok === false ? "#fee2e2" : (e.action.includes("login") ? "#dbeafe" : "#f3f4f6");
+    document.getElementById("auditList").innerHTML = (r.entries || []).slice().reverse().map(e =>
+      `<div style="padding:8px 10px;border-bottom:1px solid #e5e7eb;background:${colorFor(e)}">
+        <div><b>${e.action}</b> ${e.ok===false?"<span style='color:#dc2626'>FAILED</span>":""}</div>
+        <div style="color:#6b7280">${e.ts} · ${e.actor?.type||"—"}${e.actor?.id?"/"+e.actor.id:""} · ${e.ip||"—"}</div>
+        ${e.meta ? `<div style="color:#4b5563;font-size:11px;margin-top:2px">${JSON.stringify(e.meta)}</div>` : ""}
+      </div>`
+    ).join("") || "<div style='padding:20px;text-align:center;color:#6b7280'>لا توجد سجلات</div>";
+  } catch (e) { document.getElementById("auditList").innerHTML = "<div style='padding:20px;color:#dc2626'>تعذّر التحميل</div>"; }
 }
 
 async function doLogout() {
