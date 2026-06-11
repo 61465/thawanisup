@@ -2543,19 +2543,19 @@ async function handleConfirmOrder(from, msg, session) {
       catch (e) { console.warn("[coupon-use] failed:", e.message); }
     }
 
-    if (hasFeature(store?.plan, "customerRegistry")) {
-      upsertCustomer({ phone: phoneNum(from), name: session.customerName, location: session.customerLocation, total: session.grandTotal, storeId });
-    }
-
-    // Award loyalty points
-    const earned = addPoints(storeId, from, session.grandTotal, orderId, store);
+    // ملاحظة: upsertCustomer + addPoints تأجلت لمرحلة "confirm" (بعد قبول المالك)
+    // لتجنب: (1) منح نقاط لطلب قد يُرفض  (2) عدّ طلبات مرفوضة في إحصائيات العميل
     const storeName = store?.storeName || STORE_NAME;
+
+    // معاينة النقاط التي سيكسبها عند قبول الطلب (لتحفيز فقط، بدون حفظ)
+    const { calcPoints } = require("./loyalty");
+    const previewPoints = calcPoints(session.grandTotal, store);
 
     await sendText(from,
       `✅ *تم استلام طلبك بنجاح!*\n\n` +
       `رقم الطلب: *${orderId}*\n` +
       `الإجمالي: *${session.grandTotal?.toFixed(2)} ${currency}*\n\n` +
-      `🏆 كسبت *${earned.newPoints}* نقطة! رصيدك الكلي: *${earned.totalPoints}* نقطة\n\n` +
+      (previewPoints > 0 ? `🏆 ستكسب *${previewPoints}* نقطة عند قبول الطلب\n\n` : "") +
       `طلبك قيد المراجعة، سيتم التواصل معك قريباً.\n` +
       `شكراً لاختيارك *${storeName}* 💚`
     );

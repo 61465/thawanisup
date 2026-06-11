@@ -1045,11 +1045,36 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
   const store     = getStore(req.storeId);
   const storeName = store?.storeName || "المتجر";
 
+  // ── Loyalty + Customer registry — تُمنح فقط الآن (بعد قبول المالك) ──────────
+  let earned = null;
+  try {
+    if (order.customerPhone && hasFeature(store?.plan, "customerRegistry")) {
+      const { upsertCustomer } = require("./customers");
+      upsertCustomer({
+        phone:    String(order.customerPhone).replace(/\D/g, ""),
+        name:     order.customerName || "",
+        location: order.customerLocation || "",
+        total:    Number(order.total || 0),
+        storeId:  req.storeId,
+      });
+    }
+  } catch (e) { console.warn("[confirm] upsertCustomer failed:", e.message); }
+  try {
+    if (order.customerPhone) {
+      const { addPoints } = require("./loyalty");
+      earned = addPoints(req.storeId, order.customerPhone, Number(order.total || 0), orderId, store);
+    }
+  } catch (e) { console.warn("[confirm] addPoints failed:", e.message); }
+
   // Notify customer via Baileys (same WhatsApp session used by the bot)
   if (order.customerPhone) {
+    const pointsLine = (earned && earned.newPoints > 0)
+      ? `\n🏆 كسبت *${earned.newPoints}* نقطة! رصيدك: *${earned.totalPoints}*\n`
+      : "";
     const confirmMsg =
       `✅ *تم تأكيد طلبك!*\n\n` +
       `رقم الطلب: *${orderId}*\n` +
+      pointsLine +
       `سيتم توصيل طلبك قريباً إن شاء الله 🚴\n\n` +
       `شكراً لاختيارك *${storeName}*`;
     try { await waMgr.sendMessage(req.storeId, order.customerPhone, confirmMsg); } catch {}
