@@ -1,0 +1,15 @@
+node_modules
+.env
+data/
+*.log
+*.log.err
+.git
+.gitignore
+backups/
+test/
+docs/
+*.md
+nginx/ssl/
+pm2-ecosystem.config.js
+start-tunnel.*
+tunnel.*

@@ -1,36 +1,89 @@
 # ════════════════════════════════════════════════════════════════
-# WhatsApp Commerce Bot - .gitignore
+# منصة ثواني — .gitignore (محدّث 2026-06-12)
 # ════════════════════════════════════════════════════════════════
 
-# Environment files (تحوي tokens سرية!)
+# ─── Environment & Secrets ───────────────────────────────────────
 .env
 .env.local
 .env.production
 .env.*.local
+*.env
 
-# Dependencies
+# Firebase service-account keys (لا تُرفع أبداً)
+*firebase-adminsdk*.json
+*-firebase-adminsdk*.json
+firebase-admin-*.json
+serviceAccount*.json
+gcp-key*.json
+
+# ─── Dependencies ────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Logs
+# ─── Logs ────────────────────────────────────────────────────────
 logs/
 *.log
-orders.jsonl
-orders-backup-*.jsonl
+err.log
+out.log
 
-# Generated invoices (created at runtime)
-data/invoices/*.png
+# ─── البيانات الحساسة (PII + أسرار) ──────────────────────────────
+# جلسات واتساب — تحوي مفاتيح تشفير الـ device
+data/sessions/
+
+# Master credentials + 2FA
+data/master-credentials.json
+data/twofa.json
+
+# قواعد بيانات JSON الحرجة
+data/stores.json
+data/customers.json
+data/owner-settings.json
+data/pending-requests.json
+data/handoffs.json
+data/phone-pool.json
+data/polls.json
+data/loyalty.json
+data/loyalty_*.json
 data/orders.jsonl
+data/orders_*.jsonl
+data/ratings.jsonl
+data/coupons.json
+data/stripe-processed-events.json
+data/broadcast-cooldown.json
 
-# OS files
+# Audit log (يحوي IPs + UAs)
+data/audit/
+
+# الأرشيف الشهري
+data/archives/
+data/archive/
+
+# المحاسبة (أرقام مالية + COGS)
+data/accounting/
+
+# Generated content
+data/invoices/
+data/images/
+data/videos/
+
+# النسخ الاحتياطية
+backups/
+*.tar.gz.gpg
+*.before-migration-*.json
+
+# Lock files for orders
+*.lock
+*.lockfile
+
+# ─── OS files ────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editor configs
+# ─── Editor configs ──────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
@@ -38,24 +91,32 @@ desktop.ini
 *~
 .cursorignore
 
-# Build artifacts
+# ─── Build artifacts ─────────────────────────────────────────────
 dist/
 build/
 .cache/
 .parcel-cache/
 
-# Coverage reports
+# ─── Coverage / Tests ────────────────────────────────────────────
 coverage/
 .nyc_output/
+test-results/
 
-# Temporary files
+# ─── Temporary ───────────────────────────────────────────────────
 tmp/
 temp/
 *.tmp
+__tmp_*
 
-# Local session backups (إن وُجدت)
-sessions-backup.json
-
-# Railway/Render config (إذا كان فيه أسرار)
+# ─── Deployment-specific ─────────────────────────────────────────
 .railway/
 .render/
+.vercel/
+sessions-backup.json
+
+# ─── إبقاء بنية المجلدات بـ .gitkeep ─────────────────────────────
+!data/.gitkeep
+!data/invoices/.gitkeep
+!data/images/.gitkeep
+!data/videos/.gitkeep
+!data/sessions/.gitkeep

@@ -4,16 +4,16 @@
  */
 const fs   = require("fs");
 const path = require("path");
+const atomicFs = require("./atomic-fs");
 
 const COUPONS_FILE = path.join(__dirname, "..", "data", "coupons.json");
 
 function load() {
-  try { return JSON.parse(fs.readFileSync(COUPONS_FILE, "utf8")); }
-  catch { return { coupons: [] }; }
+  return atomicFs.readJsonSync(COUPONS_FILE, { coupons: [] });
 }
 
 function save(data) {
-  fs.writeFileSync(COUPONS_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(COUPONS_FILE, data);
 }
 
 /**

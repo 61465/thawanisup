@@ -4,18 +4,53 @@
  * Routes: /payments/*
  */
 
-const express = require("express");
-const fs      = require("fs");
-const path    = require("path");
-const crypto  = require("crypto");
+const express   = require("express");
+const fs        = require("fs");
+const path      = require("path");
+const crypto    = require("crypto");
+const rateLimit = require("express-rate-limit");
+
+// تقارن قيمتين بطريقة آمنة من timing attacks
+function safeEqualStr(a, b) {
+  if (!a || !b) return false;
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+// Rate limiter: 20 طلب/دقيقة/IP على endpoints الدفع لمنع abuse
+const paymentsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "محاولات كثيرة، حاول لاحقاً" },
+});
 
 const router   = express.Router();
 const DATA_DIR = path.join(__dirname, "..", "data");
 const STORES_FILE = path.join(DATA_DIR, "stores.json");
+const PROCESSED_EVENTS_FILE = path.join(DATA_DIR, "stripe-processed-events.json");
 
 const STRIPE_SECRET  = process.env.STRIPE_SECRET_KEY  || "";
 const STRIPE_WEBHOOK = process.env.STRIPE_WEBHOOK_SECRET || "";
 const PUBLIC_URL     = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+
+// ─── Store auth middleware (يتحقق من x-store-token عبر store-router) ─────────
+const { verifyStoreToken } = require("./store-router");
+function storeAuth(req, res, next) {
+  const token = req.headers["x-store-token"] || (req.body && req.body.token);
+  const storeId = verifyStoreToken(token);
+  if (!storeId) return res.status(401).json({ error: "يرجى تسجيل الدخول" });
+  // يجب أن يطابق storeId المُرسَل في body
+  const claimedId = req.body?.storeId || req.params?.storeId;
+  if (claimedId && claimedId !== storeId) {
+    return res.status(403).json({ error: "غير مصرّح بإدارة هذا المتجر" });
+  }
+  req.storeId = storeId;
+  next();
+}
 
 // Plans config — يمكن تعديل الأسعار هنا
 const PLANS = {
@@ -35,13 +70,13 @@ const PLANS = {
   },
 };
 
+const atomicFs = require("./atomic-fs");
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 function readStores() {
-  try { return JSON.parse(fs.readFileSync(STORES_FILE, "utf8")); }
-  catch { return { stores: [] }; }
+  return atomicFs.readJsonSync(STORES_FILE, { stores: [] });
 }
 function writeStores(data) {
-  fs.writeFileSync(STORES_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(STORES_FILE, data);
 }
 function updateStore(id, updates) {
   const data = readStores();
@@ -69,12 +104,12 @@ router.get("/payments/plans", (_req, res) => {
 
 // ─── POST /payments/create-checkout ──────────────────────────────────────────
 // Body: { storeId, plan: "basic"|"pro", period: "monthly"|"yearly" }
-router.post("/payments/create-checkout", async (req, res) => {
+router.post("/payments/create-checkout", paymentsLimiter, storeAuth, async (req, res) => {
   const s = getStripe();
   if (!s) return res.status(503).json({ error: "بوابة الدفع غير مفعّلة بعد" });
 
-  const { storeId, plan = "basic", period = "monthly" } = req.body || {};
-  if (!storeId) return res.status(400).json({ error: "storeId مطلوب" });
+  const { plan = "basic", period = "monthly" } = req.body || {};
+  const storeId = req.storeId; // من session
 
   const store = getStore(storeId);
   if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
@@ -116,13 +151,12 @@ router.post("/payments/create-checkout", async (req, res) => {
 });
 
 // ─── POST /payments/manage-subscription ──────────────────────────────────────
-// Body: { storeId } — returns Stripe customer portal URL
-router.post("/payments/manage-subscription", async (req, res) => {
+// Returns Stripe customer portal URL (storeId مأخوذ من session)
+router.post("/payments/manage-subscription", paymentsLimiter, storeAuth, async (req, res) => {
   const s = getStripe();
   if (!s) return res.status(503).json({ error: "بوابة الدفع غير مفعّلة" });
 
-  const { storeId } = req.body || {};
-  const store = getStore(storeId);
+  const store = getStore(req.storeId);
   if (!store?.stripeCustomerId) return res.status(404).json({ error: "لا يوجد اشتراك مفعّل" });
 
   try {
@@ -136,6 +170,30 @@ router.post("/payments/manage-subscription", async (req, res) => {
     res.status(500).json({ error: "فشل فتح بوابة إدارة الاشتراك" });
   }
 });
+
+// ─── Idempotency: تخزين IDs الـ events المُعالَجة (آخر 1000 لمدة 30 يوم) ────
+function _loadProcessedEvents() {
+  try {
+    if (!fs.existsSync(PROCESSED_EVENTS_FILE)) return {};
+    const raw = JSON.parse(fs.readFileSync(PROCESSED_EVENTS_FILE, "utf8"));
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const out = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (v > cutoff) out[k] = v;
+    }
+    return out;
+  } catch { return {}; }
+}
+function _saveProcessedEvent(eventId) {
+  const events = _loadProcessedEvents();
+  events[eventId] = Date.now();
+  // keep last 1000
+  const sorted = Object.entries(events).sort((a, b) => b[1] - a[1]).slice(0, 1000);
+  fs.writeFileSync(PROCESSED_EVENTS_FILE, JSON.stringify(Object.fromEntries(sorted)), "utf8");
+}
+function _isEventProcessed(eventId) {
+  return !!_loadProcessedEvents()[eventId];
+}
 
 // ─── POST /payments/webhook — Stripe webhook (raw body needed) ────────────────
 router.post("/payments/webhook",
@@ -153,6 +211,12 @@ router.post("/payments/webhook",
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
+    // Idempotency check — منع معالجة نفس event مرّتين
+    if (_isEventProcessed(event.id)) {
+      console.log(`[stripe-webhook] event ${event.id} already processed — skipping`);
+      return res.sendStatus(200);
+    }
+
     const data   = event.data.object;
     const meta   = data.metadata || {};
 
@@ -168,6 +232,7 @@ router.post("/payments/webhook",
         updateStore(storeId, {
           subscriptionStatus:   "active",
           subscriptionPlan:     plan,
+          subscriptionPeriod:   period, // ⚠️ كان مفقوداً — يلزم لتجديد invoice.payment_succeeded
           subscriptionExpiry:   expiry.toISOString().slice(0, 10),
           stripeCustomerId:     data.customer,
           stripeSubscriptionId: data.subscription,
@@ -212,14 +277,26 @@ router.post("/payments/webhook",
       }
     }
 
+    // mark event as processed بعد إنهاء كل الـ side effects
+    _saveProcessedEvent(event.id);
     res.sendStatus(200);
   }
 );
 
-// ─── GET /payments/status/:storeId — check subscription (master admin only) ──
+// ─── GET /payments/status/:storeId — يستخدم master session OR store session ──
 router.get("/payments/status/:storeId", (req, res) => {
-  const masterToken = req.headers["x-master-token"];
-  if (masterToken !== process.env.MASTER_TOKEN) {
+  const masterTok = req.headers["x-master-token"];
+  const storeTok  = req.headers["x-store-token"];
+
+  // master: يقرأ أي متجر — نعتمد على المصادقة في master-router عبر passing through
+  // لكن لأن الـ payments-router مستقل، نتحقق إن `MASTER_PASSWORD` ولا نعتمد على token shared فقط
+  const masterPass = process.env.MASTER_PASSWORD || "";
+  const isMaster = masterPass && safeEqualStr(masterTok, masterPass);
+  // store: يقرأ متجره فقط
+  const storeIdFromToken = storeTok ? verifyStoreToken(storeTok) : null;
+  const isOwnStore = storeIdFromToken === req.params.storeId;
+
+  if (!isMaster && !isOwnStore) {
     return res.status(401).json({ error: "غير مصرح" });
   }
   const store = getStore(req.params.storeId);
@@ -233,33 +310,40 @@ router.get("/payments/status/:storeId", (req, res) => {
   });
 });
 
-// ─── Helper: send WhatsApp notification after payment ────────────────────────
+// ─── Helper: send WhatsApp notification after payment (Baileys فقط، لا Meta) ─
 async function sendWhatsAppPaymentConfirm(storeId, plan, period, expiry) {
-  const { WHATSAPP_TOKEN, WHATSAPP_PHONE_ID } = process.env;
+  const waMgr = require("./whatsapp-manager");
   const store = getStore(storeId);
-  if (!store?.ownerPhone || !WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) return;
+  if (!store?.ownerPhone) return;
 
   const planName   = PLANS[plan]?.name || plan;
   const periodText = period === "yearly" ? "سنوي" : "شهري";
   const expiryStr  = expiry.toLocaleDateString("ar-SA");
+  const body =
+    `✅ *تم تفعيل اشتراكك بنجاح!*\n\n` +
+    `🏪 المتجر: ${store.storeName}\n` +
+    `📦 الخطة: ${planName} (${periodText})\n` +
+    `📅 ينتهي في: ${expiryStr}\n\n` +
+    `شكراً لاختيارك خدمتنا 🙏`;
+
+  const jid = String(store.ownerPhone).replace(/\D/g, "") + "@s.whatsapp.net";
+
+  // اختر جلسة Baileys مفتوحة: platform → lead → أي جلسة active
+  const sessions = waMgr.listSessions();
+  const candidate = sessions.find(s => s.storeId === "platform" && s.status === "open")
+                 || sessions.find(s => s.storeId === "lead"     && s.status === "open")
+                 || sessions.find(s => s.status === "open");
+
+  if (!candidate) {
+    console.warn(`[payments] لا توجد جلسة واتساب لإرسال تأكيد الدفع لـ ${storeId}`);
+    return;
+  }
 
   try {
-    const axios = require("axios");
-    await axios.post(
-      `https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to: store.ownerPhone,
-        type: "text",
-        text: {
-          body: `✅ *تم تفعيل اشتراكك بنجاح!*\n\n🏪 المتجر: ${store.storeName}\n📦 الخطة: ${planName} (${periodText})\n📅 ينتهي في: ${expiryStr}\n\nشكراً لاختيارك خدمتنا 🙏`,
-          preview_url: false,
-        },
-      },
-      { headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "Content-Type": "application/json" } }
-    );
+    await waMgr.sendMessage(candidate.storeId, jid, body);
+    console.log(`[payments] ✅ تأكيد الدفع أُرسل لـ ${storeId} via ${candidate.storeId}`);
   } catch (err) {
-    console.error("WhatsApp payment confirm error:", err.message);
+    console.error("[payments] WhatsApp confirm error:", err.message);
   }
 }
 

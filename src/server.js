@@ -102,11 +102,23 @@ const loginLimiter = rateLimit({
   message: { error: "محاولات دخول كثيرة، انتظر 15 دقيقة" },
   skipSuccessfulRequests: true,
 });
+// rate limiter لـ web tokens (/c/:token, /o/:slug, /do/:token) — منع brute-force على tokens قصيرة
+const webTokenLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: "طلبات كثيرة على الروابط، حاول بعد قليل" },
+});
 app.use("/store/",        apiLimiter);
 app.use("/api/",          apiLimiter);
 app.use("/master/login",  loginLimiter);
 // تطبيق login limiter على /store/login بشكل صريح (لتفادي 429 على فتح صفحات متعددة)
 app.use("/store/login",   loginLimiter);
+// web tokens — تطبق على الـ prefix routes
+app.use("/c/",            webTokenLimiter);
+app.use("/do/",           webTokenLimiter);
+app.use("/order/",        webTokenLimiter);
+app.use("/o/",            webTokenLimiter);
+app.use("/try/",          webTokenLimiter);
 
 app.use(express.json({ limit: "60mb" })); // raised for video uploads (videos enforce 50MB inside endpoint)
 app.use(express.raw({ type: "video/*", limit: "60mb" }));
@@ -144,14 +156,93 @@ const hourEnd     = parseInt(WORKING_HOURS_END)   || 24;
 const demoCtx  = new AsyncLocalStorage(); // web simulator
 const storeCtx = new AsyncLocalStorage(); // active storeId + store config
 
-// ─── Health ───────────────────────────────────────────────────────────────────
+// ─── Health (public minimal + admin verbose) + Version ────────────────────────
+const _bootTime = Date.now();
+let _pkgVersion = "unknown";
+try { _pkgVersion = require("../package.json").version || "unknown"; } catch {}
+
 app.get("/health", (req, res) => {
   const masterToken = req.headers["x-master-token"] || req.query.masterToken;
-  const isAdmin = masterToken && masterToken === process.env.MASTER_TOKEN;
+  const isAdmin = masterToken && safeEqualStrLocal(masterToken, process.env.MASTER_PASSWORD || "");
+  const uptimeMs = Date.now() - _bootTime;
+
+  const base = { ok: true, version: _pkgVersion, uptimeSec: Math.floor(uptimeMs / 1000) };
+
   if (isAdmin) {
-    return res.json({ ok: true, sessions: waMgr.listSessions(), time: new Date().toISOString() });
+    let totalStores = 0, activeStores = 0, todayOrders = 0;
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "stores.json"), "utf8"));
+      totalStores = (data.stores || []).length;
+      activeStores = (data.stores || []).filter(s => s.active && s.subscriptionStatus === "active").length;
+      const today = new Date().toISOString().slice(0, 10);
+      for (const s of (data.stores || [])) {
+        const f = s.id === "nakheel_001"
+          ? path.join(DATA_DIR, "orders.jsonl")
+          : path.join(DATA_DIR, `orders_${s.id}.jsonl`);
+        if (!fs.existsSync(f)) continue;
+        for (const l of fs.readFileSync(f, "utf8").split("\n")) {
+          if (!l) continue;
+          try {
+            const o = JSON.parse(l);
+            if (!o._test && (o.timestamp || "").slice(0, 10) === today) todayOrders++;
+          } catch {}
+        }
+      }
+    } catch {}
+
+    const mem = process.memoryUsage();
+    return res.json({
+      ...base,
+      time: new Date().toISOString(),
+      sessions: waMgr.listSessions(),
+      stats: { totalStores, activeStores, todayOrders },
+      memory: { rssMB: Math.round(mem.rss / 1024 / 1024), heapMB: Math.round(mem.heapUsed / 1024 / 1024) },
+      node: process.version,
+    });
   }
-  res.json({ ok: true });
+  res.json(base);
+});
+
+// timing-safe local compare (server.js)
+function safeEqualStrLocal(a, b) {
+  if (!a || !b) return false;
+  const ab = Buffer.from(String(a)), bb = Buffer.from(String(b));
+  if (ab.length !== bb.length) return false;
+  return require("crypto").timingSafeEqual(ab, bb);
+}
+
+// ─── Deep health check — public (للـ Uptime Kuma + load balancers) ───────────
+app.get("/health/deep", (_req, res) => {
+  try {
+    const r = require("./health-monitor").deepCheck();
+    res.status(r.status === "critical" ? 503 : 200).json(r);
+  } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
+});
+
+// ─── Notifications polling — للماستر فقط ──────────────────────────────────────
+// يرجع آخر أحداث (طلبات اشتراك جديدة، طلبات بحاجة قبول)
+app.get("/api/master-notifications", (req, res) => {
+  const t = req.headers["x-master-token"];
+  if (!safeEqualStrLocal(t, process.env.MASTER_PASSWORD || "")) {
+    return res.status(401).json({ error: "غير مصرح" });
+  }
+  const sinceTs = parseInt(req.query.since) || 0;
+  const notif = [];
+
+  // طلبات اشتراك جديدة (pending)
+  try {
+    const p = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "pending-requests.json"), "utf8"));
+    for (const r of (p.requests || [])) {
+      if (r.status !== "pending") continue;
+      const ts = new Date(r.submittedAt || 0).getTime();
+      if (ts > sinceTs) {
+        notif.push({ kind: "subscription_request", id: r.id, title: "طلب اشتراك جديد",
+                     body: `${r.name} - ${r.store}`, ts, link: "#pending" });
+      }
+    }
+  } catch {}
+
+  res.json({ notifications: notif, serverTime: Date.now() });
 });
 // الـ landing الرسمي على GitHub Pages — نوجّه إليه لتجنب صفحات تسجيل متعددة
 app.get("/", (_req, res) => res.redirect(301, "https://61465.github.io/cafe/docs/"));
@@ -245,11 +336,20 @@ app.post("/api/sim/reset", (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── Orders Feed ──────────────────────────────────────────────────────────────
+// ─── Orders Feed (master only) — يدعم Bearer header + x-master-token ──────────
+// تعطيل query.token تماماً — يكشف في logs
 app.get("/orders", (req, res) => {
-  const token = req.query.token || req.headers["x-master-token"];
-  const expected = process.env.MASTER_PASSWORD || process.env.MASTER_TOKEN;
-  if (!token || token !== expected) {
+  const auth = String(req.headers.authorization || "");
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = bearer || req.headers["x-master-token"];
+  const expected = process.env.MASTER_PASSWORD;
+  if (!token || !expected) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  // timing-safe comparison
+  const a = Buffer.from(String(token));
+  const b = Buffer.from(String(expected));
+  if (a.length !== b.length || !require("crypto").timingSafeEqual(a, b)) {
     return res.status(403).json({ error: "forbidden" });
   }
   res.json({ orders: readOrders(parseInt(req.query.limit) || 50) });
@@ -3142,7 +3242,33 @@ function _esc(str) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// JSON آمن للحقن في <script> tags — يحوّل < إلى < ويمنع كسر </script>
+// وحماية من injection داخل HTML comment أيضاً.
+function _safeJSON(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, "\u003c")
+    .replace(/>/g, "\u003e")
+    .replace(/&/g, "\u0026")
+    .replace(/\u2028/g, "\u2028")
+    .replace(/\u2029/g, "\u2029");
+}
+
+// تحقق آمن من قيمة CSS color (يقبل #hex / rgb / rgba / hsl / var(...) / كلمات محددة)
+function _safeCssColor(val, fallback) {
+  if (!val || typeof val !== "string") return fallback;
+  const s = val.trim();
+  if (s.length > 60) return fallback;
+  if (/^#[0-9a-f]{3,8}$/i.test(s)) return s;
+  if (/^rgba?\(\s*\d{1,3}(\s*,\s*\d{1,3}){2}(\s*,\s*[\d.]+)?\s*\)$/i.test(s)) return s;
+  if (/^hsla?\(\s*\d{1,3}(\s*,\s*\d{1,3}%){2}(\s*,\s*[\d.]+)?\s*\)$/i.test(s)) return s;
+  if (/^var\(--[a-z0-9-]+\)$/i.test(s)) return s;
+  if (/^(transparent|currentColor|inherit|initial|unset)$/i.test(s)) return s;
+  if (/^[a-z]{3,20}$/i.test(s)) return s; // named colors (red, blue, …)
+  return fallback;
 }
 
 app.get("/c/:token", (req, res) => {
@@ -3251,8 +3377,9 @@ app.get(["/order/:token", "/o/:token", "/:token([a-zA-Z0-9]{4,12})"], (req, res)
   if (!store) return res.status(404).send("المتجر غير موجود");
 
   const botPhone   = sess.botPhone || "";
-  const rawColor   = store.invoiceColor || "#1b5e20";
-  const rawAccent  = store.themeAccent  || "var(--accent)";
+  // validation صارمة لقيم CSS لمنع injection عبر إعدادات المتجر
+  const rawColor   = _safeCssColor(store.invoiceColor, "#1b5e20");
+  const rawAccent  = _safeCssColor(store.themeAccent,  "var(--accent)");
   const menuMode   = store.menuMode === "light" ? "light" : "dark";
   const color      = _esc(rawColor);
   const accentColor = _esc(rawAccent);
@@ -3470,15 +3597,15 @@ app.get(["/order/:token", "/o/:token", "/:token([a-zA-Z0-9]{4,12})"], (req, res)
     ordersToday: ordersTodayCount,
   };
 
-  const token    = JSON.stringify(req.params.token);
-  const curr     = JSON.stringify(currency);
-  const pdata    = JSON.stringify(productData);
-  const cdata    = JSON.stringify(categoriesData);
-  const logoJ    = JSON.stringify(logoUrl);
-  const nameJ    = JSON.stringify(store.storeName || "متجرنا");
-  const colorJ   = JSON.stringify(rawColor);
-  const phoneJ   = JSON.stringify(botPhone);
-  const extrasJ  = JSON.stringify(headerExtras);
+  const token    = _safeJSON(req.params.token);
+  const curr     = _safeJSON(currency);
+  const pdata    = _safeJSON(productData);
+  const cdata    = _safeJSON(categoriesData);
+  const logoJ    = _safeJSON(logoUrl);
+  const nameJ    = _safeJSON(store.storeName || "متجرنا");
+  const colorJ   = _safeJSON(rawColor);
+  const phoneJ   = _safeJSON(botPhone);
+  const extrasJ  = _safeJSON(headerExtras);
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(`<!DOCTYPE html>
@@ -5158,6 +5285,12 @@ if (require.main === module) {
       orderScheduler.start();
       require("./monthly-archive").startMonthlyCron();
       require("./accounting").startMonthlyAccountingCron();
+      require("./health-monitor").startPeriodicChecks();
+      // resume broadcasts التي توقفت لو السيرفر crashed
+      setTimeout(() => {
+        require("./broadcast-queue").resumeAll()
+          .catch(e => console.warn("[broadcast-queue] resume failed:", e.message));
+      }, 30_000); // انتظر 30s للـ Baileys sessions تستقر أولاً
     });
   });
 }

@@ -1,3 +1,14 @@
+---
+title: Nakheel Cafe WhatsApp Bot
+emoji: 🌴
+colorFrom: green
+colorTo: yellow
+sdk: docker
+app_port: 7860
+pinned: false
+short_description: Arabic WhatsApp commerce bot for local cafes
+---
+
 # 🤖 WhatsApp Commerce Bot — للمتاجر المحلية العربية
 
 > بوت واتساب تجاري كامل + قابل للاستنساخ لأي متجر (مقهى، حلويات، صيدلية، تجزئة) — يعمل عبر **Meta Cloud API الرسمي** بدون BSP وسيط.

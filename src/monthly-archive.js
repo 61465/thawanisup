@@ -116,24 +116,39 @@ function getArchiveOrders(storeId, yearMonth) {
     .filter(Boolean);
 }
 
-// Cron daily check — at midnight if today is day 1, archive previous month
+// Cron — يأرشف الشهر السابق لو غير مُؤرشف (catch-up logic لو السيرفر مات في يوم 1)
+function _shouldArchive(prevMonth) {
+  // افحص لو كل المتاجر النشطة لها summary للشهر السابق
+  const stores = readStoresList().filter(s => s.active && s.subscriptionStatus === "active");
+  if (!stores.length) return false;
+  let needsArchive = false;
+  for (const s of stores) {
+    const summaryFile = path.join(ARCHIVE_DIR, s.id, `${prevMonth}.summary.json`);
+    if (!fs.existsSync(summaryFile)) { needsArchive = true; break; }
+  }
+  return needsArchive;
+}
+
 function startMonthlyCron() {
   let lastRunMonth = null;
   const check = () => {
     const now = new Date();
-    const todayMonth = now.toISOString().slice(0, 7);
-    if (now.getDate() === 1 && lastRunMonth !== todayMonth) {
-      console.log("[archive-cron] running monthly archive at", now.toISOString());
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+    const prevMonth = prevDate.toISOString().slice(0, 7);
+
+    // يشغّل إذا: يوم 1+ من الشهر AND الشهر السابق غير مُؤرشف بعد
+    const shouldRun = (now.getDate() <= 7) && lastRunMonth !== prevMonth && _shouldArchive(prevMonth);
+    if (shouldRun) {
+      console.log("[archive-cron] catch-up archive for", prevMonth);
       try {
         archivePreviousMonth();
-        lastRunMonth = todayMonth;
+        lastRunMonth = prevMonth;
       } catch (e) { console.error("[archive-cron] failed:", e.message); }
     }
   };
-  // فحص فوراً ثم كل ساعة
-  setTimeout(check, 10_000);
-  setInterval(check, 3600 * 1000);
-  console.log("[archive] monthly cron started");
+  setTimeout(check, 15_000);     // فحص بعد 15s من الـ boot
+  setInterval(check, 3600 * 1000); // ثم كل ساعة
+  console.log("[archive] monthly cron + catch-up logic active");
 }
 
 module.exports = { archiveStoreMonth, archivePreviousMonth, listArchives, getArchiveOrders, startMonthlyCron };

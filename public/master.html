@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEXUS — لوحة تحكم المتاجر</title>
+<title>لوحة الإدارة العامة — منصة ثواني</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1b5e20">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/ux-enhancements.js?v=2"></script>
+<script src="/admin-enhancements.js" defer></script>
 <style>
 /* ─── Variables ──────────────────────────────────────────────── */
 :root {
@@ -55,7 +58,10 @@ input,select,textarea{font-family:inherit}
 }
 .sidebar-logo h2{color:#fff;font-size:20px;font-weight:900;line-height:1.2}
 .sidebar-logo span{color:var(--gold);font-size:12px;font-weight:500;display:block;margin-top:2px}
-.sidebar-nav{flex:1;padding:20px 12px;display:flex;flex-direction:column;gap:6px}
+.sidebar-nav{flex:1;padding:20px 12px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;overflow-x:hidden;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.3) transparent}
+.sidebar-nav::-webkit-scrollbar{width:6px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:3px}
+.sidebar-nav::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
 .nav-item{
   display:flex;align-items:center;gap:12px;
   padding:12px 16px;border-radius:10px;
@@ -65,7 +71,7 @@ input,select,textarea{font-family:inherit}
 .nav-item:hover{background:rgba(255,255,255,0.1);color:#fff}
 .nav-item.active{background:rgba(255,255,255,0.18);color:#fff;font-weight:700}
 .nav-item .icon{font-size:18px;width:24px;text-align:center}
-.sidebar-footer{padding:20px 12px;border-top:1px solid rgba(255,255,255,0.12)}
+.sidebar-footer{padding:16px 12px;border-top:1px solid rgba(255,255,255,0.12);flex-shrink:0}
 .logout-btn{
   display:flex;align-items:center;gap:10px;
   padding:10px 16px;border-radius:10px;
@@ -3750,6 +3756,77 @@ async function disconnectPlatformBot() {
   </div>
 </div>
 
+<!-- ─── Twani UX: نسخ، تنبيهات، PWA، اختصارات، export ─── -->
+<script>
+window.addEventListener("load", function() {
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+  if (!window.TwaniUX) return;
+
+  const tok = localStorage.getItem("master_token");
+  if (tok) {
+    // طلب إذن الإشعارات
+    TwaniUX.requestNotifPermission();
+
+    // polling لتنبيهات الماستر (طلبات اشتراك جديدة)
+    TwaniUX.pollNotifications({
+      url: "/api/master-notifications",
+      headers: { "x-master-token": tok },
+      intervalMs: 30000,
+      onNew: (ns) => {
+        const tab = document.querySelector('[data-section="pending"]') ||
+                    document.querySelector('a[href="#pending"]');
+        if (tab && !tab.querySelector(".twani-badge-master")) {
+          const b = document.createElement("span");
+          b.className = "twani-badge-master";
+          b.style.cssText = "background:#dc2626;color:#fff;border-radius:999px;padding:2px 8px;margin-right:6px;font-size:11px;font-weight:800;animation:tpulse 1.5s infinite";
+          b.textContent = String(ns.length);
+          tab.appendChild(b);
+        }
+      },
+    });
+  }
+
+  TwaniUX.shortcuts({
+    "ctrl+k": () => {
+      const s = document.querySelector('input[type="search"], #searchInput, #search, .search-input, #storeSearch');
+      if (s) { s.focus(); s.select?.(); }
+    },
+    "esc": () => {
+      const modal = document.querySelector('.modal.show, .modal.open, dialog[open]');
+      if (modal) modal.classList?.remove("show", "open");
+    },
+  });
+
+  // export pending requests
+  window.exportPendingCSV = async function() {
+    try {
+      const r = await fetch("/master/pending-requests", { headers: { "x-master-token": tok } });
+      const d = await r.json();
+      TwaniUX.exportCSV(d.requests || [], "pending-requests");
+    } catch (e) { TwaniUX.toast("فشل التصدير", "error"); }
+  };
+  window.exportStoresCSV = async function() {
+    try {
+      const r = await fetch("/master/stores", { headers: { "x-master-token": tok } });
+      const d = await r.json();
+      const flat = (d.stores || []).map(s => ({
+        المعرّف: s.id, الاسم: s.storeName, النوع: s.storeType, المدينة: s.city,
+        المالك: s.ownerName, الهاتف: s.ownerPhone, الباقة: s.plan,
+        الحالة: s.subscriptionStatus, الرسوم: s.subscriptionFee,
+        تاريخ_الاشتراك: s.subscriptionStartDate, التجديد: s.subscriptionNextPayment,
+        الطلبات_الكلية: s.ordersTotal, طلبات_اليوم: s.ordersToday,
+      }));
+      TwaniUX.exportCSV(flat, "stores");
+    } catch (e) { TwaniUX.toast("فشل التصدير", "error"); }
+  };
+});
+</script>
+<style>
+@keyframes tpulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.twani-badge, .twani-badge-master { display:inline-block; }
+</style>
 </body>
 </html>
 

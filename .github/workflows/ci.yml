@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Lint + Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          # bcrypt needs native build
+          npm rebuild bcrypt --build-from-source || true
+
+      - name: Syntax check (all src files)
+        run: |
+          for f in src/*.js scripts/*.js; do
+            node -c "$f" || exit 1
+          done
+
+      - name: Security tests
+        run: npm run test:security
+
+      - name: Check for hardcoded secrets
+        run: |
+          ! grep -rE "gzmaster2026|MASTER_PASSWORD.*=.*['\"]\\w" src/ || (echo "❌ Found hardcoded credentials!" && exit 1)
+          ! grep -rE "nexus_salt_2026" src/firestore-auth.js || echo "⚠️ Legacy sha256 still referenced (OK for migration)"
+
+      - name: Check .gitignore protects secrets
+        run: |
+          grep -q "^\.env$" .gitignore || (echo "❌ .env not in .gitignore!" && exit 1)
+          grep -q "firebase-adminsdk" .gitignore || (echo "❌ Firebase keys not blocked!" && exit 1)
+          grep -q "data/twofa.json" .gitignore || (echo "❌ 2FA secrets not blocked!" && exit 1)
+
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    continue-on-error: true   # لا نفشل الـ build بسبب CVEs، نُبلِّغ فقط
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install
+      - run: npm audit --production --audit-level=high

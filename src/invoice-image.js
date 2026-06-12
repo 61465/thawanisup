@@ -93,11 +93,38 @@ function resolveTemplate(data) {
 function resolveImagePath(url) {
   if (!url) return null;
   if (url.startsWith("/store-images/")) {
-    return path.join(IMAGES_DIR, path.basename(url));
+    const filename = path.basename(url);
+    // path traversal block — basename يُزيل .. لكن تأكيد مضاعف
+    const full = path.join(IMAGES_DIR, filename);
+    const resolved = path.resolve(full);
+    if (!resolved.startsWith(path.resolve(IMAGES_DIR) + path.sep)) return null;
+    return full;
   }
   // absolute file path passed directly
   if (path.isAbsolute(url) && fs.existsSync(url)) return url;
   return null;
+}
+
+// SSRF protection: whitelist domains فقط لـ external image loading
+const ALLOWED_IMAGE_HOSTS = new Set([
+  "i.imgur.com", "imgur.com",
+  "res.cloudinary.com",
+  "lh3.googleusercontent.com", "lh4.googleusercontent.com", "lh5.googleusercontent.com", "lh6.googleusercontent.com",
+  "drive.google.com",
+  "raw.githubusercontent.com",
+  "61465.github.io",
+]);
+
+function _isAllowedExternalImage(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    // منع private/internal IPs
+    const host = u.hostname.toLowerCase();
+    if (/^(127\.|0\.|10\.|192\.168\.|169\.254\.|::1|localhost)/.test(host)) return false;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
+    return ALLOWED_IMAGE_HOSTS.has(host);
+  } catch { return false; }
 }
 
 async function tryLoadImage(url) {
@@ -106,9 +133,22 @@ async function tryLoadImage(url) {
     if (filePath && fs.existsSync(filePath)) {
       return await loadImage(fs.readFileSync(filePath));
     }
-    // try as external URL (logo might be http)
-    if (url && url.startsWith("http")) {
-      return await loadImage(url);
+    // external URL — whitelist فقط (SSRF protection)
+    if (url && /^https?:\/\//i.test(url)) {
+      if (!_isAllowedExternalImage(url)) {
+        console.warn(`[invoice-image] blocked SSRF attempt: ${url}`);
+        return null;
+      }
+      // fetch مع timeout صارم لمنع DoS
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      try {
+        const res = await fetch(url, { signal: controller.signal, redirect: "manual" });
+        if (!res.ok) return null;
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length > 5 * 1024 * 1024) return null; // 5MB cap
+        return await loadImage(buf);
+      } finally { clearTimeout(timer); }
     }
   } catch {}
   return null;

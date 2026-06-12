@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة تحكم المتجر</title>
+<title>لوحة تحكم المتجر — منصة ثواني</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#D4AF37">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -4689,6 +4691,100 @@ async function disconnectWa() {
     alert(e?.error || "تعذّر قطع الاتصال");
   }
 }
+</script>
+
+<!-- ─── Twani UX Enhancements (نسخ، تنبيهات، PWA، اختصارات) ─── -->
+<script src="/admin-enhancements.js" defer></script>
+<script>
+window.addEventListener("load", function() {
+  // PWA: register service worker
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+
+  if (!window.TwaniUX) return;
+
+  // Browser notifications: polling لطلبات جديدة
+  const tok = localStorage.getItem("store_token");
+  if (tok) {
+    TwaniUX.pollNotifications({
+      url: "/store/notifications",
+      headers: { "x-store-token": tok },
+      intervalMs: 25000,
+      onNew: (ns) => {
+        // لو في طلبات جديدة، اعرض badge على tab الطلبات
+        const ordersTab = document.querySelector('[data-tab="orders"]') ||
+                          document.querySelector('a[href="#orders"]');
+        if (ordersTab && !ordersTab.querySelector(".twani-badge")) {
+          const b = document.createElement("span");
+          b.className = "twani-badge";
+          b.style.cssText = "background:#dc2626;color:#fff;border-radius:999px;padding:2px 8px;margin-right:6px;font-size:11px;font-weight:800";
+          b.textContent = String(ns.length);
+          ordersTab.appendChild(b);
+        }
+      },
+    });
+  }
+
+  // Keyboard shortcuts
+  TwaniUX.shortcuts({
+    "ctrl+k": () => {
+      const s = document.querySelector('input[type="search"], #searchInput, #search, .search-input');
+      if (s) { s.focus(); s.select?.(); }
+    },
+    "esc": () => {
+      // اغلق أي modal/dialog مفتوح
+      const modal = document.querySelector('.modal.show, .modal.open, dialog[open]');
+      if (modal) modal.classList?.remove("show", "open");
+    },
+    "g h": null, // placeholder للـ "go home"
+  });
+
+  // أضف زر "نسخ" تلقائياً بجانب كل كلمة مرور معروضة (data-password)
+  document.querySelectorAll("[data-password]").forEach(el => {
+    if (el.querySelector(".twani-copy-btn")) return;
+    const btn = document.createElement("button");
+    btn.className = "twani-copy-btn";
+    btn.style.cssText = "background:#3b82f6;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-right:6px";
+    btn.textContent = "📋 نسخ";
+    btn.onclick = (e) => { e.preventDefault(); TwaniUX.copy(el.dataset.password, "تم نسخ كلمة المرور"); };
+    el.appendChild(btn);
+  });
+
+  // CSV export — أضف زر عام في لوحة الطلبات
+  window.exportOrdersCSV = async function() {
+    if (!window.TwaniUX) return;
+    try {
+      const r = await fetch("/store/orders?limit=10000", { headers: { "x-store-token": tok } });
+      const d = await r.json();
+      const flat = (d.orders || []).map(o => ({
+        رقم_الطلب: o.orderId,
+        التاريخ:   o.timestamp,
+        العميل:     o.customerName,
+        الهاتف:     o.customerPhone,
+        المبلغ:     o.total,
+        العملة:     o.currency,
+        الحالة:     o.status,
+        المنتجات:   (o.items || []).map(i => `${i.name}×${i.qty}`).join(" | "),
+      }));
+      TwaniUX.exportCSV(flat, "orders");
+    } catch (e) { TwaniUX.toast("فشل التصدير", "error"); }
+  };
+
+  window.exportCustomersCSV = async function() {
+    if (!window.TwaniUX) return;
+    try {
+      const r = await fetch("/store/customers", { headers: { "x-store-token": tok } });
+      const d = await r.json();
+      const flat = (d.customers || []).map(c => ({
+        الاسم: c.name, الهاتف: c.phone, الموقع: c.location,
+        عدد_الطلبات: c.ordersCount, الإجمالي: c.totalSpend, VIP: c.isVip ? "نعم" : "لا",
+        أول_طلب: c.firstOrder, آخر_طلب: c.lastOrder,
+      }));
+      TwaniUX.exportCSV(flat, "customers");
+    } catch (e) { TwaniUX.toast("فشل التصدير", "error"); }
+  };
+});
 </script>
 </body>
 </html>

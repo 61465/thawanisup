@@ -1,0 +1,20 @@
+{
+  "name": "منصة ثواني — لوحة التحكم",
+  "short_name": "ثواني",
+  "description": "لوحة إدارة بوت واتساب لمتجرك",
+  "start_url": "/store-admin.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#D4AF37",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "32x32", "type": "image/x-icon" }
+  ],
+  "shortcuts": [
+    { "name": "الطلبات",  "url": "/store-admin.html#orders",    "description": "افتح الطلبات الجديدة" },
+    { "name": "العملاء",  "url": "/store-admin.html#customers", "description": "افتح قائمة العملاء" },
+    { "name": "الإعدادات","url": "/store-admin.html#settings",  "description": "إعدادات المتجر" }
+  ]
+}

@@ -65,15 +65,25 @@ function totp(secret, time = Date.now()) {
   return hotp(secret, counter);
 }
 
-function verifyToken(secret, token, window = 1) {
-  if (!/^\d{6}$/.test(String(token || "").trim())) return false;
+// returns: { ok: boolean, counter?: number }
+function verifyTokenWithCounter(secret, token, window = 1) {
+  if (!/^\d{6}$/.test(String(token || "").trim())) return { ok: false };
   const t = Math.floor(Date.now() / 30_000);
+  // ندور دائماً على كل القيم لمنع timing leakage
+  let matchedCounter = -1;
   for (let i = -window; i <= window; i++) {
-    if (crypto.timingSafeEqual(Buffer.from(hotp(secret, t + i)), Buffer.from(String(token)))) {
-      return true;
+    const candidate = hotp(secret, t + i);
+    if (crypto.timingSafeEqual(Buffer.from(candidate), Buffer.from(String(token).trim()))) {
+      matchedCounter = t + i;
     }
   }
-  return false;
+  if (matchedCounter < 0) return { ok: false };
+  return { ok: true, counter: matchedCounter };
+}
+
+// legacy boolean-returning API
+function verifyToken(secret, token, window = 1) {
+  return verifyTokenWithCounter(secret, token, window).ok;
 }
 
 function otpAuthURL(secret, label, issuer = "ThawaniPlatform") {
@@ -114,7 +124,8 @@ function enableForUser(userId, token) {
   if (!verifyToken(data[userId].secret, token)) return { ok: false, error: "Invalid token" };
   data[userId].enabled = true;
   data[userId].enabledAt = new Date().toISOString();
-  data[userId].backupCodes = Array.from({ length: 8 }, () => crypto.randomBytes(4).toString("hex"));
+  // 8 bytes hex = 64-bit entropy — أصعب بكثير من 32-bit
+  data[userId].backupCodes = Array.from({ length: 8 }, () => crypto.randomBytes(8).toString("hex"));
   saveTwoFA(data);
   return { ok: true, backupCodes: data[userId].backupCodes };
 }
@@ -134,7 +145,17 @@ function verifyLogin(userId, token) {
   const data = loadTwoFA();
   const entry = data[userId];
   if (!entry || !entry.enabled) return true;
-  if (verifyToken(entry.secret, token)) return true;
+
+  const r = verifyTokenWithCounter(entry.secret, token);
+  if (r.ok) {
+    // ⚠️ Replay protection: ارفض إعادة استخدام نفس counter
+    if (entry.lastUsedCounter && r.counter <= entry.lastUsedCounter) {
+      return false; // counter قديم — replay attempt
+    }
+    data[userId].lastUsedCounter = r.counter;
+    saveTwoFA(data);
+    return true;
+  }
   return consumeBackupCode(userId, token);
 }
 

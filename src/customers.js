@@ -7,19 +7,18 @@
 
 const fs   = require("fs");
 const path = require("path");
+const atomicFs = require("./atomic-fs");
 
 const DATA_DIR     = path.join(__dirname, "..", "data");
 const CUSTOMERS_PATH = path.join(DATA_DIR, "customers.json");
 const ARCHIVE_DIR  = path.join(DATA_DIR, "archive");
 
 function load() {
-  if (!fs.existsSync(CUSTOMERS_PATH)) return {};
-  try { return JSON.parse(fs.readFileSync(CUSTOMERS_PATH, "utf8")); } catch { return {}; }
+  return atomicFs.readJsonSync(CUSTOMERS_PATH, {});
 }
 
 function save(db) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(CUSTOMERS_PATH, JSON.stringify(db, null, 2), "utf8");
+  atomicFs.writeJsonSync(CUSTOMERS_PATH, db);
 }
 
 // Called after every confirmed order
@@ -72,24 +71,35 @@ function setVip(phone, isVip, storeId) {
   return true;
 }
 
-// Archive non-VIP customers to data/archive/YYYY-MM.json and remove from active list
-function archiveMonth(label) {
+// Archive non-VIP customers to data/archive/YYYY-MM[-storeId].json
+// ⚠️ يجب تمرير storeId — يحفظ عزل المتاجر. لو لم يُمرَّر، عملية ماستر شاملة.
+function archiveMonth(label, storeId) {
   const db = load();
   const tag = label || new Date().toISOString().slice(0, 7); // "2026-06"
   const toArchive = [];
   const kept      = {};
 
-  for (const [phone, c] of Object.entries(db)) {
-    if (c.isVip) { kept[phone] = c; }
+  for (const [key, c] of Object.entries(db)) {
+    // تحديد storeId من السجل: composite key "storeId|phone" أو حقل c.storeId
+    const recordStoreId = c.storeId || (key.includes("|") ? key.split("|")[0] : "");
+
+    // إذا storeId مُحدّد، فلتر هذا المتجر فقط
+    if (storeId && recordStoreId !== storeId) {
+      kept[key] = c; // عملاء متاجر أخرى — تبقى
+      continue;
+    }
+    if (c.isVip) { kept[key] = c; }
     else          { toArchive.push(c); }
   }
 
   if (toArchive.length === 0) return { archived: 0, kept: Object.keys(kept).length };
 
   if (!fs.existsSync(ARCHIVE_DIR)) fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
-  const archivePath = path.join(ARCHIVE_DIR, `customers-${tag}.json`);
+  const filename = storeId
+    ? `customers-${tag}-${String(storeId).replace(/[^a-zA-Z0-9_-]/g, "")}.json`
+    : `customers-${tag}.json`;
+  const archivePath = path.join(ARCHIVE_DIR, filename);
 
-  // merge with existing archive if re-running same month
   let existing = [];
   if (fs.existsSync(archivePath)) {
     try { existing = JSON.parse(fs.readFileSync(archivePath, "utf8")); } catch {}
@@ -97,7 +107,7 @@ function archiveMonth(label) {
   fs.writeFileSync(archivePath, JSON.stringify([...existing, ...toArchive], null, 2), "utf8");
 
   save(kept);
-  return { archived: toArchive.length, kept: Object.keys(kept).length, file: archivePath };
+  return { archived: toArchive.length, kept: Object.keys(kept).length, file: archivePath, storeId: storeId || "all" };
 }
 
 module.exports = { upsertCustomer, getCustomers, setVip, archiveMonth };

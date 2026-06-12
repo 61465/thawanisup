@@ -5,6 +5,7 @@
  */
 
 const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 const admin  = require("./firebase-admin");
 
 // Firestore instance (null if Firebase not configured)
@@ -19,12 +20,26 @@ try {
 }
 
 const COLLECTION = "store_admins";
+const BCRYPT_ROUNDS = 12;
+const BCRYPT_RE = /^\$2[aby]?\$\d{2}\$/;
 
-// ─── Hash password ────────────────────────────────────────────────────────────
-function hashPassword(password) {
+// ─── Hash password (bcrypt; sha256 legacy compat للقراءة فقط) ──────────────
+async function hashPassword(password) {
+  return bcrypt.hash(String(password), BCRYPT_ROUNDS);
+}
+
+function legacySha256(password) {
+  // للتحقق من الحسابات القديمة قبل migration فقط
   return crypto.createHash("sha256")
     .update("nexus_salt_2026:" + password)
     .digest("hex");
+}
+
+async function comparePassword(plain, stored) {
+  if (!stored) return false;
+  if (BCRYPT_RE.test(stored)) return bcrypt.compare(String(plain), stored);
+  // legacy: قارن sha256
+  return legacySha256(String(plain)) === stored;
 }
 
 // ─── Upsert store admin record ────────────────────────────────────────────────
@@ -39,13 +54,13 @@ async function upsertStoreAdmin({ storeId, phone, password, storeName, subscript
     updatedAt:          admin.firestore.FieldValue.serverTimestamp(),
   };
   if (password) {
-    doc.passwordHash = hashPassword(password);
+    doc.passwordHash = await hashPassword(password); // ⚠️ bcrypt الآن
   }
   await db.collection(COLLECTION).doc(storeId).set(doc, { merge: true });
   return true;
 }
 
-// ─── Login: phone + password → storeId ───────────────────────────────────────
+// ─── Login: phone + password → storeId (+ auto-migrate sha256 → bcrypt) ─────
 async function loginStoreAdmin(phone, password) {
   if (!db) return null;
 
@@ -57,11 +72,22 @@ async function loginStoreAdmin(phone, password) {
 
   if (snap.empty) return null;
 
-  const doc  = snap.docs[0].data();
-  const hash = hashPassword(password);
+  const docRef = snap.docs[0].ref;
+  const doc    = snap.docs[0].data();
+  const stored = doc.passwordHash || "";
 
-  if (doc.passwordHash !== hash) return null;
-  if (doc.active === false)      return null;
+  const ok = await comparePassword(password, stored);
+  if (!ok) return null;
+  if (doc.active === false) return null;
+
+  // Auto-migrate sha256 → bcrypt
+  if (stored && !BCRYPT_RE.test(stored)) {
+    try {
+      const newHash = await hashPassword(password);
+      await docRef.update({ passwordHash: newHash });
+      console.log(`[firestore-auth] migrated sha256→bcrypt for ${doc.storeId}`);
+    } catch (e) { console.warn("[firestore-auth] migrate failed:", e.message); }
+  }
 
   return {
     storeId:            doc.storeId,

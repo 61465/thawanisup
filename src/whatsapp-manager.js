@@ -779,12 +779,28 @@ async function bootAllSessions(storesJson) {
     }
   }
 
-  console.log(`🚀 Booting ${storeIds.length} WhatsApp session(s)...`);
-  for (const id of storeIds) {
-    try { await initSession(id); } catch (e) {
+  console.log(`🚀 Booting ${storeIds.length} WhatsApp session(s) with stagger...`);
+
+  // Stagger: 500ms بين كل session لتجنب reconnect storm + CPU spike + WA detection
+  // 50 متجر × 500ms = 25 ثانية للـ boot كامل (مقبول)
+  // الـ platform/lead تأخذ priority (أولى ليصبحا متاحين للتنبيهات)
+  const priority = ["platform", "lead"];
+  const ordered = [
+    ...priority.filter(id => storeIds.includes(id)),
+    ...storeIds.filter(id => !priority.includes(id)),
+  ];
+
+  for (let i = 0; i < ordered.length; i++) {
+    const id = ordered[i];
+    try {
+      await initSession(id);
+      // stagger — لا تنتظر الاتصال الكامل، فقط init ثم انتقل
+      if (i < ordered.length - 1) await new Promise(r => setTimeout(r, 500));
+    } catch (e) {
       console.error(`❌ Failed to boot session [${id}]:`, e.message);
     }
   }
+  console.log(`✅ كل الـ ${ordered.length} session بدأت — انتظر 30-60s للاتصال الكامل`);
 }
 
 function listSessions() {

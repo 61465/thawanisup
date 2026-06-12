@@ -69,13 +69,14 @@ const sessions = _loadStoreSessions();
 let _saveStoreSessionsTimer = null;
 function _saveStoreSessions() {
   if (_saveStoreSessionsTimer) return;
+  // 5s debounce — تقليل I/O بـ 10×
   _saveStoreSessionsTimer = setTimeout(() => {
     _saveStoreSessionsTimer = null;
     try {
       const obj = {}; for (const [k, v] of sessions) obj[k] = v;
-      fs.writeFileSync(STORE_SESSIONS_FILE, JSON.stringify(obj));
+      atomicFs.writeJsonSync(STORE_SESSIONS_FILE, obj, false);
     } catch (e) { console.warn("[sessions] save failed:", e.message); }
-  }, 500);
+  }, 5000);
 }
 
 // Clean expired sessions every hour
@@ -94,8 +95,9 @@ function readStores() {
   catch { return { stores: [] }; }
 }
 
+const atomicFs = require("./atomic-fs");
 function writeStores(data) {
-  fs.writeFileSync(STORES_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(STORES_FILE, data);
 }
 
 function getStore(id) {
@@ -128,15 +130,24 @@ function auth(req, res, next) {
   const entry = sessions.get(token);
   if (!token || !entry) return res.status(401).json({ error: "يرجى تسجيل الدخول" });
   const lastSeen = entry.lastActivity || entry.createdAt;
+  // impersonation: absolute expiry (لا sliding)
+  if (entry.absoluteExpiry && Date.now() > entry.absoluteExpiry) {
+    sessions.delete(token);
+    _saveStoreSessions();
+    return res.status(401).json({ error: "انتهت جلسة الانتحال (30 دقيقة)" });
+  }
   if (Date.now() - lastSeen > SESSION_TTL_MS) {
     sessions.delete(token);
     _saveStoreSessions();
     return res.status(401).json({ error: "انتهت الجلسة، يرجى تسجيل الدخول مجدداً" });
   }
-  // Sliding renewal: حدّث lastActivity
-  entry.lastActivity = Date.now();
-  _saveStoreSessions();
+  // Sliding renewal فقط للجلسات العادية (لا impersonation)
+  if (!entry.absoluteExpiry) {
+    entry.lastActivity = Date.now();
+    _saveStoreSessions();
+  }
   req.storeId = entry.storeId;
+  req.impersonatedBy = entry.impersonatedBy || null;
   next();
 }
 
@@ -209,23 +220,24 @@ router.post("/store/logout", auth, (req, res) => {
 const admin = require('./firebase-admin');
 
 router.post("/store/firebase-login", async (req, res) => {
-  const { idToken, firebaseUid: clientUid, storeId: inviteId } = req.body || {};
-  if (!idToken && !clientUid) return res.status(400).json({ error: "بيانات مفقودة" });
+  const { idToken, storeId: inviteId } = req.body || {};
+  if (!idToken) {
+    audit({ actor: { type: "store" }, action: "login.fail", ok: false, meta: { reason: "no_id_token", route: "firebase-login" } }, req);
+    return res.status(400).json({ error: "Firebase idToken مطلوب" });
+  }
+  if (!admin.apps.length) {
+    return res.status(503).json({ error: "Firebase غير مفعّل على الخادم — استخدم تسجيل الدخول العادي" });
+  }
 
   let uid, email;
-  if (admin.apps.length && idToken) {
-    try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      uid   = decoded.uid;
-      email = decoded.email;
-    } catch (err) {
-      console.error("Firebase verify:", err.message);
-      return res.status(403).json({ error: "فشل التحقق من الهوية" });
-    }
-  } else if (clientUid) {
-    uid = clientUid;
-  } else {
-    return res.status(400).json({ error: "لم يتم تهيئة Firebase Admin SDK على الخادم" });
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    uid   = decoded.uid;
+    email = decoded.email;
+  } catch (err) {
+    audit({ actor: { type: "store" }, action: "login.fail", ok: false, meta: { reason: "bad_id_token", route: "firebase-login" } }, req);
+    console.error("Firebase verify:", err.message);
+    return res.status(403).json({ error: "فشل التحقق من الهوية" });
   }
 
   try {
@@ -290,14 +302,47 @@ router.get("/store/preview-order-link", auth, (req, res) => {
   res.json({ url: `${base}/${slug}`, slug, ttlMinutes: 15 });
 });
 
-// GET /store/edit-mode-link — رابط معاينة + تعديل مباشر (للستور admin فقط)
+// ─── Short-lived edit tokens — صلاحية 10 دقائق، تُستبدل بـ session token ─────
+// editToken → { storeId, exp }
+const editTokens = new Map();
+const EDIT_TOKEN_TTL_MS = 10 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of editTokens) if (v.exp < now) editTokens.delete(k);
+}, 60_000).unref?.();
+
+// GET /store/edit-mode-link — يُولّد edit-token قصير، لا x-store-token في URL
 router.get("/store/edit-mode-link", auth, (req, res) => {
   const store = getStore(req.storeId);
   if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
-  // نستخدم نفس preview token + flag للـ edit mode
-  const token = req.headers["x-store-token"];
-  const base  = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-  res.json({ url: `${base}/preview-edit.html?storeId=${encodeURIComponent(req.storeId)}&token=${encodeURIComponent(token)}` });
+  const editToken = crypto.randomBytes(16).toString("hex");
+  editTokens.set(editToken, { storeId: req.storeId, exp: Date.now() + EDIT_TOKEN_TTL_MS });
+  const base = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+  // الـ URL يحوي edit-token قصير الأمد فقط — لا session token
+  res.json({
+    url: `${base}/preview-edit.html?storeId=${encodeURIComponent(req.storeId)}&edit=${editToken}`,
+    ttlMinutes: 10,
+  });
+});
+
+// POST /store/exchange-edit-token — تبادل edit-token مع session token كامل
+// الواجهة preview-edit.html تستدعيها عند التحميل
+router.post("/store/exchange-edit-token", (req, res) => {
+  const { editToken } = req.body || {};
+  if (!editToken || typeof editToken !== "string") return res.status(400).json({ error: "edit token مفقود" });
+  const entry = editTokens.get(editToken);
+  if (!entry || entry.exp < Date.now()) {
+    editTokens.delete(editToken);
+    return res.status(410).json({ error: "انتهت صلاحية رابط التعديل" });
+  }
+  // one-time use
+  editTokens.delete(editToken);
+
+  // أنشئ session token صحيح
+  const sessionToken = crypto.randomBytes(32).toString("hex");
+  sessions.set(sessionToken, { storeId: entry.storeId, createdAt: Date.now(), lastActivity: Date.now() });
+  _saveStoreSessions();
+  res.json({ ok: true, token: sessionToken, storeId: entry.storeId });
 });
 
 // PATCH /store/products/:id/inline — تعديل سريع لحقل واحد (لـ inline editing)
@@ -307,30 +352,45 @@ router.patch("/store/products/:id/inline", auth, (req, res) => {
   const { field, value } = req.body || {};
   const ALLOWED = ["name", "price", "description"];
   if (!ALLOWED.includes(field)) return res.status(400).json({ error: "حقل غير مسموح" });
+
+  // تحقق من وجود المنتج قبل التعديل
+  const products = store.products || [];
+  const exists = products.some(p => p.id === req.params.id);
+  if (!exists) return res.status(404).json({ error: "المنتج غير موجود" });
+
   let cleanValue = value;
   if (field === "price") {
     cleanValue = parseFloat(value);
     if (!Number.isFinite(cleanValue) || cleanValue < 0) return res.status(400).json({ error: "سعر غير صالح" });
+    if (cleanValue > 1_000_000) return res.status(400).json({ error: "السعر مرتفع جداً" });
   } else {
     cleanValue = String(value || "").trim().slice(0, 500);
+    if (!cleanValue && field === "name") return res.status(400).json({ error: "الاسم مطلوب" });
   }
-  const products = (store.products || []).map(p =>
+  const updated = products.map(p =>
     p.id === req.params.id ? { ...p, [field]: cleanValue } : p
   );
-  updateStore(req.storeId, { products });
+  updateStore(req.storeId, { products: updated });
   res.json({ ok: true, [field]: cleanValue });
 });
 
-// ─── Stats ────────────────────────────────────────────────────────────────────
+// ─── Stats — يستثني طلبات الاختبار + يحسب الإيرادات من الـ confirmed فقط ─────
 router.get("/store/stats", auth, (req, res) => {
-  const orders  = readOrders(req.storeId);
-  const today   = new Date().toISOString().slice(0, 10);
+  const allOrders = readOrders(req.storeId);
+  // استثني _test orders من كل الإحصاءات
+  const orders = allOrders.filter(o => !o._test);
+  const today  = new Date().toISOString().slice(0, 10);
   const todayOr = orders.filter(o => (o.timestamp || "").slice(0, 10) === today);
 
+  // الإيرادات تُحسَب فقط من المُكدّة/المؤكدة (يستثني rejected/cancelled/pending)
+  const earningStatuses = new Set(["confirmed", "completed", "delivered", "done"]);
+  const earnedOrders   = orders.filter(o => earningStatuses.has(o.status));
+  const earnedToday    = todayOr.filter(o => earningStatuses.has(o.status));
+
   const productCounts = {};
-  for (const o of orders) {
+  for (const o of earnedOrders) {
     for (const item of (o.items || [])) {
-      productCounts[item.name] = (productCounts[item.name] || 0) + item.qty;
+      productCounts[item.name] = (productCounts[item.name] || 0) + (item.qty || 1);
     }
   }
   const topProducts = Object.entries(productCounts)
@@ -340,31 +400,53 @@ router.get("/store/stats", auth, (req, res) => {
   res.json({
     ordersTotal:  orders.length,
     ordersToday:  todayOr.length,
-    revenueTotal: parseFloat(orders.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
-    revenueToday: parseFloat(todayOr.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
+    revenueTotal: parseFloat(earnedOrders.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
+    revenueToday: parseFloat(earnedToday.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
+    pending:      orders.filter(o => o.status === "pending_confirmation").length,
     topProducts,
   });
 });
 
-// ─── Store Settings ───────────────────────────────────────────────────────────
+// ─── Store Settings — مع validation للقيم ─────────────────────────────────────
+const SETTING_VALIDATORS = {
+  storeName:          v => String(v || "").trim().slice(0, 100),
+  currency:           v => String(v || "ر.س").trim().slice(0, 10),
+  deliveryFee:        v => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 && n < 10000 ? n : null; },
+  workingHoursStart:  v => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 && n <= 24 ? n : null; },
+  workingHoursEnd:    v => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 && n <= 24 ? n : null; },
+  welcomeMessage:     v => String(v || "").slice(0, 2000),
+  invoiceColor:       v => /^#[0-9a-f]{3,8}$/i.test(String(v || "")) ? v : null,
+  themeAccent:        v => /^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\)|rgba?\([^)]+\))$/i.test(String(v || "")) ? v : null,
+  themeText:          v => /^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\))$/i.test(String(v || "")) ? v : null,
+  themeTextMute:      v => /^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\))$/i.test(String(v || "")) ? v : null,
+  menuMode:           v => v === "dark" || v === "light" ? v : null,
+  invoiceTemplate:    v => ["classic","minimal","bold","elegant"].includes(v) ? v : null,
+  businessType:       v => String(v || "").trim().slice(0, 50),
+  invoiceLogoUrl:     v => { try { new URL(v); return String(v).slice(0, 500); } catch { return v === "" ? "" : null; } },
+  logoUrl:            v => { try { new URL(v); return String(v).slice(0, 500); } catch { return v === "" ? "" : null; } },
+  address:            v => String(v || "").trim().slice(0, 300),
+  locationMapUrl:     v => { try { new URL(v); return String(v).slice(0, 500); } catch { return v === "" ? "" : null; } },
+  requireConfirmation: v => v === true || v === "true" || v === 1,
+  enableWebview:      v => v !== false && v !== "false",
+  enableNumeric:      v => v !== false && v !== "false",
+  enableAI:           v => v !== false && v !== "false",
+  enableCoupons:      v => v !== false && v !== "false",
+};
+
 router.put("/store/settings", auth, (req, res) => {
-  const allowed = [
-    "storeName", "currency", "deliveryFee",
-    "workingHoursStart", "workingHoursEnd",
-    "welcomeMessage", "invoiceColor", "invoiceLogoUrl",
-    "requireConfirmation",
-    // الحقول الجديدة (themes + ألوان + قالب الفاتورة + business type)
-    "businessType",
-    "themeAccent", "themeText", "themeTextMute",
-    "menuMode", "invoiceTemplate",
-    "logoUrl", "address", "locationMapUrl",
-    // toggles المسارات (Adaptive Bot) + الكوبونات
-    "enableWebview", "enableNumeric", "enableAI",
-    "enableCoupons",
-  ];
   const updates = {};
-  for (const key of allowed) {
-    if (req.body[key] !== undefined) updates[key] = req.body[key];
+  const errors = [];
+  for (const [key, validator] of Object.entries(SETTING_VALIDATORS)) {
+    if (req.body[key] === undefined) continue;
+    const cleaned = validator(req.body[key]);
+    if (cleaned === null) {
+      errors.push(key);
+    } else {
+      updates[key] = cleaned;
+    }
+  }
+  if (errors.length) {
+    return res.status(400).json({ error: "قيم غير صحيحة في: " + errors.join(", ") });
   }
   const updated = updateStore(req.storeId, updates);
   if (!updated) return res.status(404).json({ error: "المتجر غير موجود" });
@@ -786,7 +868,8 @@ router.post("/store/loyalty/:phone/coupon", auth, (req, res) => {
     return res.status(400).json({ error: "قيمة الخصم مطلوبة" });
   }
   try {
-    const code = "VIP" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    // crypto-safe random code — 8 char base36 من 24 bits randomness
+    const code = "VIP" + crypto.randomBytes(4).toString("hex").slice(0, 6).toUpperCase();
     const expiresAt = new Date(Date.now() + expiresInDays*24*60*60*1000).toISOString();
     const coupon = couponsModule.createCoupon({
       code,
@@ -815,24 +898,31 @@ router.post("/store/loyalty/:phone/coupon", auth, (req, res) => {
   }
 });
 
-// ─── Video Upload (from device gallery) ───────────────────────────────────────
+// ─── Video Upload (from device gallery) — with magic-byte verification ───────
+const { decodeAndVerifyBase64, sanitizeStoreIdForFilename } = require("./upload-safety");
+
 router.post("/store/upload-video", auth, (req, res) => {
   const { base64, ext = "mp4" } = req.body || {};
   if (!base64) return res.status(400).json({ error: "لا يوجد فيديو" });
 
-  const safeExt  = ["mp4", "webm", "mov", "m4v"].includes(String(ext).toLowerCase()) ? String(ext).toLowerCase() : "mp4";
-  const filename = `${req.storeId}_${Date.now()}.${safeExt}`;
+  const safeStoreId = sanitizeStoreIdForFilename(req.storeId);
+  if (!safeStoreId) return res.status(400).json({ error: "معرّف المتجر غير صالح" });
+
+  const r = decodeAndVerifyBase64(base64, ext, 50 * 1024 * 1024, "video");
+  if (!r.ok) return res.status(400).json({ error: r.error });
+
+  const filename  = `${safeStoreId}_${Date.now()}.${r.ext}`;
   const videosDir = path.join(DATA_DIR, "videos");
   const filepath  = path.join(videosDir, filename);
 
   try {
     fs.mkdirSync(videosDir, { recursive: true });
-    const buffer = Buffer.from(base64.replace(/^data:video\/\w+;base64,/, ""), "base64");
-    if (buffer.length > 50 * 1024 * 1024) {
-      return res.status(413).json({ error: "حجم الفيديو أكبر من 50MB. اضغطه أو ارفع رابط YouTube بدلاً منه." });
+    const resolved = path.resolve(filepath);
+    if (!resolved.startsWith(path.resolve(videosDir) + path.sep)) {
+      return res.status(400).json({ error: "مسار غير مسموح" });
     }
-    fs.writeFileSync(filepath, buffer);
-    res.json({ ok: true, url: `/store-videos/${filename}`, size: buffer.length });
+    fs.writeFileSync(filepath, r.buffer);
+    res.json({ ok: true, url: `/store-videos/${filename}`, size: r.buffer.length });
   } catch (err) {
     console.error("Video upload error:", err.message);
     res.status(500).json({ error: "فشل رفع الفيديو" });
@@ -856,21 +946,28 @@ router.delete("/store/upload-video", auth, (req, res) => {
   }
 });
 
-// ─── Image Upload ─────────────────────────────────────────────────────────────
+// ─── Image Upload — magic-byte verification ──────────────────────────────────
 router.post("/store/upload-image", auth, (req, res) => {
   const { base64, ext = "jpg" } = req.body || {};
   if (!base64) return res.status(400).json({ error: "لا توجد صورة" });
 
-  const safeExt  = ["jpg","jpeg","png","webp"].includes(ext.toLowerCase()) ? ext.toLowerCase() : "jpg";
-  const filename = `${req.storeId}_${Date.now()}.${safeExt}`;
+  const safeStoreId = sanitizeStoreIdForFilename(req.storeId);
+  if (!safeStoreId) return res.status(400).json({ error: "معرّف المتجر غير صالح" });
+
+  const r = decodeAndVerifyBase64(base64, ext, 3 * 1024 * 1024, "image");
+  if (!r.ok) return res.status(400).json({ error: r.error });
+
+  const filename  = `${safeStoreId}_${Date.now()}.${r.ext}`;
   const imagesDir = path.join(DATA_DIR, "images");
   const filepath  = path.join(imagesDir, filename);
 
   try {
     fs.mkdirSync(imagesDir, { recursive: true });
-    const buffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), "base64");
-    if (buffer.length > 3 * 1024 * 1024) return res.status(413).json({ error: "الصورة أكبر من 3MB" });
-    fs.writeFileSync(filepath, buffer);
+    const resolved = path.resolve(filepath);
+    if (!resolved.startsWith(path.resolve(imagesDir) + path.sep)) {
+      return res.status(400).json({ error: "مسار غير مسموح" });
+    }
+    fs.writeFileSync(filepath, r.buffer);
     res.json({ ok: true, url: `/store-images/${filename}` });
   } catch (err) {
     console.error("Upload error:", err.message);
@@ -902,6 +999,29 @@ function updateOrderStatus(storeId, orderId, status, extraMeta) {
   fs.writeFileSync(file, updated.join("\n") + "\n", "utf8");
   return true;
 }
+
+// ─── Notifications polling — للستور (طلبات جديدة بعد timestamp معين) ─────────
+router.get("/store/notifications", auth, (req, res) => {
+  const sinceTs = parseInt(req.query.since) || 0;
+  const orders = readOrders(req.storeId);
+  const notif = [];
+  for (const o of orders) {
+    if (o._test) continue;
+    if (o.status !== "pending_confirmation") continue;
+    const ts = new Date(o.timestamp || 0).getTime();
+    if (ts > sinceTs) {
+      notif.push({
+        kind: "new_order",
+        id: o.orderId,
+        title: "طلب جديد بانتظار التأكيد",
+        body: `${o.customerName || o.customerPhone || "عميل"} — ${o.total} ${o.currency || "ر.س"}`,
+        ts,
+        link: "#orders",
+      });
+    }
+  }
+  res.json({ notifications: notif, serverTime: Date.now() });
+});
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get("/store/orders", auth, (req, res) => {
@@ -1085,6 +1205,13 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
   if (order.status === "confirmed") return res.status(400).json({ error: "الطلب مؤكد مسبقاً" });
 
   updateOrderStatus(req.storeId, orderId, "confirmed");
+
+  audit({
+    actor: req.impersonatedBy ? { type: "master", id: "master", impersonating: req.storeId } : { type: "store", id: req.storeId },
+    action: "order.confirm",
+    target: { type: "order", id: orderId },
+    meta: { total: order.total, customerPhone: String(order.customerPhone || "").slice(0, 6) + "***" },
+  }, req);
 
   const store     = getStore(req.storeId);
   const storeName = store?.storeName || "المتجر";
@@ -1388,22 +1515,39 @@ router.post("/store/orders/:orderId/cancel", auth, async (req, res) => {
     } catch {}
   }
 
+  audit({
+    actor: req.impersonatedBy ? { type: "master", id: "master", impersonating: req.storeId } : { type: "store", id: req.storeId },
+    action: "order.cancel",
+    target: { type: "order", id: orderId },
+    meta: { cancelledBy, reason: reasonClean, total: order.total },
+  }, req);
+
   res.json({ ok: true });
 });
 
-// ─── Broadcast (Pro+) ────────────────────────────────────────────────────────
+// ─── Broadcast (Pro+) — persistent queue مع resume بعد crash ─────────────────
+const broadcastQueue = require("./broadcast-queue");
+const MAX_PER_RUN_LEGACY = 50;
+
 router.get("/store/broadcast/count", auth, (req, res) => {
-  const { getStoreCustomerPhones, checkCooldown, MAX_PER_RUN, COOLDOWN_HOURS } = require("./broadcast");
+  const { getStoreCustomerPhones } = require("./broadcast");
   const count = getStoreCustomerPhones(req.storeId).length;
-  const cd = checkCooldown(req.storeId);
+  const cd = broadcastQueue.checkCooldown(req.storeId);
   res.json({
     count,
-    sendLimit: MAX_PER_RUN,
-    willSend: Math.min(count, MAX_PER_RUN),
+    sendLimit: MAX_PER_RUN_LEGACY,
+    willSend: Math.min(count, MAX_PER_RUN_LEGACY),
     cooldownReady: cd.ok,
     cooldownHoursLeft: cd.hoursLeft || 0,
-    cooldownTotalHours: COOLDOWN_HOURS,
+    cooldownTotalHours: broadcastQueue.COOLDOWN_HOURS,
   });
+});
+
+// GET /store/broadcast/progress — حالة البث الجاري
+router.get("/store/broadcast/progress", auth, (req, res) => {
+  const p = broadcastQueue.getProgress(req.storeId);
+  if (!p) return res.json({ active: false });
+  res.json({ active: !p.completed && !p.cancelled, ...p });
 });
 
 router.post("/store/broadcast", auth, async (req, res) => {
@@ -1420,32 +1564,42 @@ router.post("/store/broadcast", auth, async (req, res) => {
   if (!message)              return res.status(400).json({ error: "الرسالة فارغة" });
   if (message.length > 1000) return res.status(400).json({ error: "الرسالة أكثر من 1000 حرف" });
 
-  const { broadcast, getStoreCustomerPhones, checkCooldown, MAX_PER_RUN, COOLDOWN_HOURS } = require("./broadcast");
+  const { getStoreCustomers } = require("./broadcast");
+  const recipients = getStoreCustomers(req.storeId).slice(0, MAX_PER_RUN_LEGACY);
+  if (recipients.length === 0) return res.status(400).json({ error: "لا يوجد عملاء حقيقيون للإرسال إليهم بعد" });
 
-  const cd = checkCooldown(req.storeId);
-  if (!cd.ok) {
-    return res.status(429).json({
-      error: `يجب الانتظار ${cd.hoursLeft} ساعة قبل البث التالي (للحماية من حظر واتساب). الحد: بث واحد كل ${COOLDOWN_HOURS} ساعة.`,
-      cooldownHoursLeft: cd.hoursLeft,
-    });
+  const r = broadcastQueue.enqueue(req.storeId, message, recipients);
+  if (!r.ok) {
+    if (r.cooldownHoursLeft) {
+      return res.status(429).json({
+        error: `يجب الانتظار ${r.cooldownHoursLeft} ساعة قبل البث التالي`,
+        cooldownHoursLeft: r.cooldownHoursLeft,
+      });
+    }
+    return res.status(400).json({ error: r.error });
   }
 
-  const count = getStoreCustomerPhones(req.storeId).length;
-  if (count === 0) return res.status(400).json({ error: "لا يوجد عملاء حقيقيون للإرسال إليهم بعد" });
+  audit({
+    actor: { type: "store", id: req.storeId },
+    action: "broadcast.start",
+    meta: { recipients: r.queued, messageLength: message.length },
+  }, req);
 
-  const willSend = Math.min(count, MAX_PER_RUN);
-
-  broadcast(req.storeId, message)
-    .then(r => console.log(`📢 broadcast ${req.storeId}: ${r.sent}/${r.total}${r.stopped ? " stopped:"+r.stopped : ""}`))
-    .catch(e => console.error(`❌ broadcast ${req.storeId}:`, e.message));
-
-  const estimatedMin = Math.ceil((willSend * 11.5) / 60);
+  const estimatedMin = Math.ceil((r.willSend * 11.5) / 60);
   res.json({
     ok: true,
-    recipients: willSend,
+    recipients: r.willSend,
     estimatedMinutes: estimatedMin,
-    message: `جاري الإرسال لـ ${willSend} عميل (${estimatedMin} دقيقة تقريباً) 📢`,
+    message: `جاري الإرسال لـ ${r.willSend} عميل (${estimatedMin} دقيقة تقريباً) — يمكنك متابعة التقدّم 📢`,
   });
+});
+
+// POST /store/broadcast/cancel
+router.post("/store/broadcast/cancel", auth, (req, res) => {
+  const r = broadcastQueue.cancel(req.storeId);
+  if (!r.ok) return res.status(404).json({ error: r.error });
+  audit({ actor: { type: "store", id: req.storeId }, action: "broadcast.cancel" }, req);
+  res.json({ ok: true });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1639,7 +1793,8 @@ router.put("/store/customers/:phone/vip", auth, (req, res) => {
 });
 
 router.post("/store/customers/archive", auth, (req, res) => {
-  const result = archiveMonth(req.body.month);
+  // ⚠️ تمرير storeId يحفظ عزل المتاجر — لا يُمسح عملاء متاجر أخرى
+  const result = archiveMonth(req.body.month, req.storeId);
   res.json({ ok: true, ...result });
 });
 
@@ -1673,12 +1828,46 @@ router.post("/store/wa-disconnect", auth, async (req, res) => {
 });
 
 // ─── Create store token (for master impersonation) ───────────────────────────
-function createStoreToken(storeId) {
+// Impersonation sessions تنتهي خلال 30 دقيقة، مع flag impersonatedBy + audit
+const IMPERSONATION_TTL_MS = 30 * 60 * 1000;
+function createStoreToken(storeId, impersonatedBy) {
   const token = crypto.randomBytes(32).toString("hex");
-  sessions.set(token, { storeId, createdAt: Date.now(), lastActivity: Date.now() });
+  const now = Date.now();
+  sessions.set(token, {
+    storeId,
+    createdAt: now,
+    lastActivity: now,
+    impersonatedBy: impersonatedBy || null,
+    // override الـ TTL للـ impersonation: 30 دقيقة من createdAt (absolute، لا sliding)
+    absoluteExpiry: impersonatedBy ? now + IMPERSONATION_TTL_MS : null,
+  });
   _saveStoreSessions();
   return token;
 }
 
+// ─── Verify a store token externally (used by payments-router) ───────────────
+function verifyStoreToken(token) {
+  if (!token) return null;
+  const entry = sessions.get(token);
+  if (!entry) return null;
+  if (entry.absoluteExpiry && Date.now() > entry.absoluteExpiry) {
+    sessions.delete(token);
+    _saveStoreSessions();
+    return null;
+  }
+  const lastSeen = entry.lastActivity || entry.createdAt;
+  if (Date.now() - lastSeen > SESSION_TTL_MS) {
+    sessions.delete(token);
+    _saveStoreSessions();
+    return null;
+  }
+  if (!entry.absoluteExpiry) {
+    entry.lastActivity = Date.now();
+    _saveStoreSessions();
+  }
+  return entry.storeId;
+}
+
 module.exports = router;
 module.exports.createStoreToken = createStoreToken;
+module.exports.verifyStoreToken = verifyStoreToken;

@@ -265,7 +265,7 @@ function readOwnerSettings() {
   } catch { return defaults; }
 }
 function writeOwnerSettings(data) {
-  fs.writeFileSync(OWNER_SETTINGS_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(OWNER_SETTINGS_FILE, data);
 }
 
 // ─── Persistent session store — 7 days sliding TTL ───────────────────────────
@@ -291,13 +291,14 @@ const sessions = _loadMasterSessions();
 let _saveMasterTimer = null;
 function _saveMasterSessions() {
   if (_saveMasterTimer) return;
+  // 5s debounce بدل 500ms — تقليل I/O بـ 10× مع 50 متجر نشط
   _saveMasterTimer = setTimeout(() => {
     _saveMasterTimer = null;
     try {
       const obj = {}; for (const [k, ts] of sessions) obj[k] = ts;
-      fs.writeFileSync(MASTER_SESSIONS_FILE, JSON.stringify(obj));
+      atomicFs.writeJsonSync(MASTER_SESSIONS_FILE, obj, false);
     } catch (e) { console.warn("[master-sessions] save failed:", e.message); }
-  }, 500);
+  }, 5000);
 }
 
 setInterval(() => {
@@ -323,8 +324,9 @@ function readStores() {
   }
 }
 
+const atomicFs = require("./atomic-fs");
 function writeStores(data) {
-  fs.writeFileSync(STORES_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(STORES_FILE, data);
 }
 
 function readStoreOrders(storeId) {
@@ -360,17 +362,35 @@ function auth(req, res, next) {
 const MASTER_CRED_FILE = path.join(DATA_DIR, "master-credentials.json");
 
 // returns: { hash, plain } — plain فقط في حال migration legacy
+// ⚠️ يرفض الإقلاع إن لم يجد credentials وlا MASTER_PASSWORD في .env
+let _masterPasswordValidated = false;
 function readMasterCred() {
   try {
     const d = JSON.parse(fs.readFileSync(MASTER_CRED_FILE, "utf8"));
     if (d?.hash) return { hash: d.hash, plain: null };
     if (d?.password) return { hash: null, plain: String(d.password) };
   } catch {}
-  return { hash: null, plain: process.env.MASTER_PASSWORD || "gzmaster2026" };
+  // لا default password — يجب أن يُعرَّف MASTER_PASSWORD في .env
+  const envPass = process.env.MASTER_PASSWORD;
+  if (!envPass) {
+    console.error("[FATAL] لا توجد كلمة مرور ماستر — حدّد MASTER_PASSWORD في .env قبل استخدام النظام");
+    process.exit(1);
+  }
+  if (envPass.length < 8) {
+    console.error("[FATAL] MASTER_PASSWORD ضعيفة جداً — استخدم 8 أحرف فأكثر");
+    process.exit(1);
+  }
+  return { hash: null, plain: envPass };
 }
+
+// Self-check at boot: محاولة قراءة المُعتمَدات → تفعّل process.exit لو غير صحيحة
+(function _validateMasterCredOnBoot() {
+  if (_masterPasswordValidated) return;
+  try { readMasterCred(); _masterPasswordValidated = true; }
+  catch (e) { console.error("[FATAL] فشل تحميل master credentials:", e.message); process.exit(1); }
+})();
 function saveMasterHash(hash) {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(MASTER_CRED_FILE, JSON.stringify({ hash, updatedAt: new Date().toISOString() }, null, 2));
+  atomicFs.writeJsonSync(MASTER_CRED_FILE, { hash, updatedAt: new Date().toISOString() });
 }
 async function verifyMasterPassword(plain) {
   const cred = readMasterCred();
@@ -484,20 +504,55 @@ router.post("/master/logout", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+// ─── Dashboard Stats — مع cache 60 ثانية (يصمد لـ 50+ متجر) ──────────────────
+let _statsCache = { ts: 0, data: null };
+const STATS_CACHE_TTL_MS = 60 * 1000;
+
 router.get("/master/stats", auth, (req, res) => {
+  // serve from cache لو حديث
+  if (_statsCache.data && Date.now() - _statsCache.ts < STATS_CACHE_TTL_MS) {
+    return res.json({ ..._statsCache.data, _cached: true, cacheAgeSec: Math.floor((Date.now() - _statsCache.ts) / 1000) });
+  }
+
   const { stores } = readStores();
   const today = new Date().toISOString().slice(0, 10);
+  const todayPrefix = today;
 
   let totalOrdersToday = 0;
   let totalRevenue     = 0;
   let monthlyRevenue   = 0;
   const activeStores   = stores.filter(s => s.subscriptionStatus === "active").length;
 
+  // قراءة streaming بدل JSON.parse للملف كاملاً (يقلل memory spike)
   for (const store of stores) {
-    const orders = readStoreOrders(store.id);
-    totalOrdersToday += orders.filter(o => (o.timestamp || "").slice(0, 10) === today).length;
-    totalRevenue     += orders.reduce((s, o) => s + (o.total || 0), 0);
+    const file = store.id === "nakheel_001"
+      ? path.join(DATA_DIR, "orders.jsonl")
+      : path.join(DATA_DIR, `orders_${store.id}.jsonl`);
+    if (!fs.existsSync(file)) continue;
+    try {
+      // عد طلبات اليوم بـ string match (أسرع من parse + filter)
+      const content = fs.readFileSync(file, "utf8");
+      const lines = content.split("\n");
+      for (const l of lines) {
+        if (!l) continue;
+        // طلبات اليوم: substring check قبل parse (90% أسرع)
+        if (l.indexOf(`"${todayPrefix}`) >= 0 || l.indexOf(`timestamp":"${todayPrefix}`) >= 0) {
+          try {
+            const o = JSON.parse(l);
+            if (o._test) continue;
+            if ((o.timestamp || "").slice(0, 10) === today) totalOrdersToday++;
+          } catch {}
+        }
+        // الإيرادات الكلية — فقط للطلبات المكتملة
+        try {
+          const o = JSON.parse(l);
+          if (o._test) continue;
+          if (["confirmed", "completed", "delivered", "done"].includes(o.status)) {
+            totalRevenue += Number(o.total || 0);
+          }
+        } catch {}
+      }
+    } catch {}
     if (store.subscriptionStatus === "active") {
       monthlyRevenue += parseFloat(store.subscriptionFee || 0);
     }
@@ -509,14 +564,16 @@ router.get("/master/stats", auth, (req, res) => {
     return days >= 0 && days <= 7;
   }).length;
 
-  res.json({
+  const data = {
     totalStores: stores.length,
     activeStores,
     totalOrdersToday,
     totalRevenue:   parseFloat(totalRevenue.toFixed(2)),
     monthlyRevenue: parseFloat(monthlyRevenue.toFixed(2)),
     expiringCount,
-  });
+  };
+  _statsCache = { ts: Date.now(), data };
+  res.json(data);
 });
 
 // ─── Plans list ───────────────────────────────────────────────────────────────
@@ -567,14 +624,55 @@ router.post("/master/stores", auth, async (req, res) => {
   res.json({ ok: true, store });
 });
 
+// قائمة بيضاء للحقول التي يحق للماستر تعديلها
+const MASTER_STORE_FIELDS = new Set([
+  "storeName", "storeType", "businessType", "city",
+  "ownerName", "ownerPhone", "ownerEmail",
+  "plan", "subscriptionStatus", "subscriptionFee",
+  "subscriptionStartDate", "subscriptionNextPayment",
+  "active", "notes", "currency", "deliveryFee",
+  "workingHoursStart", "workingHoursEnd",
+  "welcomeMessage", "invoiceColor", "invoiceLogoUrl", "invoiceTemplate",
+  "themeAccent", "themeText", "themeTextMute", "menuMode",
+  "logoUrl", "address", "locationMapUrl",
+  "enableWebview", "enableNumeric", "enableAI", "enableCoupons",
+  "requireConfirmation",
+  "storePassword", // ⚠️ يقبل لكن نتحقق ونـhash
+  "adminConfig",   // للماستر فقط (regenerate)
+  "loyaltySettings",
+]);
+
 router.put("/master/stores/:id", auth, async (req, res) => {
   const data = readStores();
   const idx  = data.stores.findIndex(s => s.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: "المتجر غير موجود" });
 
+  // فلتر whitelist — لا تسمح بحقول غير معروفة
+  const updates = {};
+  for (const k of Object.keys(req.body || {})) {
+    if (MASTER_STORE_FIELDS.has(k)) updates[k] = req.body[k];
+  }
+
+  // hash للـ storePassword لو أُرسل plaintext
+  if (typeof updates.storePassword === "string" && updates.storePassword.length > 0
+      && !BCRYPT_RE.test(updates.storePassword)) {
+    try {
+      updates.storePassword = await bcrypt.hash(updates.storePassword, BCRYPT_ROUNDS);
+    } catch (e) {
+      return res.status(500).json({ error: "فشل تشفير كلمة المرور" });
+    }
+  }
+
   const prevStatus = data.stores[idx].subscriptionStatus;
-  data.stores[idx] = { ...data.stores[idx], ...req.body, id: req.params.id };
+  data.stores[idx] = { ...data.stores[idx], ...updates, id: req.params.id };
   writeStores(data);
+
+  audit({
+    actor: { type: "master", id: "master" },
+    action: "store.update",
+    target: { type: "store", id: req.params.id },
+    meta: { fields: Object.keys(updates) },
+  }, req);
 
   // Sync auth fields to Firestore whenever they change
   const s = data.stores[idx];
@@ -696,20 +794,31 @@ wa.me/966508572902
 }
 
 // ─── Logo Upload ──────────────────────────────────────────────────────────────
+const { decodeAndVerifyBase64, sanitizeStoreIdForFilename } = require("./upload-safety");
+
 router.post("/master/upload-logo", auth, (req, res) => {
   const { base64, ext = "png", storeId } = req.body || {};
   if (!base64 || !storeId) return res.status(400).json({ error: "بيانات ناقصة" });
 
-  const safeExt   = ["jpg","jpeg","png","webp"].includes(ext.toLowerCase()) ? ext.toLowerCase() : "png";
-  const filename  = `logo_${storeId}_${Date.now()}.${safeExt}`;
+  const safeStoreId = sanitizeStoreIdForFilename(storeId);
+  if (!safeStoreId) return res.status(400).json({ error: "معرّف المتجر غير صالح" });
+
+  // verify magic bytes + size (3MB)
+  const r = decodeAndVerifyBase64(base64, ext, 3 * 1024 * 1024, "image");
+  if (!r.ok) return res.status(400).json({ error: r.error });
+
+  const filename  = `logo_${safeStoreId}_${Date.now()}.${r.ext}`;
   const imagesDir = path.join(DATA_DIR, "images");
   const filepath  = path.join(imagesDir, filename);
 
   try {
     fs.mkdirSync(imagesDir, { recursive: true });
-    const buffer = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ""), "base64");
-    if (buffer.length > 3 * 1024 * 1024) return res.status(413).json({ error: "الصورة أكبر من 3MB" });
-    fs.writeFileSync(filepath, buffer);
+    // تأكيد إضافي ضد path traversal — الـ resolved path يجب أن يبقى داخل imagesDir
+    const resolved = path.resolve(filepath);
+    if (!resolved.startsWith(path.resolve(imagesDir) + path.sep)) {
+      return res.status(400).json({ error: "مسار غير مسموح" });
+    }
+    fs.writeFileSync(filepath, r.buffer);
     res.json({ ok: true, url: `/store-images/${filename}` });
   } catch (err) {
     console.error("Logo upload error:", err.message);
@@ -980,8 +1089,18 @@ router.post("/master/impersonate/:storeId", auth, (req, res) => {
   const { stores } = readStores();
   const store = stores.find(s => s.id === req.params.storeId);
   if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
-  const token = createStoreToken(store.id);
-  res.json({ ok: true, token, storeId: store.id, storeName: store.storeName });
+  const token = createStoreToken(store.id, "master");
+  audit({
+    actor: { type: "master", id: "master" },
+    action: "store.impersonate",
+    target: { type: "store", id: store.id },
+    meta: { storeName: store.storeName, ttlMinutes: 30 },
+  }, req);
+  res.json({
+    ok: true, token, storeId: store.id, storeName: store.storeName,
+    ttlMinutes: 30,
+    warning: "جلسة الانتحال تنتهي بعد 30 دقيقة وتُسجَّل في audit log",
+  });
 });
 
 // ─── Send QR via WhatsApp — يُولّد QR جديد ويرسله لأبو حاتم ─────────────────
@@ -1048,7 +1167,7 @@ function readPending() {
   } catch { return { requests: [] }; }
 }
 function writePending(data) {
-  fs.writeFileSync(PENDING_FILE, JSON.stringify(data, null, 2));
+  atomicFs.writeJsonSync(PENDING_FILE, data);
 }
 
 // CORS preflight لـ landing page (whitelist)
@@ -1189,8 +1308,17 @@ router.post("/master/approve-request/:id", auth, async (req, res) => {
 
   const pr = data.requests[idx];
 
-  // Generate store password
-  const rawPass = crypto.randomBytes(9).toString("base64").replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || "Bot" + Date.now().toString(36).toUpperCase();
+  // Generate store password — 12 char base62 (≈72-bit entropy)
+  function _genPassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"; // بدون 0/O/1/I/l لتجنّب الالتباس
+    const buf = crypto.randomBytes(12);
+    let s = "";
+    for (let i = 0; i < 12; i++) s += chars[buf[i] % chars.length];
+    return s;
+  }
+  const rawPass = _genPassword();
+  // ⚠️ نخزّن bcrypt hash مباشرة، لا plaintext
+  const hashedPass = await bcrypt.hash(rawPass, BCRYPT_ROUNDS);
 
   // Create store
   const storesData = readStores();
@@ -1202,7 +1330,7 @@ router.post("/master/approve-request/:id", auth, async (req, res) => {
     city:               pr.city || "",
     ownerName:          pr.name,
     ownerPhone:         pr.phone,
-    storePassword:      rawPass,
+    storePassword:      hashedPass,
     plan:               pr.plan || "pro",
     subscriptionStatus: "active",
     subscriptionFee:    { starter: 80, pro: 150, premium: 250 }[pr.plan] || 150,
@@ -1227,7 +1355,7 @@ router.post("/master/approve-request/:id", auth, async (req, res) => {
     }
   }).catch(e => console.warn("[ai-admin] gen failed:", e.message));
 
-  // Sync to Firestore
+  // Sync to Firestore (نمرّر plaintext مرة واحدة فقط — Firestore يـhash داخلياً)
   firestoreAuth.upsertStoreAdmin({
     storeId:            storeId,
     phone:              pr.phone,

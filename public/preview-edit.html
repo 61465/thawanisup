@@ -91,12 +91,44 @@ body{padding-bottom:80px}
 
 <script>
 const params  = new URLSearchParams(location.search);
-const TOKEN   = params.get("token") || localStorage.getItem("store_token") || "";
+const EDIT_TOKEN = params.get("edit") || "";
 const STORE_ID = params.get("storeId") || "";
+let TOKEN = localStorage.getItem("store_token") || "";
 
-if (!TOKEN) {
-  document.body.innerHTML = '<div style="padding:60px 20px;text-align:center;color:#fff"><div style="font-size:48px;margin-bottom:12px">🔒</div><div style="font-size:18px;font-weight:800;margin-bottom:8px">جلسة منتهية</div><div style="font-size:14px;color:#888">سجّل دخول من store-admin أولاً</div></div>';
-  throw new Error("no token");
+// لو وُجد edit-token قصير الأمد → بادله بـ session token كامل (one-time exchange)
+async function exchangeEditTokenIfNeeded() {
+  // legacy: لو URL يحوي ?token=... القديم، اقبله كـ fallback مرّة واحدة ثم احذفه من history
+  const legacyToken = params.get("token");
+  if (legacyToken) {
+    TOKEN = legacyToken;
+    localStorage.setItem("store_token", TOKEN);
+    history.replaceState({}, "", location.pathname + "?storeId=" + encodeURIComponent(STORE_ID));
+    return;
+  }
+  if (!EDIT_TOKEN) return;
+  try {
+    const r = await fetch("/store/exchange-edit-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editToken: EDIT_TOKEN }),
+    });
+    const d = await r.json();
+    if (r.ok && d.token) {
+      TOKEN = d.token;
+      localStorage.setItem("store_token", TOKEN);
+      // نظّف الـ URL من الـ edit-token (لا يبقى في history)
+      history.replaceState({}, "", location.pathname + "?storeId=" + encodeURIComponent(STORE_ID));
+    }
+  } catch {}
+}
+
+async function bootstrap() {
+  await exchangeEditTokenIfNeeded();
+  if (!TOKEN) {
+    document.body.innerHTML = '<div style="padding:60px 20px;text-align:center;color:#fff"><div style="font-size:48px;margin-bottom:12px">🔒</div><div style="font-size:18px;font-weight:800;margin-bottom:8px">جلسة منتهية أو رابط غير صالح</div><div style="font-size:14px;color:#888">سجّل دخول من store-admin أولاً</div></div>';
+    throw new Error("no token");
+  }
+  loadStore();
 }
 
 async function api(method, path, body) {
@@ -255,7 +287,7 @@ function esc(s) {
   return d.innerHTML;
 }
 
-loadStore();
+bootstrap();
 </script>
 </body>
 </html>

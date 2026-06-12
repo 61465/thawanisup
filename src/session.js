@@ -6,6 +6,7 @@
 
 const fs   = require("fs");
 const path = require("path");
+const atomicFs = require("./atomic-fs");
 
 const EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 const SESSIONS_FILE = path.join(__dirname, "..", "data", "sessions", "bot-sessions.json");
@@ -35,18 +36,30 @@ function _load() {
 const store = _load();
 
 let _saveTimer = null;
+// زيدت من 500ms إلى 5s — تقليل I/O بـ 10× على المتاجر النشطة
+const SAVE_DEBOUNCE_MS = 5000;
 function _save() {
   if (_saveTimer) return;
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
     try {
-      _ensureDir();
       const obj = {};
       for (const [k, v] of store) obj[k] = v;
-      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj));
+      atomicFs.writeJsonSync(SESSIONS_FILE, obj, false);
     } catch (e) { console.warn("[session] save failed:", e.message); }
-  }, 500);
+  }, SAVE_DEBOUNCE_MS);
 }
+
+// flush قبل الخروج
+process.on("beforeExit", () => {
+  if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+  try {
+    _ensureDir();
+    const obj = {};
+    for (const [k, v] of store) obj[k] = v;
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj));
+  } catch {}
+});
 
 function get(from) {
   const entry = store.get(from);
