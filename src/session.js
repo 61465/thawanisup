@@ -1,26 +1,69 @@
 /**
- * Session Manager
- * Stores in-memory session state per WhatsApp number.
+ * Session Manager — مع persist على القرص
+ * يحفظ سيشن العميل (cart, step, customerName, customerLocation) عبر restart السيرفر
  * Sessions expire after 30 minutes of inactivity.
  */
 
-const EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const fs   = require("fs");
+const path = require("path");
 
-const store = new Map();
+const EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const SESSIONS_FILE = path.join(__dirname, "..", "data", "sessions", "bot-sessions.json");
+
+function _ensureDir() {
+  const d = path.dirname(SESSIONS_FILE);
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+}
+
+function _load() {
+  try {
+    _ensureDir();
+    if (!fs.existsSync(SESSIONS_FILE)) return new Map();
+    const obj = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8"));
+    const m = new Map();
+    const now = Date.now();
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && v.lastActive && (now - v.lastActive) <= EXPIRY_MS) m.set(k, v);
+    }
+    return m;
+  } catch (e) {
+    console.warn("[session] load failed:", e.message);
+    return new Map();
+  }
+}
+
+const store = _load();
+
+let _saveTimer = null;
+function _save() {
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      _ensureDir();
+      const obj = {};
+      for (const [k, v] of store) obj[k] = v;
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj));
+    } catch (e) { console.warn("[session] save failed:", e.message); }
+  }, 500);
+}
 
 function get(from) {
   const entry = store.get(from);
   if (!entry) return defaultSession();
   if (Date.now() - entry.lastActive > EXPIRY_MS) {
     store.delete(from);
+    _save();
     return defaultSession();
   }
   entry.lastActive = Date.now();
+  _save();
   return entry.data;
 }
 
 function set(from, data) {
   store.set(from, { data, lastActive: Date.now() });
+  _save();
 }
 
 function update(from, patch) {
@@ -30,6 +73,7 @@ function update(from, patch) {
 
 function reset(from) {
   store.delete(from);
+  _save();
 }
 
 function defaultSession() {
@@ -39,9 +83,11 @@ function defaultSession() {
 // Clean expired sessions every 10 minutes
 setInterval(() => {
   const now = Date.now();
+  let removed = 0;
   for (const [key, val] of store.entries()) {
-    if (now - val.lastActive > EXPIRY_MS) store.delete(key);
+    if (now - val.lastActive > EXPIRY_MS) { store.delete(key); removed++; }
   }
+  if (removed > 0) _save();
 }, 10 * 60 * 1000);
 
 module.exports = {
