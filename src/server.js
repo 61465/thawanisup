@@ -1101,6 +1101,97 @@ const MUTE_DURATION_MS = 5 * 60 * 1000;  // 5 دقائق
 // إشارات تكسر الـ mute فوراً (طلب مساعدة فعلي)
 const UNMUTE_TRIGGERS = /^(مسؤول|بشري|انسان|human|الغاء|إلغاء|cancel|start|ابدأ|البداية|الرئيسية|stop|توقف|إيقاف)$/i;
 
+// 🚦 Rate limit per customer (anti-spam) — 30 رسالة/دقيقة
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX       = 30;
+const _customerRateLimit = new Map(); // from → [timestamps]
+
+function _isRateLimited(from) {
+  const now = Date.now();
+  const arr = (_customerRateLimit.get(from) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  arr.push(now);
+  _customerRateLimit.set(from, arr);
+  // cleanup كل 5 دقائق
+  if (_customerRateLimit.size > 1000) {
+    for (const [k, v] of _customerRateLimit) {
+      if (v.length === 0 || now - v[v.length - 1] > 5 * 60_000) _customerRateLimit.delete(k);
+    }
+  }
+  return arr.length > RATE_LIMIT_MAX;
+}
+
+// 🔤 Typo tolerance — Levenshtein distance بسيط
+function _levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length || !b.length) return Math.max(a.length, b.length);
+  const m = [];
+  for (let i = 0; i <= b.length; i++) m[i] = [i];
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      m[i][j] = b[i-1] === a[j-1] ? m[i-1][j-1]
+        : Math.min(m[i-1][j-1] + 1, m[i][j-1] + 1, m[i-1][j] + 1);
+    }
+  }
+  return m[b.length][a.length];
+}
+
+// يحاول تصحيح الكلمة لو قريبة من keyword معروف (max distance = 2)
+function _fuzzyMatch(input, keywords) {
+  const s = String(input || "").trim().toLowerCase();
+  if (!s) return null;
+  for (const kw of keywords) {
+    if (s === kw) return kw;
+    if (s.length >= 3 && _levenshtein(s, kw) <= 2) return kw;
+  }
+  return null;
+}
+
+const COMMON_KEYWORDS = ["قائمة", "قائمه", "منيو", "menu", "سلة", "سلتي", "cart",
+                         "تأكيد", "تاكيد", "اكد", "confirm", "ok",
+                         "الغاء", "إلغاء", "cancel", "stop",
+                         "مسؤول", "مساعدة", "help", "بشري",
+                         "ابدأ", "start", "البداية", "الرئيسية",
+                         "تتبع", "track", "نقاطي", "points",
+                         "كرر", "كرّر", "اعد", "أعد", "reorder"];
+
+// 🌍 Language detection — يكتشف لغة الرسالة (ar/en)
+function _detectLang(text) {
+  const s = String(text || "").trim();
+  if (!s) return "ar";
+  // عربية: > 30% من الأحرف عربية
+  const arabicChars = (s.match(/[؀-ۿ]/g) || []).length;
+  const latinChars  = (s.match(/[a-zA-Z]/g) || []).length;
+  if (latinChars > arabicChars && latinChars >= 3) return "en";
+  return "ar";
+}
+
+// 🚨 Fraud detection — يحسب عدد cancellations لرقم معين
+function _detectFraud(storeId, phone) {
+  try {
+    const ordersFile = storeId === "nakheel_001"
+      ? path.join(DATA_DIR, "orders.jsonl")
+      : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+    if (!fs.existsSync(ordersFile)) return { suspicious: false };
+    const last30days = Date.now() - 30 * 24 * 60 * 60_000;
+    let cancellations = 0, total = 0;
+    for (const l of fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean)) {
+      try {
+        const o = JSON.parse(l);
+        const oPhone = String(o.customerPhone || "").replace(/\D/g, "");
+        if (oPhone !== phone) continue;
+        if (new Date(o.timestamp || 0).getTime() < last30days) continue;
+        total++;
+        if (o.status === "cancelled" && o.cancelledBy === "customer") cancellations++;
+        if (o.status === "rejected") cancellations++;
+      } catch {}
+    }
+    // مشبوه: ≥5 cancellations في 30 يوم، أو ratio > 60%
+    const suspicious = cancellations >= 5 || (total >= 3 && cancellations / total > 0.6);
+    return { suspicious, cancellations, total };
+  } catch { return { suspicious: false }; }
+}
+
 async function handleMessage(from, incoming) {
   const { store, storeId } = storeCtx.getStore() || {};
   const session   = sessionManager.get(from);
@@ -1119,6 +1210,67 @@ async function handleMessage(from, incoming) {
       console.log(`[mute] [${storeId}] ignoring msg from ${from} (muted ${Math.ceil((session.mutedUntil - Date.now())/1000)}s left)`);
       return;
     }
+  }
+
+  // 🚦 Rate limit (anti-spam): 30 رسالة/دقيقة
+  if (_isRateLimited(from)) {
+    console.log(`[rate-limit] ${from} blocked (>${RATE_LIMIT_MAX}/min)`);
+    // رد مرة واحدة فقط لإعلام العميل، ثم اصمت
+    if (!session._rateLimitWarned) {
+      sessionManager.update(from, { _rateLimitWarned: Date.now() });
+      return sendText(from,
+        `⚠️ *رسائل كثيرة جداً*\n\nيرجى التمهّل قليلاً.\nانتظر دقيقة ثم تابع.`
+      );
+    }
+    return;
+  }
+  // أعد ضبط الـ rate warn بعد دقيقتين
+  if (session._rateLimitWarned && Date.now() - session._rateLimitWarned > 120_000) {
+    sessionManager.update(from, { _rateLimitWarned: 0 });
+  }
+
+  // 🔁 Quick reorder — "كرر" أو "أعد آخر طلب" تستعيد آخر طلب
+  if (/^(كرر|كرّر|اعد|أعد|reorder|repeat|نفس الطلب|اطلب مثل)/i.test(String(incoming).trim())) {
+    if (session.lastOrderItems && Array.isArray(session.lastOrderItems)) {
+      const cart = session.lastOrderItems.map(i => ({
+        id: i.id, name: i.name, price: Number(i.price) || 0,
+        qty: Number(i.qty) || 1, imageUrl: i.imageUrl || null,
+      }));
+      sessionManager.set(from, {
+        step: "COLLECT_NAME",
+        cart,
+        path: "webview",
+        customerName: session.lastCustomerName || null,
+        customerLocation: session.lastCustomerLocation || null,
+      });
+      const summary = cart.map(i => `• ${i.name} ×${i.qty}`).join("\n");
+      return sendText(from,
+        `✅ *تم استرجاع آخر طلب*\n\n${summary}\n\n` +
+        (session.lastCustomerName
+          ? `الاسم: ${session.lastCustomerName}\nالعنوان: ${session.lastCustomerLocation || "—"}\n\nاكتب *تأكيد* للمتابعة، أو *تعديل* للتغيير`
+          : `📝 من فضلك اكتب *اسمك* لإتمام الطلب`
+        )
+      );
+    } else {
+      return sendText(from, `لا يوجد طلب سابق لاسترجاعه.\nاكتب: *ابدأ* لتصفّح القائمة`);
+    }
+  }
+
+  // 📎 الرسائل المُرسَلة كصور/صوت/فيديو/ملصقات/مستندات
+  if (typeof incoming === "string" && incoming.startsWith("📎|")) {
+    const kind = incoming.split("|")[1] || "media";
+    const labels = {
+      image:    "📷 صورة",
+      video:    "🎬 فيديو",
+      audio:    "🎤 رسالة صوتية",
+      sticker:  "🎭 ملصق",
+      document: "📄 ملف",
+    };
+    return sendText(from,
+      `${labels[kind] || "📎 مرفق"} ـ_البوت يعمل بالنص فقط_\n\n` +
+      `📋 اكتب: *قائمة* لعرض الأصناف\n` +
+      `💬 أو: *مسؤول* للتحدث مع المتجر مباشرة`
+    );
   }
 
   // ── Human Handoff: العميل يطلب مسؤول ──────────────────────
@@ -1262,6 +1414,15 @@ async function handleMessage(from, incoming) {
         `من الساعة *${formatHour(hStart)}* حتى *${formatHour(hEnd)}*\n\n` +
         `يسعدنا خدمتك خلال أوقات العمل 😊`
       );
+    }
+  }
+
+  // 🔤 Typo tolerance — لو الرسالة قريبة من keyword معروف، صحّحها
+  if (msg && msg.length >= 3 && !msg.startsWith("CAT_") && !msg.startsWith("PROD_") && !msg.startsWith("QTY_") && !/^[A-Z_]+$/.test(msg)) {
+    const corrected = _fuzzyMatch(msg, COMMON_KEYWORDS);
+    if (corrected && corrected !== msg.toLowerCase()) {
+      console.log(`[typo-fix] [${storeId}] "${msg}" → "${corrected}"`);
+      msg = corrected;
     }
   }
 
@@ -1446,15 +1607,51 @@ async function sendWelcome(from) {
   const { store, storeId } = storeCtx.getStore() || {};
   const name = store?.storeName || STORE_NAME;
 
+  // 🌙 Out-of-hours queue — استقبل الطلب لكن أبلغ بوقت المعالجة
   if (!isStoreOpen(store)) {
     const hStart = store?.workingHoursStart ?? hourStart;
     const hEnd   = store?.workingHoursEnd   ?? hourEnd;
+    // قائمة انتظار: استقبل الطلب لكن أعلِم أنه سيُعالج عند الفتح
     return sendText(from,
-      `🌙 مرحباً بك في *${name}*\n\nنعتذر، نحن حالياً خارج أوقات العمل.\n\n⏰ أوقات العمل: من ${formatHour(hStart)} حتى ${formatHour(hEnd)}\n\nسنسعد بخدمتك في الوقت المناسب 🌸`
+      `🌙 *${name}* مغلق حالياً\n\n` +
+      `⏰ أوقات العمل: ${formatHour(hStart)} - ${formatHour(hEnd)}\n\n` +
+      `📝 يمكنك ترك طلبك الآن، سيُعالج فور الفتح ✨\n` +
+      `اكتب: *ابدأ* لتسجيل طلب مؤجل\n` +
+      `أو: *مسؤول* للتواصل المباشر`
     );
   }
 
-  const greeting = store?.welcomeMessage || `أهلاً وسهلاً في *${name}* 🌴`;
+  // 🎉 Welcome back للعملاء المتكررين — يستعيد آخر طلب
+  let welcomeBackLine = "";
+  try {
+    const phone = phoneNum(from);
+    const ordersFile = storeId === "nakheel_001"
+      ? path.join(DATA_DIR, "orders.jsonl")
+      : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+    if (fs.existsSync(ordersFile)) {
+      const lines = fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean);
+      // اقرأ آخر طلب لهذا العميل (ابحث من النهاية)
+      for (let i = lines.length - 1; i >= 0 && i >= lines.length - 200; i--) {
+        try {
+          const o = JSON.parse(lines[i]);
+          const oPhone = String(o.customerPhone || "").replace(/\D/g, "");
+          if (oPhone === phone && o.customerName && !o._test) {
+            // وجدنا عميل سابق
+            const items = (o.items || []).map(it => `${it.name} ×${it.qty}`).join("، ");
+            const itemsShort = items.length > 80 ? items.slice(0, 77) + "..." : items;
+            welcomeBackLine = `👋 *مرحباً ${o.customerName}!*\n` +
+                              `🛒 آخر طلب لك: ${itemsShort}\n` +
+                              `💡 اكتب: *كرر* لإعادة نفس الطلب\n\n`;
+            // احفظ في session للاستخدام لاحقاً
+            sessionManager.update(from, { lastOrderItems: o.items, lastCustomerName: o.customerName, lastCustomerLocation: o.customerLocation });
+            break;
+          }
+        } catch {}
+      }
+    }
+  } catch (e) { console.warn("[welcome-back]", e.message); }
+
+  const greeting = welcomeBackLine || (store?.welcomeMessage || `أهلاً وسهلاً في *${name}* 🌴`);
   const hasProducts = (store?.products || []).filter(isProductInStock).length > 0;
 
   // الرابط مفعّل لو: الباقة تشمل webOrder + المتجر لم يعطّله + يوجد منتجات
@@ -1906,6 +2103,7 @@ async function sendCategoryMenu(from) {
   return sendList(from, {
     body:     "اختر من القائمة التالية:",
     sections: [{ title: "الأصناف المتوفرة", rows }],
+    footer:   "💬 للاستفسار اكتب: مسؤول",
   });
 }
 
@@ -2775,13 +2973,41 @@ async function handleConfirmOrder(from, msg, session) {
     const { calcPoints } = require("./loyalty");
     const previewPoints = calcPoints(session.grandTotal, store);
 
+    // ⏱ ETA ذكي: حسب workflow + متوسط timing من الطلبات السابقة
+    let etaText = "";
+    try {
+      const btype = getBusinessType(store);
+      const baseEta = btype === "pickup" ? 20 : btype === "homeService" ? 60 : 35;
+      // اقرأ متوسط ووقت معالجة آخر 20 طلب مكتمل
+      const ordersFile = storeId === "nakheel_001"
+        ? path.join(DATA_DIR, "orders.jsonl")
+        : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+      if (fs.existsSync(ordersFile)) {
+        const recent = fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean)
+          .slice(-200).map(l => { try { return JSON.parse(l); } catch { return null; } })
+          .filter(o => o && (o.status === "completed" || o.status === "delivered") && o.timestamp && o.deliveredAt);
+        if (recent.length >= 3) {
+          const avg = recent.slice(-10).reduce((s, o) =>
+            s + (new Date(o.deliveredAt) - new Date(o.timestamp)) / 60_000, 0) / Math.min(recent.length, 10);
+          if (avg >= 5 && avg <= 180) {
+            const low = Math.max(10, Math.round(avg * 0.8 / 5) * 5);
+            const high = Math.round(avg * 1.2 / 5) * 5;
+            etaText = `⏱ المدة المتوقعة: *${low}-${high} دقيقة*\n`;
+          }
+        }
+      }
+      if (!etaText) etaText = `⏱ المدة المتوقعة: *${baseEta-10}-${baseEta+10} دقيقة*\n`;
+    } catch {}
+
     await sendText(from,
       `✅ *تم استلام طلبك بنجاح!*\n\n` +
       `رقم الطلب: *${orderId}*\n` +
-      `الإجمالي: *${session.grandTotal?.toFixed(2)} ${currency}*\n\n` +
-      (previewPoints > 0 ? `🏆 ستكسب *${previewPoints}* نقطة عند قبول الطلب\n\n` : "") +
-      `طلبك قيد المراجعة، سيتم التواصل معك قريباً.\n` +
-      `_لإلغاء الطلب اكتب: *الغاء*_\n\n` +
+      `الإجمالي: *${session.grandTotal?.toFixed(2)} ${currency}*\n` +
+      etaText +
+      (previewPoints > 0 ? `\n🏆 ستكسب *${previewPoints}* نقطة عند قبول الطلب\n` : "") +
+      `\nطلبك قيد المراجعة، سيتم التواصل معك قريباً.\n` +
+      `_لإلغاء الطلب اكتب: *الغاء*_\n` +
+      `_لتتبع الطلب: *تتبع*_\n\n` +
       `شكراً لاختيارك *${storeName}* 💚`
     );
 
@@ -2802,9 +3028,16 @@ async function handleConfirmOrder(from, msg, session) {
             : `📍 العنوان: ${locationName}\n`)
         : "";
 
+      // 🚨 Fraud check للعميل
+      const fraudInfo = _detectFraud(storeId, phoneNum(from));
+      const fraudWarning = fraudInfo.suspicious
+        ? `\n⚠️ *تنبيه:* هذا العميل ألغى/رُفض له ${fraudInfo.cancellations}/${fraudInfo.total} طلب آخر 30 يوم — راجع بحذر\n`
+        : "";
+
       const ownerMsg =
         `🔔 *طلب جديد — ${storeName}*\n\n` +
         `رقم الطلب: *${orderId}*\n` +
+        fraudWarning +
         `العميل: *${session.customerName}*\n` +
         `الهاتف: ${phoneNum(from)}\n` +
         locationBlock +

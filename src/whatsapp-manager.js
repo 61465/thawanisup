@@ -382,7 +382,13 @@ async function initSession(storeId) {
         if (msg.key.fromMe)                      continue;
         if (!msg.key.remoteJid)                  continue;
         if (isJidBroadcast(msg.key.remoteJid))   continue;
-        if (msg.key.remoteJid.endsWith("@g.us")) continue;
+        // 👥 Group detection — لا نرد في groups (المستخدم لا يريد البوت يرد في group)
+        if (msg.key.remoteJid.endsWith("@g.us")) {
+          console.log(`[group-skip] [${storeId}] ignoring group message from ${msg.key.remoteJid}`);
+          continue;
+        }
+        // أيضاً newsletter/channel
+        if (msg.key.remoteJid.endsWith("@newsletter") || msg.key.remoteJid.endsWith("@broadcast")) continue;
 
         // jidNormalizedUser يحذف device suffix (مثل :1)
         // إذا remoteJid هو @lid، نحاول الحصول على phone عبر:
@@ -479,7 +485,20 @@ async function initSession(storeId) {
           continue;
         }
 
-        if (!text) continue;
+        // 📷 صور/فيديو/صوت/ملصقات/مستندات — نمرّر payload خاص ليرد البوت بطلب نص
+        if (!text) {
+          let mediaKind = null;
+          if (m.imageMessage)    mediaKind = "image";
+          else if (m.videoMessage)    mediaKind = "video";
+          else if (m.audioMessage)    mediaKind = "audio";
+          else if (m.stickerMessage)  mediaKind = "sticker";
+          else if (m.documentMessage) mediaKind = "document";
+
+          if (mediaKind && globalMessageHandler) {
+            await globalMessageHandler(storeId, from, `📎|${mediaKind}`, msg);
+          }
+          continue;
+        }
 
         if (globalMessageHandler) {
           await globalMessageHandler(storeId, from, text.trim(), msg);
