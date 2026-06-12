@@ -1096,12 +1096,30 @@ function normalizeDigits(s) {
 }
 
 // ─── Conversation Router ──────────────────────────────────────────────────────
+// ⏸ Mute logic: مدة الصمت بعد إرسال المنيو إذا العميل لم يختار
+const MUTE_DURATION_MS = 5 * 60 * 1000;  // 5 دقائق
+// إشارات تكسر الـ mute فوراً (طلب مساعدة فعلي)
+const UNMUTE_TRIGGERS = /^(مسؤول|بشري|انسان|human|الغاء|إلغاء|cancel|start|ابدأ|البداية|الرئيسية|stop|توقف|إيقاف)$/i;
+
 async function handleMessage(from, incoming) {
   const { store, storeId } = storeCtx.getStore() || {};
   const session   = sessionManager.get(from);
 
   // normalize Arabic/Persian digits → English قبل أي معالجة
   incoming = normalizeDigits(incoming);
+
+  // ⏸ Mute check: إذا الجلسة مُسكّتة، تجاهل كل الرسائل (إلا إشارات الكسر)
+  if (session.mutedUntil && Date.now() < session.mutedUntil) {
+    const trimmed = String(incoming || "").trim();
+    if (UNMUTE_TRIGGERS.test(trimmed)) {
+      // العميل طلب مساعدة فعلياً — أزل الـ mute واستمر معالجة عادية
+      sessionManager.update(from, { mutedUntil: 0, menuAwaitingSince: 0 });
+    } else {
+      // مكتوم — لا رد، اطبع log فقط
+      console.log(`[mute] [${storeId}] ignoring msg from ${from} (muted ${Math.ceil((session.mutedUntil - Date.now())/1000)}s left)`);
+      return;
+    }
+  }
 
   // ── Human Handoff: العميل يطلب مسؤول ──────────────────────
   const HANDOFF_TRIGGERS = /^(احتاج مسؤول|اريد مسؤول|مسؤول|اريد التحدث مع مسؤول|بشري|انسان|human)$/i;
@@ -1862,7 +1880,8 @@ async function handleAIMode(from, text, session) {
 }
 
 async function sendCategoryMenu(from) {
-  sessionManager.update(from, { step: "CATEGORY" });
+  // ⏸ تسجيل وقت إرسال المنيو لـ mute logic
+  sessionManager.update(from, { step: "CATEGORY", menuAwaitingSince: Date.now() });
   const { store } = storeCtx.getStore() || {};
   const categories = (store?.categories || []).filter(cat =>
     (store.products || []).some(p => p.category === cat.id && isProductInStock(p))
@@ -1892,8 +1911,34 @@ async function sendCategoryMenu(from) {
 
 async function handleCategorySelection(from, msg, session) {
   if (msg === "MENU_IMAGE" || msg === "MENU_PDF") return sendFullMenuMedia(from, msg);
-  if (!msg.startsWith("CAT_")) return sendCategoryMenu(from);
+  // ⏸ لو رسالة لا تطابق صنف، فعّل mute
+  if (!msg.startsWith("CAT_") && msg !== "BACK_MAIN") {
+    return triggerMuteOnInvalidMenuChoice(from, session);
+  }
+  if (msg === "BACK_MAIN") return sendCategoryMenu(from);
   return showProductsPage(from, msg.replace("CAT_", ""), 0);
+}
+
+// ⏸ Helper: عند رسالة لا تختار من القائمة
+// مرة أولى → تنبيه. مرة ثانية → mute 5 دقائق
+async function triggerMuteOnInvalidMenuChoice(from, session) {
+  const now = Date.now();
+  const lastWarn = session.invalidMenuWarnedAt || 0;
+  // لو الـ warning تم قبل أقل من دقيقة → فعّل mute
+  if (lastWarn && (now - lastWarn) < 60_000) {
+    sessionManager.update(from, { mutedUntil: now + MUTE_DURATION_MS, invalidMenuWarnedAt: 0 });
+    return sendText(from,
+      `🤖 _البوت في وضع الانتظار_\n\n` +
+      `سيعود للرد خلال *5 دقائق*.\n` +
+      `للاستعجال: اكتب *"ابدأ"* أو *"مسؤول"* للتواصل المباشر.`
+    );
+  }
+  // تنبيه واحد فقط
+  sessionManager.update(from, { invalidMenuWarnedAt: now });
+  return sendText(from,
+    `📋 *اختر من القائمة أعلاه* — اضغط على أحد الخيارات\n\n` +
+    `_(لو أردت البدء من جديد: اكتب "ابدأ")_`
+  );
 }
 
 async function sendFullMenuMedia(from, type) {
