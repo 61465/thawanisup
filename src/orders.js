@@ -1,17 +1,23 @@
 /**
- * Orders Logger
- * Appends each confirmed order to a JSONL file (one JSON per line).
- * Easy to import into Excel, Sheets, or any analytics tool later.
+ * Orders Logger — per-store JSONL files
+ * - Stores with id "nakheel_001" use legacy orders.jsonl (backward compat)
+ * - All other stores use data/orders_{storeId}.jsonl (per-store isolation)
  */
 
 const fs = require("fs");
 const path = require("path");
 
-const LOG_PATH = process.env.ORDERS_LOG_PATH || path.join(__dirname, "..", "data", "orders.jsonl");
+const DATA_DIR = path.join(__dirname, "..", "data");
+
+function _fileFor(storeId) {
+  if (!storeId || storeId === "nakheel_001") {
+    return process.env.ORDERS_LOG_PATH || path.join(DATA_DIR, "orders.jsonl");
+  }
+  return path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+}
 
 function ensureDir() {
-  const dir = path.dirname(LOG_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 function logOrder(order) {
@@ -21,7 +27,8 @@ function logOrder(order) {
       timestamp: new Date().toISOString(),
       ...order,
     };
-    fs.appendFileSync(LOG_PATH, JSON.stringify(record) + "\n", "utf8");
+    const file = _fileFor(order.storeId);
+    fs.appendFileSync(file, JSON.stringify(record) + "\n", "utf8");
     return true;
   } catch (err) {
     console.error("❌ Failed to log order:", err.message);
@@ -29,10 +36,12 @@ function logOrder(order) {
   }
 }
 
-function readOrders(limit = 100) {
+// Read orders for a specific store (or all if storeId omitted)
+function readOrders(storeId, limit = 100) {
   try {
-    if (!fs.existsSync(LOG_PATH)) return [];
-    const lines = fs.readFileSync(LOG_PATH, "utf8").trim().split("\n").filter(Boolean);
+    const file = _fileFor(storeId);
+    if (!fs.existsSync(file)) return [];
+    const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
     return lines.slice(-limit).map((l) => {
       try { return JSON.parse(l); } catch { return null; }
     }).filter(Boolean);
@@ -42,10 +51,23 @@ function readOrders(limit = 100) {
   }
 }
 
-function updateOrderStatus(orderId, status) {
+function updateOrderStatus(storeIdOrOrderId, orderIdOrStatus, statusMaybe) {
+  // Backward compat: legacy signature (orderId, status) → search across all stores
+  let storeId, orderId, status;
+  if (statusMaybe === undefined) {
+    orderId = storeIdOrOrderId;
+    status = orderIdOrStatus;
+    storeId = null;
+  } else {
+    storeId = storeIdOrOrderId;
+    orderId = orderIdOrStatus;
+    status = statusMaybe;
+  }
+
   try {
-    if (!fs.existsSync(LOG_PATH)) return false;
-    const lines = fs.readFileSync(LOG_PATH, "utf8").trim().split("\n").filter(Boolean);
+    const file = _fileFor(storeId);
+    if (!fs.existsSync(file)) return false;
+    const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
     const updated = lines.map(l => {
       try {
         const obj = JSON.parse(l);
@@ -53,7 +75,7 @@ function updateOrderStatus(orderId, status) {
         return JSON.stringify(obj);
       } catch { return l; }
     });
-    fs.writeFileSync(LOG_PATH, updated.join("\n") + "\n", "utf8");
+    fs.writeFileSync(file, updated.join("\n") + "\n", "utf8");
     return true;
   } catch (err) {
     console.error("❌ Failed to update order:", err.message);
