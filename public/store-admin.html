@@ -2988,12 +2988,23 @@ async function loadProducts() {
     allProducts   = products;
     allCategories = categories;
 
-    // Category filter tabs
+    // Category filter tabs مع أزرار تعديل/حذف
+    const orphanCount = products.filter(p => !p.category || !categories.find(c => c.id === p.category)).length;
     document.getElementById("catFilter").innerHTML =
       `<button class="cat-btn ${activeCat==='all'?'active':''}" onclick="filterCat('all')">🍽️ الكل (${products.length})</button>` +
-      categories.map(c =>
-        `<button class="cat-btn ${activeCat===c.id?'active':''}" onclick="filterCat('${c.id}')">${c.emoji} ${esc(c.name)} (${products.filter(p=>p.category===c.id).length}) <span onclick="event.stopPropagation();deleteCat('${c.id}')" style="font-size:10px;margin-right:4px;opacity:0.6">✕</span></button>`
-      ).join("");
+      categories.map(c => {
+        const count = products.filter(p=>p.category===c.id).length;
+        return `<button class="cat-btn ${activeCat===c.id?'active':''}" onclick="filterCat('${c.id}')" data-cat-id="${c.id}">
+          ${c.emoji} ${esc(c.name)} (${count})
+          <span class="cat-btn-actions" style="display:inline-flex;gap:3px;margin-inline-start:6px;vertical-align:middle">
+            <span onclick="event.stopPropagation();editCategory('${c.id}')" title="تعديل الصنف" style="cursor:pointer;font-size:11px;background:rgba(255,255,255,0.25);border-radius:50%;inline-size:18px;block-size:18px;display:inline-flex;align-items:center;justify-content:center">✏️</span>
+            <span onclick="event.stopPropagation();deleteCat('${c.id}')" title="حذف الصنف" style="cursor:pointer;font-size:10px;background:rgba(255,255,255,0.25);border-radius:50%;inline-size:18px;block-size:18px;display:inline-flex;align-items:center;justify-content:center">🗑️</span>
+          </span>
+        </button>`;
+      }).join("") +
+      (orphanCount > 0
+        ? `<button class="cat-btn ${activeCat==='orphan'?'active':''}" onclick="filterCat('orphan')" style="background:#fef3c7;color:#92400e;border:1px dashed #d97706">📦 بدون صنف (${orphanCount})</button>`
+        : '');
 
     renderSubCatBar();
     renderProducts();
@@ -3085,7 +3096,11 @@ function refreshSubCategoryOptions(selectedSubId = "") {
 }
 
 function renderProducts() {
-  const filtered = activeCat === "all" ? allProducts : allProducts.filter(p => p.category === activeCat);
+  const filtered = activeCat === "all"
+    ? allProducts
+    : activeCat === "orphan"
+      ? allProducts.filter(p => !p.category || !allCategories.find(c => c.id === p.category))
+      : allProducts.filter(p => p.category === activeCat);
   const grid = document.getElementById("productsGrid");
 
   if (!filtered.length) {
@@ -3212,18 +3227,12 @@ function openProductModal(id = null) {
   document.getElementById("pm_stock").value       = (typeof p?.stock === "number") ? p.stock : "";
   toggleStockField();
 
-  // Reset image picker state
+  // Reset image picker state (الصور محملة الآن عبر loadProductImages أعلاه)
   pendingProductImage = null;
-  document.getElementById("pm_file").value = "";
-  const prev = document.getElementById("pm_imgPreview");
-  const ph   = document.getElementById("pm_imgPlaceholder");
-  if (p?.imageUrl) {
-    prev.src = p.imageUrl; prev.style.display = "block";
-    ph.style.display = "none";
-  } else {
-    prev.style.display = "none";
-    ph.style.display = "flex";
-  }
+  const pmFile = document.getElementById("pm_file");
+  if (pmFile) pmFile.value = "";
+  // الـ pm_imgPreview و pm_imgPlaceholder حُذفوا — الـ gallery أصبح ديناميكي
+  // loadProductImages(p) قد نُودي مسبقاً
 
   document.getElementById("productModal").style.display = "";
 }
@@ -3551,15 +3560,94 @@ async function saveCategory() {
   } catch { showToast("فشل الحفظ", "error"); }
 }
 
+// ⭐ تعديل اسم الصنف وإيموجي (inline prompt — بسيط، بدون modal)
+async function editCategory(id) {
+  const cat = allCategories.find(c => c.id === id);
+  if (!cat) return;
+  const newName = prompt(`✏️ تعديل اسم الصنف:\n(اتركه فارغاً للإلغاء)`, cat.name);
+  if (newName === null) return;
+  if (!newName.trim()) { showToast("الاسم لا يمكن أن يكون فارغاً", "error"); return; }
+  const newEmoji = prompt(`الإيموجي (اختياري):`, cat.emoji || "🍽️") || cat.emoji;
+  try {
+    await api("PUT", `/store/categories/${id}`, { name: newName.trim(), emoji: newEmoji });
+    showToast("✅ تم تعديل الصنف", "success");
+    loadProducts();
+  } catch (e) {
+    showToast("فشل التعديل: " + (e?.data?.error || e.message), "error");
+  }
+}
+
+// ⭐ حذف ذكي: 3 خيارات (نقل / تجريد / حذف الكل)
 async function deleteCat(id) {
   const cat = allCategories.find(c => c.id === id);
-  if (!confirm(`حذف صنف "${cat?.name}"؟ المنتجات ستبقى لكن بدون صنف.`)) return;
+  if (!cat) return;
+  const count = allProducts.filter(p => p.category === id).length;
+
+  // لو الصنف فارغ، حذف مباشر
+  if (count === 0) {
+    if (!confirm(`حذف صنف "${cat.emoji} ${cat.name}"؟ (لا يحوي منتجات)`)) return;
+    try {
+      await api("DELETE", `/store/categories/${id}?action=orphan`);
+      showToast("✅ تم حذف الصنف", "success");
+      if (activeCat === id) activeCat = "all";
+      loadProducts();
+    } catch (e) { showToast("فشل الحذف: " + (e?.data?.error || e.message), "error"); }
+    return;
+  }
+
+  // لو يحوي منتجات، اعرض خيارات
+  const otherCats = allCategories.filter(c => c.id !== id);
+  const otherCatsText = otherCats.length > 0
+    ? otherCats.map((c, i) => `  ${i + 1}. ${c.emoji} ${c.name}`).join("\n")
+    : "  (لا توجد أصناف أخرى)";
+
+  const choice = prompt(
+    `🗑️ حذف صنف "${cat.emoji} ${cat.name}" يحوي ${count} منتج/خدمة.\n\n` +
+    `ما الذي تريد فعله بالمنتجات؟\n\n` +
+    `1️⃣ — اتركها بدون صنف (آمن — الإفتراضي)\n` +
+    `2️⃣ — نقلها لصنف آخر\n` +
+    `3️⃣ — حذفها مع الصنف (تحذير: لا رجعة!)\n\n` +
+    `اكتب 1 أو 2 أو 3:`,
+    "1"
+  );
+  if (!choice) return;
+
+  let action = "orphan";
+  let moveTo = "";
+
+  if (choice.trim() === "2") {
+    if (otherCats.length === 0) {
+      showToast("لا توجد أصناف أخرى للنقل إليها", "warn");
+      return;
+    }
+    const target = prompt(
+      `إلى أي صنف تنقل المنتجات؟\n\nالأصناف المتاحة:\n${otherCatsText}\n\n` +
+      `اكتب رقم الصنف (1 إلى ${otherCats.length}):`
+    );
+    const targetIdx = parseInt(target);
+    if (!targetIdx || targetIdx < 1 || targetIdx > otherCats.length) {
+      showToast("اختيار غير صحيح", "error");
+      return;
+    }
+    moveTo = otherCats[targetIdx - 1].id;
+    action = "move";
+  } else if (choice.trim() === "3") {
+    if (!confirm(`⚠️ تحذير!\nسيتم حذف ${count} منتج بشكل نهائي.\nهل أنت متأكد 100%؟`)) return;
+    action = "delete";
+  }
+
   try {
-    await api("DELETE", `/store/categories/${id}`);
-    showToast("تم حذف الصنف", "");
+    const params = new URLSearchParams({ action, ...(moveTo ? { moveTo } : {}) });
+    const r = await api("DELETE", `/store/categories/${id}?${params}`);
+    const msg = action === "delete" ? `🗑️ تم حذف الصنف + ${r.affectedProducts} منتج`
+              : action === "move"   ? `↪️ تم النقل: ${r.affectedProducts} منتج لصنف آخر`
+              : `📦 تم حذف الصنف — ${r.affectedProducts} منتج بدون صنف الآن`;
+    showToast(msg, "success");
     if (activeCat === id) activeCat = "all";
     loadProducts();
-  } catch { showToast("فشل الحذف", "error"); }
+  } catch (e) {
+    showToast("فشل الحذف: " + (e?.data?.error || e.message), "error");
+  }
 }
 
 // ─── Orders ────────────────────────────────────────────────────────────────────

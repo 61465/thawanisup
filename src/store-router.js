@@ -592,19 +592,74 @@ router.post("/store/categories", auth, (req, res) => {
   const store = getStore(req.storeId);
   if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
 
-  const cat = { id: "cat_" + Date.now(), name: req.body.name || "", emoji: req.body.emoji || "🍽️" };
+  const cat = {
+    id: "cat_" + Date.now(),
+    name:  String(req.body.name  || "").trim().slice(0, 60),
+    emoji: String(req.body.emoji || "🍽️").trim().slice(0, 8),
+  };
+  if (!cat.name) return res.status(400).json({ error: "اسم الصنف مطلوب" });
   const categories = [...(store.categories || []), cat];
   updateStore(req.storeId, { categories });
   res.json({ ok: true, category: cat });
 });
 
+// PUT /store/categories/:id — تعديل اسم/إيموجي الصنف
+router.put("/store/categories/:id", auth, (req, res) => {
+  const store = getStore(req.storeId);
+  if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
+  const categories = store.categories || [];
+  const idx = categories.findIndex(c => c.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: "الصنف غير موجود" });
+
+  const patch = {};
+  if (req.body.name  !== undefined) patch.name  = String(req.body.name  || "").trim().slice(0, 60);
+  if (req.body.emoji !== undefined) patch.emoji = String(req.body.emoji || "").trim().slice(0, 8);
+  if (patch.name === "") return res.status(400).json({ error: "اسم الصنف لا يمكن أن يكون فارغاً" });
+
+  categories[idx] = { ...categories[idx], ...patch };
+  updateStore(req.storeId, { categories });
+  res.json({ ok: true, category: categories[idx] });
+});
+
+// DELETE /store/categories/:id — مع خيار للمنتجات
+// query/body: action = "delete" (default) | "orphan" | "move"
+// لو "move": targetCategoryId مطلوب
 router.delete("/store/categories/:id", auth, (req, res) => {
   const store = getStore(req.storeId);
   if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
 
-  const categories = (store.categories || []).filter(c => c.id !== req.params.id);
-  updateStore(req.storeId, { categories });
-  res.json({ ok: true });
+  const targetId = req.params.id;
+  const action   = String(req.query.action || req.body?.action || "orphan").toLowerCase();
+  const moveTo   = String(req.query.moveTo || req.body?.moveTo || "").trim();
+
+  const categories = (store.categories || []).filter(c => c.id !== targetId);
+  let products = store.products || [];
+  const affected = products.filter(p => p.category === targetId);
+
+  if (action === "delete") {
+    // احذف كل المنتجات في هذا الصنف
+    products = products.filter(p => p.category !== targetId);
+  } else if (action === "move") {
+    if (!moveTo) return res.status(400).json({ error: "موكان النقل (moveTo) مطلوب" });
+    const targetExists = (store.categories || []).some(c => c.id === moveTo);
+    if (!targetExists) return res.status(400).json({ error: "الصنف الهدف غير موجود" });
+    products = products.map(p =>
+      p.category === targetId ? { ...p, category: moveTo, subCategoryId: "" } : p
+    );
+  } else {
+    // orphan (default): اترك المنتجات بدون صنف (category = "")
+    products = products.map(p =>
+      p.category === targetId ? { ...p, category: "", subCategoryId: "" } : p
+    );
+  }
+
+  updateStore(req.storeId, { categories, products });
+  res.json({
+    ok: true,
+    action,
+    affectedProducts: affected.length,
+    totalProducts: products.length,
+  });
 });
 
 // ─── Store change password (with bcrypt) ─────────────────────────────────────
