@@ -1166,6 +1166,272 @@ function _detectLang(text) {
   return "ar";
 }
 
+// 🎛️ Owner commands من واتساب — يحوّل رسالة المالك إلى action على الطلب
+// returns: true لو الأمر تمت معالجته، false لو ليس أمر مالك
+async function handleOwnerCommand(from, text, store, storeId) {
+  if (!text || text.length < 2 || text.length > 200) return false;
+
+  // الأنماط المدعومة:
+  //   "قبول"                       → آخر طلب pending
+  //   "قبول ORD-1234567"            → طلب محدد
+  //   "رفض ORD-1234567 السبب"
+  //   "جاهز ORD-1234567"            → ready_pickup
+  //   "بدأ ORD-1234567"             → preparing
+  //   "خرج ORD-1234567"             → out_for_delivery
+  //   "تم ORD-1234567"              → completed
+  //   "إلغاء ORD-1234567 السبب"     → cancelled (by store)
+  //   "طلبات"                       → قائمة آخر 5 pending
+  //   "مساعدة" أو "help"            → قائمة الأوامر
+
+  const tl = text.toLowerCase();
+  const ordersFile = storeId === "nakheel_001"
+    ? path.join(DATA_DIR, "orders.jsonl")
+    : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+
+  // قائمة الأوامر / المساعدة
+  if (/^(مساعدة|أوامر|اوامر|help|commands)$/i.test(text)) {
+    await sendText(from,
+      `🎛️ *أوامر إدارة الطلبات من واتساب*\n\n` +
+      `*قبول* — يؤكد آخر طلب pending\n` +
+      `*قبول ORD-1234567* — طلب محدد\n` +
+      `*رفض ORD-1234567 السبب*\n` +
+      `*بدأ ORD-1234567* — قيد التحضير\n` +
+      `*جاهز ORD-1234567* — جاهز للاستلام\n` +
+      `*خرج ORD-1234567* — المندوب في الطريق\n` +
+      `*تم ORD-1234567* — تم التسليم\n` +
+      `*إلغاء ORD-1234567 السبب*\n\n` +
+      `*طلبات* — قائمة آخر 5 طلبات pending\n\n` +
+      `💡 يمكنك حذف "ORD-" والاكتفاء برقم الطلب`
+    );
+    return true;
+  }
+
+  // قائمة طلبات pending
+  if (/^(طلبات|orders|الطلبات)$/i.test(text)) {
+    try {
+      if (!fs.existsSync(ordersFile)) {
+        await sendText(from, "لا توجد طلبات.");
+        return true;
+      }
+      const orders = fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean)
+        .map(l => { try { return JSON.parse(l); } catch { return null; } })
+        .filter(o => o && o.status === "pending_confirmation" && !o._test)
+        .slice(-5).reverse();
+      if (!orders.length) {
+        await sendText(from, "✅ لا توجد طلبات بانتظار التأكيد");
+        return true;
+      }
+      const list = orders.map((o, i) =>
+        `${i + 1}. *${o.orderId}* — ${o.customerName || o.customerPhone}\n` +
+        `   ${o.total} ${o.currency || "ر.س"} | ${(o.items || []).map(it => it.name).join("، ").slice(0, 40)}`
+      ).join("\n\n");
+      await sendText(from,
+        `📋 *آخر ${orders.length} طلبات بانتظار التأكيد:*\n\n${list}\n\n` +
+        `للقبول: *قبول ${orders[0].orderId}*\n` +
+        `للرفض: *رفض ${orders[0].orderId} السبب*`
+      );
+      return true;
+    } catch (e) {
+      console.warn("[owner-cmd] طلبات failed:", e.message);
+      return false;
+    }
+  }
+
+  // أوامر تعديل حالة (قبول/رفض/جاهز/بدأ/خرج/تم/إلغاء)
+  const cmdMatch = text.match(/^(قبول|اكد|أكد|confirm|رفض|reject|بدأ|بدا|preparing|جاهز|ready|خرج|delivery|تم|completed|تسليم|إلغاء|الغاء|cancel)\s*(?:ORD-?)?(\d+)?\s*(.*)$/i);
+  if (!cmdMatch) return false;
+
+  const cmd     = cmdMatch[1].toLowerCase();
+  const orderNumPart = cmdMatch[2] || "";
+  const extra   = (cmdMatch[3] || "").trim();
+
+  // ابحث عن الطلب
+  if (!fs.existsSync(ordersFile)) {
+    await sendText(from, "لا توجد طلبات في المتجر");
+    return true;
+  }
+  const allOrders = fs.readFileSync(ordersFile, "utf8").split("\n").filter(Boolean)
+    .map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+
+  let order;
+  if (orderNumPart) {
+    // بحث برقم محدد (آخر 7 أرقام لو ORD-1234567 أو فقط 1234567)
+    order = allOrders.find(o => o.orderId && o.orderId.endsWith(orderNumPart));
+  } else if (/^(قبول|اكد|أكد|confirm)$/i.test(cmd)) {
+    // قبول بدون orderId → آخر طلب pending
+    const pending = allOrders.filter(o => o.status === "pending_confirmation" && !o._test);
+    order = pending[pending.length - 1];
+  }
+
+  if (!order) {
+    await sendText(from,
+      `❌ لم أعثر على الطلب${orderNumPart ? ` *${orderNumPart}*` : ""}.\n\nاكتب *طلبات* لرؤية القائمة، أو *مساعدة* للأوامر`
+    );
+    return true;
+  }
+
+  // تنفيذ الأمر
+  const internalSelfReq = { storeId, impersonatedBy: null };
+
+  try {
+    if (/^(قبول|اكد|أكد|confirm)$/i.test(cmd)) {
+      if (order.status === "confirmed") {
+        await sendText(from, `⚠️ الطلب *${order.orderId}* مؤكد مسبقاً`);
+        return true;
+      }
+      if (["rejected","cancelled","completed"].includes(order.status)) {
+        await sendText(from, `⚠️ الطلب *${order.orderId}* حالته *${order.status}* — لا يمكن تأكيده`);
+        return true;
+      }
+      // تنفيذ نفس logic /store/orders/:id/confirm
+      const { addPoints } = require("./loyalty");
+      const { upsertCustomer } = require("./customers");
+      if (order.customerPhone && hasFeature(store?.plan, "customerRegistry")) {
+        try {
+          upsertCustomer({
+            phone: String(order.customerPhone).replace(/\D/g, ""),
+            name: order.customerName || "",
+            location: order.customerLocation || "",
+            total: Number(order.total || 0),
+            storeId,
+          });
+        } catch {}
+      }
+      let earned = null;
+      if (order.customerPhone) {
+        try { earned = addPoints(storeId, order.customerPhone, Number(order.total || 0), order.orderId, store); } catch {}
+      }
+      // حدّث الـ status
+      const stamp = new Date().toISOString();
+      const updated = allOrders.map(o => {
+        if (o.orderId === order.orderId) {
+          o.status = "confirmed";
+          o.statusUpdatedAt = stamp;
+        }
+        return JSON.stringify(o);
+      });
+      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+
+      // أبلغ العميل
+      const pointsLine = (earned && earned.newPoints > 0)
+        ? `\n🏆 كسبت *${earned.newPoints}* نقطة! رصيدك: *${earned.totalPoints}*\n` : "";
+      const confirmMsg =
+        `✅ *تم تأكيد طلبك!*\n\nرقم الطلب: *${order.orderId}*\n` + pointsLine +
+        `سيتم توصيل طلبك قريباً 🚴\n\nشكراً لاختيارك *${store?.storeName || ""}*`;
+      try {
+        await waMgr.sendMessage(storeId, order.customerPhone, confirmMsg);
+      } catch {}
+
+      await sendText(from,
+        `✅ تأكيد *${order.orderId}*\nأُبلغ العميل ${order.customerName || ""} بالقبول${earned && earned.newPoints > 0 ? ` (+${earned.newPoints} نقطة)` : ""}`
+      );
+      return true;
+    }
+
+    if (/^(رفض|reject)$/i.test(cmd)) {
+      const reason = extra || "غير محدد";
+      const stamp = new Date().toISOString();
+      const updated = allOrders.map(o => {
+        if (o.orderId === order.orderId) {
+          o.status = "rejected";
+          o.rejectedAt = stamp;
+          o.rejectReason = reason;
+          o.statusUpdatedAt = stamp;
+        }
+        return JSON.stringify(o);
+      });
+      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+      // أبلغ العميل
+      try {
+        await waMgr.sendMessage(storeId, order.customerPhone,
+          `❌ *نأسف، لم نتمكن من تنفيذ طلبك*\n\nرقم الطلب: *${order.orderId}*\n📋 السبب: ${reason}\n\nنأسف على الإزعاج 🙏\n\n*${store?.storeName || ""}*`);
+      } catch {}
+      await sendText(from, `❌ رفض *${order.orderId}* (السبب: ${reason})\nأُبلغ العميل`);
+      return true;
+    }
+
+    // status updates: بدأ/جاهز/خرج/تم
+    const STATUS_MAP = {
+      "بدأ": ["preparing", "👨‍🍳 *جاري تحضير طلبك الآن*\n\nسنخبرك بمجرد جاهزيته 🚀"],
+      "بدا": ["preparing", "👨‍🍳 *جاري تحضير طلبك الآن*\n\nسنخبرك بمجرد جاهزيته 🚀"],
+      "preparing": ["preparing", "👨‍🍳 *جاري تحضير طلبك الآن*\n\nسنخبرك بمجرد جاهزيته 🚀"],
+      "جاهز": ["ready_pickup", `✅ *طلبك جاهز للاستلام*\n\nيمكنك الحضور لـ *${store?.storeName || ""}* لاستلامه 🏪`],
+      "ready": ["ready_pickup", `✅ *طلبك جاهز للاستلام*\n\nيمكنك الحضور لـ *${store?.storeName || ""}* لاستلامه 🏪`],
+      "خرج": ["out_for_delivery", `🚴 *المندوب في الطريق إليك*\n\nاستعد لاستلام طلبك من *${store?.storeName || ""}* 📍`],
+      "delivery": ["out_for_delivery", `🚴 *المندوب في الطريق إليك*\n\nاستعد لاستلام طلبك من *${store?.storeName || ""}* 📍`],
+      "تم": ["completed", null], // null = نُرسل رسالة التقييم
+      "completed": ["completed", null],
+      "تسليم": ["completed", null],
+    };
+    const mapEntry = STATUS_MAP[cmd];
+    if (mapEntry) {
+      const [newStatus, customerMsg] = mapEntry;
+      const stamp = new Date().toISOString();
+      const updated = allOrders.map(o => {
+        if (o.orderId === order.orderId) {
+          o.status = newStatus;
+          o.statusUpdatedAt = stamp;
+          if (newStatus === "completed") o.deliveredAt = stamp;
+        }
+        return JSON.stringify(o);
+      });
+      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+
+      if (customerMsg) {
+        try { await waMgr.sendMessage(storeId, order.customerPhone, customerMsg); } catch {}
+      } else if (newStatus === "completed") {
+        // رسالة تقييم
+        const ratingMsg =
+          `✅ *تم تسليم طلبك بنجاح!*\n\n` +
+          `شكراً لاختيارك *${store?.storeName || ""}* 🙏\n\n` +
+          `كيف تقيّم تجربتك معنا؟\n\n` +
+          `1️⃣ — سيء\n2️⃣ — مقبول\n3️⃣ — جيد\n4️⃣ — ممتاز\n5️⃣ — رائع جداً 🔥\n\n` +
+          `_أرسل الرقم للتقييم_`;
+        try { await waMgr.sendMessage(storeId, order.customerPhone, ratingMsg); } catch {}
+        pendingRatings.set(order.customerPhone, {
+          storeId, orderId: order.orderId, storeName: store?.storeName || "", store,
+          timer: null, reminderTimer: null,
+        });
+      }
+      const statusLabels = {
+        preparing: "🍳 قيد التحضير",
+        ready_pickup: "✅ جاهز للاستلام",
+        out_for_delivery: "🚴 خرج للتوصيل",
+        completed: "✓ تم التسليم",
+      };
+      await sendText(from, `${statusLabels[newStatus] || newStatus} — *${order.orderId}*\nأُبلغ العميل ${order.customerName || ""}`);
+      return true;
+    }
+
+    if (/^(إلغاء|الغاء|cancel)$/i.test(cmd)) {
+      const reason = extra || "ألغى المالك الطلب";
+      const stamp = new Date().toISOString();
+      const updated = allOrders.map(o => {
+        if (o.orderId === order.orderId) {
+          o.status = "cancelled";
+          o.cancelledAt = stamp;
+          o.cancelledBy = "store";
+          o.cancelReason = reason;
+        }
+        return JSON.stringify(o);
+      });
+      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+      try {
+        await waMgr.sendMessage(storeId, order.customerPhone,
+          `🚫 *تم إلغاء طلبك*\n\nرقم الطلب: *${order.orderId}*\nالسبب: ${reason}\n\nيسعدنا خدمتك مرة أخرى 🌸`);
+      } catch {}
+      await sendText(from, `🚫 إلغاء *${order.orderId}* (السبب: ${reason})`);
+      return true;
+    }
+  } catch (e) {
+    console.error("[owner-cmd] failed:", e.message);
+    await sendText(from, `⚠️ خطأ في تنفيذ الأمر: ${e.message}`);
+    return true;
+  }
+
+  return false;
+}
+
 // 🚨 Fraud detection — يحسب عدد cancellations لرقم معين
 function _detectFraud(storeId, phone) {
   try {
@@ -1198,6 +1464,15 @@ async function handleMessage(from, incoming) {
 
   // normalize Arabic/Persian digits → English قبل أي معالجة
   incoming = normalizeDigits(incoming);
+
+  // 🎛️ Owner commands من واتساب: قبول/رفض/جاهز/خرج/تم — للمالك فقط
+  const customerPhone = phoneNum(from);
+  const ownerPhoneClean = String(store?.ownerPhone || "").replace(/\D/g, "");
+  if (ownerPhoneClean && customerPhone === ownerPhoneClean) {
+    const result = await handleOwnerCommand(from, String(incoming || "").trim(), store, storeId);
+    if (result === true) return; // الأمر تمت معالجته
+    // result === false → استكمل الـ flow الطبيعي (المالك يطلب من متجره نفسه)
+  }
 
   // ⏸ Mute check: إذا الجلسة مُسكّتة، تجاهل كل الرسائل (إلا إشارات الكسر)
   if (session.mutedUntil && Date.now() < session.mutedUntil) {
@@ -3037,6 +3312,8 @@ async function handleConfirmOrder(from, msg, session) {
       const ownerMsg =
         `🔔 *طلب جديد — ${storeName}*\n\n` +
         `رقم الطلب: *${orderId}*\n` +
+        `_للقبول السريع: اكتب_ *قبول*\n` +
+        `_للرفض: اكتب_ *رفض ${orderId.replace("ORD-", "")} السبب*\n` +
         fraudWarning +
         `العميل: *${session.customerName}*\n` +
         `الهاتف: ${phoneNum(from)}\n` +
@@ -3064,7 +3341,7 @@ async function handleConfirmOrder(from, msg, session) {
       catch (e) { console.warn("[owner-notify] failed:", e.message); }
     }
 
-    // Generate + send invoice image
+    // Generate + send invoice image (مرة واحدة فقط — يُعلَّم بـ invoiceSent)
     if (hasFeature(store?.plan, "invoiceImage")) {
       try {
         const { filePath } = await generateInvoiceImage({
@@ -3078,6 +3355,23 @@ async function handleConfirmOrder(from, msg, session) {
           date: new Date().toISOString().slice(0, 10),
         });
         await sendImage(from, filePath, `🧾 فاتورتك — ${orderId}`);
+        // علِّم الطلب لمنع تكرار الفاتورة عند تأكيد المالك
+        try { require("./orders").updateOrderStatus(storeId, orderId, "pending_confirmation"); } catch {}
+        try {
+          const ordersFile = storeId === "nakheel_001"
+            ? path.join(DATA_DIR, "orders.jsonl")
+            : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+          const content = fs.readFileSync(ordersFile, "utf8");
+          const lines = content.split("\n").filter(Boolean);
+          const updated = lines.map(l => {
+            try {
+              const o = JSON.parse(l);
+              if (o.orderId === orderId) o.invoiceSent = true;
+              return JSON.stringify(o);
+            } catch { return l; }
+          });
+          fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+        } catch {}
       } catch (err) {
         console.error("Invoice image error:", err.message);
       }

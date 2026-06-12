@@ -1332,10 +1332,10 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
       `شكراً لاختيارك *${storeName}*`;
     try { await waMgr.sendMessage(req.storeId, order.customerPhone, confirmMsg); } catch {}
 
-    // Generate and send invoice image (Pro+ only)
+    // Generate and send invoice image (Pro+ only) — يُرسَل مرة واحدة فقط حتى لو تأكيد مكرر
     const { PUBLIC_URL } = process.env;
     const storeFeatures = getPlanFeatures(store?.plan);
-    if (storeFeatures.invoiceImage && PUBLIC_URL) {
+    if (storeFeatures.invoiceImage && PUBLIC_URL && !order.invoiceSent) {
       try {
         const img = await generateInvoiceImage({
           orderId:          order.orderId,
@@ -1353,6 +1353,8 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
         });
         try {
           await waMgr.sendImage(req.storeId, order.customerPhone, img.filePath, `🧾 فاتورة طلبك رقم ${orderId}`);
+          // علِّم الطلب أن الفاتورة أُرسلت لمنع التكرار
+          updateOrderStatus(req.storeId, orderId, "confirmed", { invoiceSent: true });
         } catch {}
       } catch (invErr) {
         console.error("Invoice generation error:", invErr.message);
