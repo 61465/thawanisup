@@ -20,6 +20,70 @@
    • prefers-reduced-motion — احترام تفضيلات المستخدم
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════
+   🔧 CRITICAL FIXES — يطغى على الـ inline CSS الأصلي
+   (un-layered = أعلى priority من كل layers)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* الـ scroll يجب أن يعمل دائماً على html + body */
+html {
+  overflow-x: clip !important; /* clip لا يخلق scroll container، hidden يخلق ويكسر sticky */
+  overflow-y: auto !important;
+  block-size: auto !important;
+  min-block-size: 100%;
+  /* بدون scroll-behavior smooth — تركها للـ user */
+}
+
+body {
+  overflow-x: clip !important;
+  overflow-y: visible !important; /* visible = الـ scroll يحدث على html */
+  /* لا overscroll-behavior — كان يكسر smooth scroll في بعض المتصفحات */
+  min-block-size: 100dvh;
+  max-inline-size: 100vw;
+  position: relative;
+}
+
+/* container أساسي على mobile يجب أن يكون auto height */
+@media (max-width: 768px) {
+  #appScreen {
+    min-block-size: 100dvh !important;
+    block-size: auto !important; /* لا تحدد height ثابت */
+    overflow: visible !important;
+  }
+
+  .main-wrap,
+  main,
+  .main {
+    min-block-size: 100dvh !important;
+    block-size: auto !important;
+    max-block-size: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    position: relative;
+    /* مهم: padding تحتي لـ bottom-nav + safe area */
+    padding-block-end: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* sticky على navbar/page-header يحتاج scrollable parent */
+  .navbar,
+  .page-header,
+  .tabs {
+    /* تأكد من sticky position */
+    position: sticky !important;
+  }
+
+  /* modal scroll داخلي */
+  .modal {
+    max-block-size: min(92dvh, 92vh) !important;
+    overflow: hidden !important;
+  }
+  .modal-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+}
+
 /* ─── Cascade Layers (ترتيب priority واضح) ───────────────────────── */
 @layer reset, base, components, mobile, utilities, overrides;
 
@@ -44,9 +108,7 @@
     margin: 0;
     /* dvh = dynamic viewport — يحل bug iOS Safari address bar */
     min-block-size: 100dvh;
-    overflow-x: clip; /* clip أقوى من hidden، يمنع scroll */
-    /* يمنع overscroll bounce على iOS */
-    overscroll-behavior-y: none;
+    /* overflow-x: clip و overflow-y: visible موجودة في الـ critical fixes أعلاه */
   }
 
   /* تحسين images تلقائياً */
@@ -800,6 +862,278 @@
   /* Web App على mobile — يبدأ من 0 (no extra padding) */
   @media (max-width: 768px) and (display-mode: browser) {
     /* default styling سليم */
+  }
+
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 تحسينات إضافية لصفحة الماستر (master.html) — overrides دقيقة
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ─── Sidebar مخفي تماماً على mobile ──────────────────────────── */
+  .sidebar { display: none !important; }
+
+  /* ─── #appScreen عمودي بـ flex لكن مع scroll ─────────────────── */
+  #appScreen {
+    display: flex !important;
+    flex-direction: column !important;
+    inline-size: 100%;
+  }
+
+  /* ─── main-wrap: التركيز الأهم ────────────────────────────────── */
+  .main-wrap {
+    inline-size: 100% !important;
+    max-inline-size: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    padding-block-end: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* ─── كل views للماستر يأخذون padding موحد ───────────────────── */
+  #dashView,
+  #storesView,
+  #plansView,
+  #bankView,
+  #welcomeView,
+  #guideView,
+  #leadsView,
+  #pendingView,
+  #platformBotView {
+    padding: 14px !important;
+  }
+
+  /* ─── Page Header — sticky يعمل الآن ──────────────────────────── */
+  .page-header {
+    position: sticky !important;
+    inset-block-start: 0 !important;
+    z-index: 50 !important;
+    background: rgba(255,255,255,0.96) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+    backdrop-filter: blur(14px) saturate(180%) !important;
+    padding: 14px !important;
+    margin-block-end: 14px !important;
+    border-block-end: 1px solid rgba(0,0,0,0.06) !important;
+    margin-inline: -14px !important;
+  }
+
+  .page-header h1 {
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: var(--green, #16a34a) !important;
+  }
+
+  /* ─── stat-card يبدو احترافي ──────────────────────────────────── */
+  .stat-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.04) !important;
+    border-inline-end: 4px solid var(--gold, #C9A24B) !important;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .stat-card.green { border-inline-end-color: var(--green, #16a34a) !important; }
+  .stat-card.danger { border-inline-end-color: var(--danger, #dc2626) !important; }
+  .stat-card.warn { border-inline-end-color: var(--warn, #f59e0b) !important; }
+  .stat-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+  }
+
+  /* ─── store-card احترافي ──────────────────────────────────────── */
+  .store-card {
+    padding: 16px !important;
+    margin-block-end: 12px !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.05) !important;
+    border-inline-end: 4px solid var(--green, #16a34a) !important;
+  }
+
+  .store-card-top {
+    margin-block-end: 14px !important;
+  }
+
+  /* ─── Bottom Nav الذي كان مكسور ─────────────────────────────── */
+  .bottom-nav {
+    display: block !important;
+    position: fixed !important;
+    inset-block-end: 0 !important;
+    inset-inline: 0 !important;
+    z-index: 100 !important;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--green, #16a34a) 92%, transparent),
+      var(--green, #16a34a)) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    padding-block-end: env(safe-area-inset-bottom, 0px) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+  }
+
+  .bottom-nav-inner {
+    display: flex !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .bottom-nav-inner::-webkit-scrollbar { display: none !important; }
+
+  .bnav-item {
+    flex: 1 !important;
+    min-inline-size: 64px !important;
+    min-block-size: 56px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding-block: 8px !important;
+    padding-inline: 4px !important;
+    color: rgba(255,255,255,0.72) !important;
+    background: transparent !important;
+    border: 0 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: color .15s, background .15s;
+  }
+  .bnav-item .bicon {
+    font-size: 22px !important;
+  }
+  .bnav-item.active {
+    color: #fff !important;
+    background: rgba(255,255,255,0.18) !important;
+  }
+
+  /* ─── modal على شاشة الماستر صحيح ────────────────────────────── */
+  .overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,0.5) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    z-index: 1000 !important;
+    padding: 0 !important;
+  }
+
+  .modal {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    max-block-size: 92dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 -12px 40px rgba(0,0,0,0.2) !important;
+    padding-block-end: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding: 16px !important;
+  }
+
+  /* ─── Login screen — fully covered ───────────────────────────── */
+  #loginScreen {
+    position: relative !important;
+    min-block-size: 100dvh !important;
+    display: flex !important;
+    align-items: stretch !important;
+    background: linear-gradient(160deg, var(--green, #16a34a) 0%, #0a3d2b 100%) !important;
+    padding: 0 !important;
+  }
+
+  .login-card {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    margin-block-start: auto !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 32px 24px calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+    background: #fff !important;
+    box-shadow: 0 -16px 48px rgba(0,0,0,0.3) !important;
+    animation: cardSlideUp .5s cubic-bezier(.32, .72, 0, 1);
+  }
+
+  @keyframes cardSlideUp {
+    from { transform: translateY(20%); opacity: 0.5; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  .login-logo {
+    text-align: center !important;
+    margin-block-end: 28px !important;
+  }
+  .login-logo img {
+    block-size: 60px !important;
+    inline-size: auto !important;
+    max-inline-size: 75% !important;
+    margin-inline: auto !important;
+    object-fit: contain !important;
+  }
+  .login-logo .sub {
+    font-size: 13.5px !important;
+    color: #6b7280 !important;
+    margin-block-start: 10px !important;
+  }
+
+  .login-field input {
+    inline-size: 100% !important;
+    padding: 14px 16px !important;
+    font-size: 16px !important;
+    border-radius: 12px !important;
+    border: 1.5px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    transition: border-color .15s, background .15s;
+  }
+  .login-field input:focus {
+    border-color: var(--green, #16a34a) !important;
+    background: #fff !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.15) !important;
+  }
+
+  .login-submit {
+    inline-size: 100% !important;
+    padding: 15px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, var(--green, #16a34a), #15803d) !important;
+    color: #fff !important;
+    border: 0 !important;
+    margin-block-start: 12px !important;
+    cursor: pointer !important;
+    transition: transform .1s, box-shadow .15s;
+  }
+  .login-submit:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(22,163,74,0.3) !important;
+  }
+
+  /* ─── Modal مفتوح بـ flex inline (sub-panels) ────────────────── */
+  #subPanel .modal {
+    max-inline-size: 100% !important;
+  }
+
+  /* ─── Plans grid — single column on mobile ───────────────────── */
+  .plans-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* ─── إصلاح أي العنصر يخرج من الـ viewport أفقياً ────────────── */
+  .card, .stat-card, .store-card, .plan-card, .form-grid,
+  .stats-grid, .modal-body, .navbar, .page-header {
+    max-inline-size: 100% !important;
+    box-sizing: border-box !important;
   }
 
 }
