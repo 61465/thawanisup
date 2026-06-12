@@ -1385,8 +1385,12 @@ async function handleOwnerCommand(from, text, store, storeId) {
           `✅ *تم تسليم طلبك بنجاح!*\n\n` +
           `شكراً لاختيارك *${store?.storeName || ""}* 🙏\n\n` +
           `كيف تقيّم تجربتك معنا؟\n\n` +
-          `1️⃣ — سيء\n2️⃣ — مقبول\n3️⃣ — جيد\n4️⃣ — ممتاز\n5️⃣ — رائع جداً 🔥\n\n` +
-          `_أرسل الرقم للتقييم_`;
+          `*1* — ⭐ سيء\n` +
+          `*2* — ⭐⭐ مقبول\n` +
+          `*3* — ⭐⭐⭐ جيد\n` +
+          `*4* — ⭐⭐⭐⭐ ممتاز\n` +
+          `*5* — ⭐⭐⭐⭐⭐ رائع جداً 🔥\n\n` +
+          `_اكتب رقم التقييم (من 1 إلى 5)_`;
         try { await waMgr.sendMessage(storeId, order.customerPhone, ratingMsg); } catch {}
         pendingRatings.set(order.customerPhone, {
           storeId, orderId: order.orderId, storeName: store?.storeName || "", store,

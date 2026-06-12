@@ -1201,13 +1201,13 @@ router.post("/store/orders/:orderId/complete", auth, async (req, res) => {
 
 نأمل أن تكون تجربتك ممتازة. هل يمكنك تقييم خدمتنا؟
 
-⭐ = سيء
-⭐⭐ = مقبول
-⭐⭐⭐ = جيد
-⭐⭐⭐⭐ = ممتاز
-⭐⭐⭐⭐⭐ = رائع جداً
+*1* — ⭐ سيء
+*2* — ⭐⭐ مقبول
+*3* — ⭐⭐⭐ جيد
+*4* — ⭐⭐⭐⭐ ممتاز
+*5* — ⭐⭐⭐⭐⭐ رائع جداً
 
-*أرسل عدد النجوم أو اكتب ملاحظاتك* 💬`;
+_اكتب رقم التقييم (من 1 إلى 5) أو ملاحظاتك_ 💬`;
     try {
       await waMgr.sendMessage(req.storeId, order.customerPhone, ratingMsg);
       // فعّل rating pending لهذا العميل
