@@ -2695,11 +2695,14 @@ async function handleConfirmOrder(from, msg, session) {
 
     // Schedule rating request after 5 minutes; auto-expire entry 30 min after request is sent
     const ratingTimer = setTimeout(async () => {
-      try { await waMgr.sendMessage(storeId, from, ratingRequestMessage(storeName, orderId)); }
+      try { await waMgr.sendMessage(storeId, from, ratingRequestMessage(storeName, orderId, 5)); }
       catch (e) { console.warn("[rating-request] failed:", e.message); }
-      setTimeout(() => { pendingRatings.delete(from); }, 30 * 60 * 1000);
+      // لا نحذف من pendingRatings — نحتفظ بها لـ 24h لتفعيل الـ reminder + قبول التقييم المتأخر
+      setTimeout(() => { pendingRatings.delete(from); }, 24 * 60 * 60 * 1000);
     }, 5 * 60 * 1000);
-    pendingRatings.set(from, { storeId, orderId, storeName, timer: ratingTimer });
+    // تذكير 24h لو لم يقيم
+    const reminderTimer = scheduleRatingReminder(from, storeId, storeName, orderId);
+    pendingRatings.set(from, { storeId, orderId, storeName, store, timer: ratingTimer, reminderTimer });
 
     // الصمت بعد الطلب — التقييم سيُرسَل بعد 5 دقائق تلقائياً
     return;
@@ -2735,26 +2738,87 @@ async function handlePostOrder(from) {
   return sendWelcome(from);
 }
 
-// ─── Rating Submit ────────────────────────────────────────────────────────────
+// ─── Rating Submit (مع نقاط ولاء + service recovery + 5★ follow-up) ─────────
 async function handleRatingSubmit(from, ratingText) {
   const pending = pendingRatings.get(from);
   if (!pending) return;
   clearTimeout(pending.timer);
+  if (pending.reminderTimer) clearTimeout(pending.reminderTimer);
   pendingRatings.delete(from);
 
   const rating = parseInt(ratingText);
+  const ratingsMod = require("./ratings");
   try {
-    saveRating({ storeId: pending.storeId, phone: from, orderId: pending.orderId, rating });
+    ratingsMod.saveRating({ storeId: pending.storeId, phone: from, orderId: pending.orderId, rating, source: "bot", lang: "ar" });
   } catch (e) { console.warn("[save-rating] failed:", e.message); }
 
+  // 🎁 مكافأة 5 نقاط ولاء على المشاركة في التقييم
+  let loyaltyBonus = 0;
+  try {
+    const { addPoints } = require("./loyalty");
+    const store = pending.store || null;
+    const result = addPoints(pending.storeId, from, 0, pending.orderId + "-rating", store, 5);
+    if (result && result.newPoints > 0) loyaltyBonus = result.newPoints;
+  } catch (e) { console.warn("[rating-bonus] failed:", e.message); }
+
   const stars = ["","⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"][rating] || "⭐⭐⭐";
+  const bonusLine = loyaltyBonus > 0 ? `\n\n🎁 +${loyaltyBonus} نقاط ولاء كمكافأة!` : "";
+
   try {
     await waMgr.sendMessage(pending.storeId, from,
-      `${stars} شكراً على تقييمك!\n\nنسعد دائماً بخدمتك في *${pending.storeName}* 💚`
+      `${stars} شكراً على تقييمك!\n\nنسعد دائماً بخدمتك في *${pending.storeName}* 💚${bonusLine}`
     );
-  } catch (e) {
-    console.error(`[rating-reply] failed to send to ${from}:`, e.message);
+  } catch (e) { console.error(`[rating-reply] failed:`, e.message); }
+
+  // 🔴 Service recovery للسلبي (1-2 نجمة)
+  if (rating <= 2) {
+    try {
+      const coupons = require("./coupons");
+      const couponCode = "RECOVERY-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+      try {
+        coupons.createCoupon({
+          code: couponCode,
+          storeId: pending.storeId,
+          discountType: "percent",
+          discountValue: 20,
+          maxUses: 1,
+          expiresAt: new Date(Date.now() + 14 * 86400_000).toISOString(),
+          phoneRestriction: from.replace(/[^\d]/g, ""),
+        });
+      } catch (ce) { console.warn("[recovery-coupon] save failed:", ce.message); }
+      await new Promise(r => setTimeout(r, 1500));
+      await waMgr.sendMessage(pending.storeId, from, ratingsMod.serviceRecoveryMessage(pending.storeName, couponCode));
+      // أبلغ المالك بتقييم سلبي
+      const store = pending.store;
+      if (store?.ownerPhone) {
+        try {
+          await waMgr.sendMessage(pending.storeId, store.ownerPhone.replace(/[^\d]/g,"") + "@s.whatsapp.net",
+            `⚠️ *تقييم سلبي عاجل!*\n\nالطلب: *${pending.orderId}*\nالعميل: ${from.split("@")[0]}\nالتقييم: ${rating}/5\n\nتم إرسال كوبون اعتذار تلقائي (${couponCode}). تواصل مع العميل لاستعادة ثقته.`);
+        } catch {}
+      }
+    } catch (e) { console.warn("[service-recovery] failed:", e.message); }
   }
+  // 🌟 5★ follow-up
+  else if (rating === 5) {
+    try {
+      await new Promise(r => setTimeout(r, 2000));
+      await waMgr.sendMessage(pending.storeId, from, ratingsMod.fiveStarFollowUp(pending.storeName));
+    } catch (e) { console.warn("[5star-followup] failed:", e.message); }
+  }
+}
+
+// ─── Rating Reminder (24h لاحقاً لو لم يقيم) ───────────────────────────────
+function scheduleRatingReminder(from, storeId, storeName, orderId) {
+  // نخزن في pendingRatings مع flag reminder للتمييز
+  const reminderTimer = setTimeout(async () => {
+    if (!pendingRatings.has(from)) return; // قَيّم بالفعل
+    try {
+      const ratingsMod = require("./ratings");
+      await waMgr.sendMessage(storeId, from, ratingsMod.reminderMessage(storeName));
+    } catch (e) { console.warn("[rating-reminder] failed:", e.message); }
+  }, 24 * 60 * 60 * 1000);
+  reminderTimer.unref?.();
+  return reminderTimer;
 }
 
 // ─── Order Tracking ───────────────────────────────────────────────────────────

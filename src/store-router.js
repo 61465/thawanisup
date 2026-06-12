@@ -1183,6 +1183,60 @@ router.post("/store/orders/:orderId/reject", auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Ratings — تقييمات العملاء ───────────────────────────────────────────────
+router.get("/store/ratings", auth, (req, res) => {
+  try {
+    const ratings = require("./ratings");
+    const summary = ratings.getStoreSummary(req.storeId);
+    let all = ratings.getStoreRatings(req.storeId)
+      .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
+    const filter = req.query.filter;
+    if (filter === "5")           all = all.filter(r => r.rating === 5);
+    else if (filter === "1")      all = all.filter(r => r.rating <= 2);
+    else if (filter === "comm")   all = all.filter(r => r.comment && r.comment.trim());
+    else if (filter === "noresp") all = all.filter(r => !r.response);
+    res.json({
+      summary,
+      trend: ratings.getTrend(req.storeId, 30),
+      ratings: all.slice(0, parseInt(req.query.limit) || 100),
+      total: all.length,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/store/ratings/:ratingId/respond", auth, async (req, res) => {
+  try {
+    const { response } = req.body || {};
+    if (!response || !String(response).trim()) return res.status(400).json({ error: "نص الرد مطلوب" });
+    const ratings = require("./ratings");
+    const all = ratings.getStoreRatings(req.storeId);
+    const target = all.find(r => r.id === req.params.ratingId);
+    if (!target) return res.status(404).json({ error: "التقييم غير موجود" });
+    const updated = ratings.respondToRating(req.params.ratingId, response);
+    if (target.phone) {
+      try {
+        const store = getStore(req.storeId);
+        await waMgr.sendMessage(req.storeId, target.phone,
+          `💬 *رد ${store?.storeName || "المتجر"} على تقييمك:*\n\n${String(response).trim()}\n\n_شكراً لمشاركتنا رأيك_`);
+      } catch (e) { console.warn("[rating-respond] send failed:", e.message); }
+    }
+    res.json({ ok: true, rating: updated });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/store/ratings/ai-analysis", auth, async (req, res) => {
+  try {
+    const store = getStore(req.storeId);
+    const ratings = require("./ratings");
+    const days = parseInt(req.body?.days) || 30;
+    const recent = ratings.getRecentRatings(req.storeId, days);
+    const aiAccountant = require("./ai-accountant");
+    const bizType = store?.adminConfig?.businessType || store?.businessType || "generic";
+    const analysis = await aiAccountant.analyzeRatings(bizType, recent);
+    res.json({ days, count: recent.length, businessType: bizType, ...analysis });
+  } catch (e) { res.status(500).json({ error: "تعذّر التحليل: " + e.message }); }
+});
+
 // ─── Rejected/Cancelled summary — تقرير أسباب الرفض والإلغاء ────────────────
 router.get("/store/orders/rejected-summary", auth, (req, res) => {
   const days = Math.min(365, Math.max(1, parseInt(req.query.days) || 30));

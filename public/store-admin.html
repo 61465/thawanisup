@@ -733,6 +733,7 @@ tr:hover td{background:#fafcfa}
     <button class="tab"        id="tabBroadcast" onclick="showTab('broadcast')">📢 بث رسالة</button>
     <button class="tab"        id="tabLoyalty"   onclick="showTab('loyalty')">🏆 نقاط الولاء</button>
     <button class="tab"        id="tabArchive"   onclick="showTab('archive')">📚 الأرشيف</button>
+    <button class="tab"        id="tabRatings"   onclick="showTab('ratings')">⭐ التقييمات</button>
     <button class="tab"        id="tabRejections" onclick="showTab('rejections')">⚠️ أسباب الرفض</button>
     <button class="tab"        id="tabInventory" onclick="showTab('inventory')" style="display:none">📦 المخزون</button>
     <button class="tab"        id="tabAccounting" onclick="showTab('accounting')">💼 الحسابات</button>
@@ -1328,6 +1329,43 @@ tr:hover td{background:#fafcfa}
 
     <!-- ── Archive ── -->
     <section id="archiveSection" style="display:none"></section>
+
+    <!-- ══════════════ ⭐ Ratings ══════════════ -->
+    <section id="ratingsSection" style="display:none">
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;color:var(--primary);margin:0">⭐ تقييمات العملاء</h2>
+            <p style="color:#6b7280;font-size:13px;margin:4px 0 0">آراء حقيقية + تحليل AI ذكي + رد على التقييمات</p>
+          </div>
+          <button class="btn btn-outline" onclick="loadRatings()">🔄 تحديث</button>
+        </div>
+      </div>
+      <div id="rateKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px"></div>
+      <div class="card" style="margin-bottom:14px">
+        <h3 style="font-size:14px;font-weight:800;margin-bottom:10px">توزيع النجوم</h3>
+        <div id="rateDistribution"></div>
+      </div>
+      <!-- AI analysis -->
+      <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#fef9c3,#fef08a);border:1px solid #fbbf24">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <h3 style="font-size:15px;font-weight:800;margin:0;color:#78350f">🤖 تحليل AI ذكي للتقييمات</h3>
+          <button class="btn btn-primary" style="background:#d97706" onclick="loadRatingAI()" id="rateAIBtn">✨ احصل على تحليل</button>
+        </div>
+        <div id="rateAIResult" style="font-size:13.5px;line-height:1.8;color:#78350f"></div>
+      </div>
+      <!-- Filters -->
+      <div class="card">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="ord-filter active" data-rate="all"    onclick="setRateFilter('all')">📋 الكل</button>
+          <button class="ord-filter" data-rate="5"             onclick="setRateFilter('5')">⭐⭐⭐⭐⭐ 5 نجوم</button>
+          <button class="ord-filter" data-rate="1"             onclick="setRateFilter('1')">⭐ 1-2 نجوم</button>
+          <button class="ord-filter" data-rate="comm"          onclick="setRateFilter('comm')">💬 مع تعليق</button>
+          <button class="ord-filter" data-rate="noresp"        onclick="setRateFilter('noresp')">❗ لم يُرد عليه</button>
+        </div>
+        <div id="rateList"></div>
+      </div>
+    </section>
 
     <!-- ══════════════ ⚠️ Rejections & Cancellations ══════════════ -->
     <section id="rejectionsSection" style="display:none">
@@ -2068,7 +2106,7 @@ function toggleDeliveryFeeS() {
 }
 
 function showTab(tab) {
-  ["dash","menu","orders","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory"].forEach(t => {
+  ["dash","menu","orders","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory","ratings"].forEach(t => {
     const sec = document.getElementById(t + "Section");
     const btn = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1));
     if (sec) sec.style.display = t === tab ? "" : "none";
@@ -2087,9 +2125,113 @@ function showTab(tab) {
   if (tab === "loyalty")    loadLoyalty();
   if (tab === "archive")    loadArchives();
   if (tab === "accounting") initAccounting();
+  if (tab === "ratings")    loadRatings();
   if (tab === "rejections") loadRejections();
   if (tab === "inventory")  loadInventory();
   if (tab === "whatsapp")   { loadWaStatus(); startWaQrPolling(); }
+}
+
+// ═════════════════ ⭐ Ratings ═════════════════
+let _RATE_FILTER = "all";
+function setRateFilter(f) {
+  _RATE_FILTER = f;
+  document.querySelectorAll('#ratingsSection .ord-filter').forEach(b => b.classList.toggle('active', b.dataset.rate === f));
+  loadRatings();
+}
+async function loadRatings() {
+  try {
+    const qs = _RATE_FILTER === "all" ? "" : "?filter=" + _RATE_FILTER;
+    const r = await api("GET", "/store/ratings" + qs);
+    const s = r.summary || {};
+    const trendIcon = r.trend === "improving" ? "📈" : r.trend === "declining" ? "📉" : "➖";
+    document.getElementById("rateKpis").innerHTML = `
+      <div style="background:linear-gradient(135deg,#fef9c3,#fef08a);padding:14px;border-radius:12px"><div style="color:#78350f;font-size:12px;font-weight:700">المتوسط</div><div style="font-size:30px;font-weight:900;color:#78350f">${(s.average||0).toFixed(1)}<span style="font-size:14px">/5</span></div><div style="font-size:14px;color:#a16207">${"⭐".repeat(Math.round(s.average||0))}</div></div>
+      <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);padding:14px;border-radius:12px"><div style="color:#1e40af;font-size:12px;font-weight:700">إجمالي التقييمات</div><div style="font-size:30px;font-weight:900;color:#1e3a8a">${s.count||0}</div><div style="font-size:11px;color:#1e40af">${s.fiveStarCount||0} منها 5 نجوم</div></div>
+      <div style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);padding:14px;border-radius:12px"><div style="color:#166534;font-size:12px;font-weight:700">إيجابي</div><div style="font-size:30px;font-weight:900;color:#14532d">${s.positivePercent||0}<span style="font-size:14px">%</span></div></div>
+      <div style="background:linear-gradient(135deg,#fee2e2,#fecaca);padding:14px;border-radius:12px"><div style="color:#7f1d1d;font-size:12px;font-weight:700">سلبي</div><div style="font-size:30px;font-weight:900;color:#7f1d1d">${s.negativePercent||0}<span style="font-size:14px">%</span></div></div>
+      <div style="background:linear-gradient(135deg,#f3e8ff,#e9d5ff);padding:14px;border-radius:12px"><div style="color:#581c87;font-size:12px;font-weight:700">NPS</div><div style="font-size:30px;font-weight:900;color:#581c87">${s.nps||0}</div><div style="font-size:11px;color:#6b21a8">${trendIcon} ${r.trend === 'improving' ? 'يتحسّن' : r.trend === 'declining' ? 'يتراجع' : 'مستقر'}</div></div>
+    `;
+    // distribution
+    const dist = s.distribution || { 1:0,2:0,3:0,4:0,5:0 };
+    const maxCount = Math.max(...Object.values(dist), 1);
+    document.getElementById("rateDistribution").innerHTML = [5,4,3,2,1].map(n => {
+      const cnt = dist[n] || 0;
+      const pct = (cnt / maxCount * 100).toFixed(0);
+      const colors = { 5:"#16a34a", 4:"#65a30d", 3:"#ca8a04", 2:"#ea580c", 1:"#dc2626" };
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+        <div style="width:50px;font-size:13px;font-weight:700">${"⭐".repeat(n)}</div>
+        <div style="flex:1;height:18px;background:#f3f4f6;border-radius:9px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${colors[n]};border-radius:9px"></div></div>
+        <div style="width:40px;text-align:left;font-size:13px;font-weight:800;color:#374151">${cnt}</div>
+      </div>`;
+    }).join("");
+    renderRatingsList(r.ratings || []);
+  } catch (e) {
+    document.getElementById("rateKpis").innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#dc2626;padding:20px">تعذّر التحميل</div>`;
+  }
+}
+function renderRatingsList(list) {
+  if (!list.length) {
+    document.getElementById("rateList").innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af">لا توجد تقييمات في هذا الفلتر</div>`;
+    return;
+  }
+  document.getElementById("rateList").innerHTML = list.map(r => {
+    const dt = r.timestamp ? new Date(r.timestamp).toLocaleString("ar-EG", { year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+    const stars = "⭐".repeat(r.rating || 0);
+    const color = (r.rating || 0) >= 4 ? "#16a34a" : (r.rating || 0) === 3 ? "#ca8a04" : "#dc2626";
+    const phoneShort = r.phone ? String(r.phone).replace("@s.whatsapp.net","").replace(/(\d{3})(\d+)(\d{3})/, "$1***$3") : "";
+    return `<div style="border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:10px;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:18px;color:${color};font-weight:800">${stars} <span style="font-size:13px;color:#6b7280">${r.rating}/5</span></div>
+          <div style="font-size:11.5px;color:#6b7280;margin-top:3px">📅 ${dt} · 📱 ${phoneShort} · 🧾 ${r.orderId || "—"}</div>
+        </div>
+        ${!r.response ? `<button class="btn btn-outline" style="padding:5px 12px;font-size:12px" onclick="openRespondModal('${r.id}', ${r.rating})">💬 رد</button>` : ""}
+      </div>
+      ${r.comment ? `<div style="margin-top:10px;padding:10px;background:#f9fafb;border-radius:8px;font-size:13.5px;color:#374151;line-height:1.6">"${escapeHtml(r.comment)}"</div>` : ""}
+      ${r.response ? `<div style="margin-top:8px;padding:10px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);border-radius:8px;font-size:13px;color:#14532d"><b>💚 ردك:</b> ${escapeHtml(r.response)}<div style="font-size:10px;color:#166534;margin-top:4px">${new Date(r.respondedAt).toLocaleDateString("ar-EG")}</div></div>` : ""}
+    </div>`;
+  }).join("");
+}
+function openRespondModal(ratingId, rating) {
+  const stars = "⭐".repeat(rating);
+  const resp = prompt(`💬 رد على تقييم ${stars}\n\nاكتب ردك (سيُرسَل للعميل عبر واتساب):`, rating <= 2 ? "نعتذر بشدة عن الإزعاج، نتعلّم من ملاحظتك. شكراً لمشاركتنا." : "شكراً جزيلاً على تقييمك الرائع! نسعد دائماً بخدمتك.");
+  if (resp === null || !resp.trim()) return;
+  api("POST", "/store/ratings/" + ratingId + "/respond", { response: resp.trim() })
+    .then(() => { showToast("✅ تم إرسال ردك للعميل", "success"); loadRatings(); })
+    .catch(e => showToast(e?.error || "فشل الإرسال", "error"));
+}
+async function loadRatingAI() {
+  const btn = document.getElementById("rateAIBtn");
+  const res = document.getElementById("rateAIResult");
+  btn.disabled = true; btn.textContent = "🤖 جاري التحليل...";
+  res.innerHTML = `<div style="text-align:center;padding:14px;color:#78350f">🧠 المحاسب الذكي يحلّل بيانات التقييمات...</div>`;
+  try {
+    const a = await api("POST", "/store/ratings/ai-analysis", { days: 30 });
+    if (a.count === 0) {
+      res.innerHTML = `<div style="padding:14px;background:#fff;border-radius:8px;text-align:center">📭 لا توجد تقييمات للتحليل بعد</div>`;
+      return;
+    }
+    const scoreColor = a.healthScore >= 75 ? "#16a34a" : a.healthScore >= 50 ? "#ca8a04" : "#dc2626";
+    const trendIcon = a.trend === "improving" ? "📈 يتحسّن" : a.trend === "declining" ? "📉 يتراجع" : "➖ مستقر";
+    res.innerHTML = `
+      <div style="background:#fff;padding:14px;border-radius:10px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+          <strong>${escapeHtml(a.summary || "")}</strong>
+          <span style="background:${scoreColor};color:#fff;padding:6px 14px;border-radius:20px;font-weight:800">${a.healthScore}/100</span>
+        </div>
+        <div style="font-size:12px;color:#78350f">${trendIcon} · حُلّل ${a.count} تقييم آخر 30 يوم</div>
+      </div>
+      ${(a.warnings || []).length ? `<div style="background:#fee2e2;border:1px solid #fca5a5;padding:10px 14px;border-radius:8px;margin-bottom:10px;color:#7f1d1d"><b>⚠️ تحذيرات:</b><ul style="margin:6px 0 0 18px;padding:0">${a.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join("")}</ul></div>` : ""}
+      ${(a.topComplaints || []).length ? `<div style="background:#fff7ed;border:1px solid #fdba74;padding:10px 14px;border-radius:8px;margin-bottom:10px;color:#7c2d12"><b>🔻 أكثر الشكاوى تكراراً:</b><ul style="margin:6px 0 0 18px;padding:0">${a.topComplaints.map(c=>`<li><b>${escapeHtml(c.issue)}</b> (${c.frequency}x)</li>`).join("")}</ul></div>` : ""}
+      ${(a.topPraise || []).length ? `<div style="background:#dcfce7;border:1px solid #86efac;padding:10px 14px;border-radius:8px;margin-bottom:10px;color:#14532d"><b>💚 أكثر الإيجابيات تكراراً:</b><ul style="margin:6px 0 0 18px;padding:0">${a.topPraise.map(p=>`<li><b>${escapeHtml(p.praise)}</b> (${p.frequency}x)</li>`).join("")}</ul></div>` : ""}
+      ${(a.keywords || []).length ? `<div style="background:#fff;padding:10px 14px;border-radius:8px;margin-bottom:10px"><b style="color:#78350f">🔑 كلمات مفتاحية:</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${a.keywords.map(k=>{const c=k.sentiment==='positive'?'#dcfce7':k.sentiment==='negative'?'#fee2e2':'#f3f4f6';const tc=k.sentiment==='positive'?'#14532d':k.sentiment==='negative'?'#7f1d1d':'#374151';return `<span style="background:${c};color:${tc};padding:3px 10px;border-radius:14px;font-size:12px;font-weight:700">${escapeHtml(k.term)} (${k.count})</span>`}).join("")}</div></div>` : ""}
+      ${(a.actionableInsights || []).map(ai => {
+        const pColor = ai.priority === "high" ? "#dc2626" : ai.priority === "medium" ? "#ca8a04" : "#1e40af";
+        return `<div style="background:#fff;border-right:4px solid ${pColor};padding:10px 14px;border-radius:8px;margin-bottom:8px"><b style="color:${pColor}">${escapeHtml(ai.title)}</b><div style="color:#374151;margin-top:4px">${escapeHtml(ai.detail)}</div>${ai.potentialImpact?`<div style="color:#6b7280;font-size:11px;margin-top:4px">📊 أثر متوقع: ${escapeHtml(ai.potentialImpact)}</div>`:""}</div>`;
+      }).join("")}
+    `;
+  } catch (e) { res.innerHTML = `<div style="color:#dc2626;padding:14px">تعذّر التحليل</div>`; }
+  finally { btn.disabled = false; btn.textContent = "✨ احصل على تحليل"; }
 }
 
 // ═════════════════ ⚠️ Rejections / Cancellations ═════════════════

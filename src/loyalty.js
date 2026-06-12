@@ -60,16 +60,19 @@ function pushHistory(rec, entry) {
   if (rec.history.length > 100) rec.history = rec.history.slice(-100);
 }
 
-function addPoints(storeId, phone, total, orderId, store) {
+function addPoints(storeId, phone, total, orderId, store, bonusOverride) {
   const settings = getSettings(store);
-  if (!settings.enabled) return { newPoints: 0, totalPoints: 0 };
+  if (!settings.enabled && !bonusOverride) return { newPoints: 0, totalPoints: 0 };
   const db  = load(storeId);
-  const pts = calcPoints(total, store);
+  // bonusOverride: مقدار النقاط الثابت (مثلاً مكافأة تقييم 5 نقاط) — يتجاوز الحساب من total
+  const pts = bonusOverride > 0 ? bonusOverride : calcPoints(total, store);
   const rec = ensureRecord(db, phone);
-  rec.points      += pts;
-  rec.totalOrders += 1;
-  rec.totalSpent  += total;
-  pushHistory(rec, { type: "earn", pts, orderId });
+  rec.points += pts;
+  if (!bonusOverride) {
+    rec.totalOrders += 1;
+    rec.totalSpent  += total;
+  }
+  pushHistory(rec, { type: bonusOverride ? "bonus" : "earn", pts, orderId });
   save(storeId, db);
   return { newPoints: pts, totalPoints: rec.points };
 }

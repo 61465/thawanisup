@@ -167,4 +167,63 @@ ${productDescription ? `وصف: ${productDescription}` : ""}
   }
 }
 
-module.exports = { analyzeMonthlyPnL, recommendVideoType };
+/**
+ * AI Ratings Analyzer — Groq يحلل بادج تقييمات + يرجع insights عملية
+ * (مدمج هنا لتفادي ملف منفصل لكل Groq integration)
+ */
+async function analyzeRatings(businessType, ratings) {
+  if (!ratings || ratings.length === 0) {
+    return { summary: "لا توجد تقييمات بعد", healthScore: 0, sentiment: { positive: 0, neutral: 0, negative: 0 }, keywords: [], topComplaints: [], topPraise: [], actionableInsights: [], warnings: [], trend: "stable" };
+  }
+  const compact = ratings.slice(0, 60).map(r => ({
+    rating: r.rating,
+    comment: (r.comment || "").slice(0, 200),
+    date: (r.timestamp || "").slice(0, 10),
+  }));
+
+  const prompt = `أنت خبير تحليل تقييمات العملاء. لديك ${ratings.length} تقييماً لمتجر سعودي/مصري من نوع "${businessType}".
+
+التقييمات (آخر 60):
+${JSON.stringify(compact, null, 2)}
+
+أعطني تحليلاً عربياً بصيغة JSON صحيحة بالحقول التالية:
+{
+  "summary": "ملخص بجملتين عن صحة سمعة المتجر بناء على هذه البيانات",
+  "healthScore": <رقم 0-100 بناء على: 80+ ممتاز، 60-80 جيد، 40-60 متوسط، أقل = خطر>,
+  "sentiment": { "positive": <عدد>, "neutral": <عدد>, "negative": <عدد> },
+  "keywords": [{ "term": "الكلمة العربية", "count": <عدد>, "sentiment": "positive|negative|neutral" }],
+  "topComplaints": [{ "issue": "نص الشكوى", "frequency": <عدد>, "examples": ["مثال"] }],
+  "topPraise": [{ "praise": "نص المدح", "frequency": <عدد> }],
+  "actionableInsights": [{ "priority": "high|medium|low", "title": "عنوان قصير", "detail": "توصية محددة بأرقام", "potentialImpact": "أثر متوقع" }],
+  "warnings": ["تحذيرات حرجة إن وجدت"],
+  "trend": "improving|stable|declining"
+}
+
+قواعد:
+- العربية الفصحى المبسطة
+- ربط النصائح بنوع المتجر (${businessType})
+- أرقام محددة في النصائح (مثل: "45% من التقييمات السلبية تذكر التأخير")
+- max: 8 keywords، 5 complaints، 5 praise، 5 insights
+- إذا كانت التقييمات < 5 → اعترف بقلة البيانات في summary`;
+
+  try {
+    const raw = await callGroq([{ role: "user", content: prompt }], { json: true, temperature: 0.5, maxTokens: 1500 });
+    const parsed = JSON.parse(raw);
+    return {
+      summary: parsed.summary || "",
+      healthScore: Math.max(0, Math.min(100, Number(parsed.healthScore) || 50)),
+      sentiment: parsed.sentiment || { positive: 0, neutral: 0, negative: 0 },
+      keywords: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 10) : [],
+      topComplaints: Array.isArray(parsed.topComplaints) ? parsed.topComplaints.slice(0, 5) : [],
+      topPraise: Array.isArray(parsed.topPraise) ? parsed.topPraise.slice(0, 5) : [],
+      actionableInsights: Array.isArray(parsed.actionableInsights) ? parsed.actionableInsights.slice(0, 6) : [],
+      warnings: Array.isArray(parsed.warnings) ? parsed.warnings.slice(0, 4) : [],
+      trend: ["improving","stable","declining"].includes(parsed.trend) ? parsed.trend : "stable",
+    };
+  } catch (e) {
+    console.warn("[ai-ratings] failed:", e.message);
+    return { summary: "تعذّر التحليل حالياً", healthScore: 50, sentiment: {positive:0,neutral:0,negative:0}, keywords: [], topComplaints: [], topPraise: [], actionableInsights: [], warnings: [], trend: "stable", _error: e.message };
+  }
+}
+
+module.exports = { analyzeMonthlyPnL, recommendVideoType, analyzeRatings };
