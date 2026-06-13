@@ -1198,6 +1198,13 @@ tr:hover td{background:#fafcfa}
         <div class="field">
           <label id="pm_priceLabel">السعر *</label>
           <input id="pm_price" type="number" step="0.5" placeholder="">
+          <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;font-weight:600;color:#7c3aed;cursor:pointer;background:#faf5ff;padding:8px 12px;border-radius:8px;border:1px solid #e9d5ff">
+            <input id="pm_priceOnRequest" type="checkbox" onchange="togglePriceOnRequest()" style="width:18px;height:18px;cursor:pointer">
+            <span>💬 السعر عند الطلب (تفاوض مع المسؤول)</span>
+          </label>
+          <div id="pm_priceOnRequestHint" style="display:none;font-size:11px;color:#7c3aed;margin-top:6px;background:#f3e8ff;padding:8px 10px;border-radius:6px;line-height:1.6">
+            ✨ مفيد للخدمات/المشاريع: العميل يطلب → تتفاوض معه → تضع السعر النهائي قبل قبول الطلب
+          </div>
         </div>
         <div class="field">
           <label>📁 القسم الرئيسي *</label>
@@ -3373,6 +3380,16 @@ function renderProducts() {
 }
 
 // ─── Product Modal ─────────────────────────────────────────────────────────────
+function togglePriceOnRequest() {
+  const on = document.getElementById("pm_priceOnRequest").checked;
+  const priceInput = document.getElementById("pm_price");
+  const hint = document.getElementById("pm_priceOnRequestHint");
+  priceInput.disabled = on;
+  priceInput.style.opacity = on ? "0.5" : "1";
+  if (on) priceInput.value = "";
+  if (hint) hint.style.display = on ? "block" : "none";
+}
+
 function openProductModal(id = null) {
   const p = id ? allProducts.find(x => x.id === id) : null;
   // labels ديناميكية حسب AI config
@@ -3391,7 +3408,9 @@ function openProductModal(id = null) {
 
   document.getElementById("pm_id").value          = id || "";
   document.getElementById("pm_name").value        = p?.name || "";
-  document.getElementById("pm_price").value       = p?.price || "";
+  document.getElementById("pm_price").value       = p?.priceOnRequest ? "" : (p?.price || "");
+  document.getElementById("pm_priceOnRequest").checked = !!p?.priceOnRequest;
+  togglePriceOnRequest();
   document.getElementById("pm_desc").value        = p?.description || "";
   document.getElementById("pm_curImageUrl").value = p?.imageUrl || "";
   // ⭐ تحميل الصور المتعددة في الـ gallery
@@ -3694,9 +3713,11 @@ async function saveProduct() {
 
   const imageUrl = finalImages[0] || null; // backward compat
 
+  const priceOnRequest = document.getElementById("pm_priceOnRequest").checked;
   const payload = {
     name:          document.getElementById("pm_name").value.trim(),
-    price:         parseFloat(document.getElementById("pm_price").value) || 0,
+    price:         priceOnRequest ? 0 : (parseFloat(document.getElementById("pm_price").value) || 0),
+    priceOnRequest,
     description:   document.getElementById("pm_desc").value.trim(),
     category:      document.getElementById("pm_category").value,
     subCategoryId: document.getElementById("pm_subCategoryId").value.trim(),
@@ -4420,7 +4441,11 @@ function renderOrdersTable() {
           })()}
         </td>
         <td style="font-size:12px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(items)}</td>
-        <td style="font-weight:800;color:var(--primary);white-space:nowrap">${(o.total||0).toFixed(2)} ${currency}</td>
+        <td style="font-weight:800;color:var(--primary);white-space:nowrap">${
+          (o.items||[]).some(i => i.priceOnRequest) && (o.total||0) === 0
+            ? `<span style="background:#f3e8ff;color:#6b21a8;padding:3px 10px;border-radius:8px;font-size:12px;font-weight:700">💬 تفاوض</span>`
+            : `${(o.total||0).toFixed(2)} ${currency}`
+        }</td>
         <td class="col-hide" style="font-size:12px;color:var(--gray);white-space:nowrap">${dt}</td>
         <td>${statusBadge}${confirmBtn}<button onclick="openOrderDetails('${esc(o.orderId)}')" style="background:#3b82f6;color:#fff;border:none;border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:700;margin-top:6px;display:inline-flex;align-items:center;gap:4px">👁️ تفاصيل</button></td>
       </tr>`;
@@ -4514,10 +4539,27 @@ function openOrderDetails(orderId) {
       ${notesSection}
       <h4 style="margin:18px 0 10px;color:#111827;display:flex;align-items:center;gap:8px;font-size:15px">🛒 المنتجات (${(o.items||[]).length})</h4>
       ${items || `<div style="color:#9ca3af;text-align:center;padding:14px">لا منتجات</div>`}
-      <div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;border-radius:12px;padding:14px 18px;margin-top:14px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;opacity:.9">الإجمالي</div>
-        <div style="font-size:22px;font-weight:900">${(o.total||0).toFixed(2)} ${cur}</div>
-      </div>
+      ${(() => {
+        const hasNeg = (o.items||[]).some(i => i.priceOnRequest);
+        const isFreePending = hasNeg && (o.total||0) === 0;
+        if (isFreePending) {
+          return `
+            <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-radius:12px;padding:16px 18px;margin-top:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div>
+                  <div style="font-size:13px;opacity:.9">💬 طلب بدون سعر محدد</div>
+                  <div style="font-size:12px;opacity:.85;margin-top:3px;line-height:1.5">يجب الاتفاق مع العميل على السعر قبل قبول الطلب</div>
+                </div>
+              </div>
+              <button onclick="setNegotiatedPrice('${esc(o.orderId)}')" style="background:#fff;color:#6d28d9;border:none;padding:11px 20px;border-radius:9px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;width:100%">💰 إدخال السعر المتفق عليه</button>
+            </div>`;
+        }
+        return `
+          <div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;border-radius:12px;padding:14px 18px;margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:13px;opacity:.9">الإجمالي</div>
+            <div style="font-size:22px;font-weight:900">${(o.total||0).toFixed(2)} ${cur}</div>
+          </div>`;
+      })()}
       ${o.coupon ? `<div style="font-size:12px;color:#7c3aed;margin-top:8px;text-align:center">🎟️ كوبون: ${esc(o.coupon)} (خصم ${(o.discount||0).toFixed(2)} ${cur})</div>` : ""}
     </div>`;
 
@@ -4527,6 +4569,25 @@ function openOrderDetails(orderId) {
 
 function closeOrderDetails() {
   document.getElementById("orderDetailsModal").style.display = "none";
+}
+
+async function setNegotiatedPrice(orderId) {
+  const cur = localStorage.getItem("store_currency") || "ر.س";
+  const priceStr = prompt(`💰 أدخل السعر المتفق عليه للطلب ${orderId} بـ ${cur}:`);
+  if (priceStr === null) return;
+  const price = parseFloat(priceStr);
+  if (isNaN(price) || price <= 0) {
+    showToast("سعر غير صحيح", "error");
+    return;
+  }
+  try {
+    await api("POST", `/store/orders/${encodeURIComponent(orderId)}/set-price`, { total: price });
+    showToast("✅ تم تحديد السعر وإرساله للعميل عبر واتساب", "success");
+    closeOrderDetails();
+    setTimeout(loadOrders, 400);
+  } catch (e) {
+    showToast("فشل: " + (e.message || ""), "error");
+  }
 }
 
 async function cancelOrder(orderId) {

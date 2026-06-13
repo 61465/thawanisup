@@ -834,7 +834,8 @@ router.post("/store/products", auth, (req, res) => {
     subCategoryId: String(req.body.subCategoryId || "").trim(),
     name:          (req.body.name || "").trim(),
     description:   (req.body.description || "").trim(),
-    price:         parseFloat(req.body.price) || 0,
+    price:         req.body.priceOnRequest ? 0 : (parseFloat(req.body.price) || 0),
+    priceOnRequest: !!req.body.priceOnRequest,
     images:        cleanImages,                          // ⭐ جديد: array
     imageUrl:      cleanImages[0] || null,               // backward compat (الصورة الرئيسية)
     videoUrl:      sanitizeVideoUrl(req.body.videoUrl),
@@ -881,6 +882,12 @@ router.put("/store/products/:id", auth, (req, res) => {
   }
   if (patch.videoUrl !== undefined)     patch.videoUrl = sanitizeVideoUrl(patch.videoUrl);
   if (patch.videoCaption !== undefined) patch.videoCaption = String(patch.videoCaption || "").trim().slice(0, 200);
+  // 💬 priceOnRequest: لو true → احفظ price = 0
+  if (patch.priceOnRequest !== undefined) {
+    patch.priceOnRequest = !!patch.priceOnRequest;
+    if (patch.priceOnRequest) patch.price = 0;
+  }
+  if (patch.price !== undefined && !patch.priceOnRequest) patch.price = parseFloat(patch.price) || 0;
 
   // ⭐ معالجة الصور المتعددة عند التحديث
   if (patch.images !== undefined) {
@@ -1709,6 +1716,45 @@ router.get("/store/handoffs", auth, (req, res) => {
     .map(([phone, h]) => ({ phone, ...h }))
     .sort((a, b) => (b.startedAt || "").localeCompare(a.startedAt || ""));
   res.json({ handoffs: mine, storeId: req.storeId, total: Object.keys(handoffs).length });
+});
+
+// 💰 POST /store/orders/:orderId/set-price — يضع السعر المتفق عليه ويُعلِم العميل
+router.post("/store/orders/:orderId/set-price", auth, async (req, res) => {
+  const { orderId } = req.params;
+  const total = Number(req.body?.total);
+  if (!total || total <= 0) return res.status(400).json({ error: "سعر غير صحيح" });
+  const orders = readOrders(req.storeId);
+  const order = orders.find(o => o.orderId === orderId);
+  if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
+  const ok = updateOrderStatus(req.storeId, orderId, order.status || "pending_confirmation", {
+    total,
+    negotiatedAt: new Date().toISOString(),
+    priceNegotiated: true,
+  });
+  if (!ok) return res.status(500).json({ error: "فشل التحديث" });
+
+  audit({
+    actor: req.impersonatedBy ? { type: "master", id: "master" } : { type: "store", id: req.storeId },
+    action: "order.set_price",
+    target: { type: "order", id: orderId },
+    meta: { total, customerPhone: String(order.customerPhone || "").slice(0, 6) + "***" },
+  }, req);
+
+  // أبلغ العميل عبر واتساب
+  if (order.customerPhone) {
+    try {
+      const store = getStore(req.storeId);
+      const currency = store?.currency || "ر.س";
+      await waMgr.sendMessage(req.storeId, order.customerPhone,
+        `💰 *تم تحديد سعر طلبك*\n\n` +
+        `رقم الطلب: *${orderId}*\n` +
+        `السعر المتفق عليه: *${total.toFixed(2)} ${currency}*\n\n` +
+        `إذا توافق على السعر، سيبدأ المتجر بمعالجة طلبك.\n` +
+        `لأي استفسار، اكتب *مسؤول* للتواصل المباشر 💬`
+      );
+    } catch (e) { console.warn("[set-price] notify failed:", e.message); }
+  }
+  res.json({ ok: true, total });
 });
 
 router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {

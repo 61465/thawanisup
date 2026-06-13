@@ -2335,13 +2335,25 @@ function _findProduct(store, name) {
 function _formatCart(cart, currency) {
   if (!cart.length) return "🛒 السلة فارغة";
   let total = 0;
+  let hasNegotiable = false;
   let lines = "🛒 *سلتك الحالية:*\n";
   cart.forEach((it, i) => {
-    const subtotal = (it.price || 0) * it.qty;
-    total += subtotal;
-    lines += `${i + 1}. ${it.name} × ${it.qty} = ${subtotal} ${currency}\n`;
+    if (it.priceOnRequest) {
+      hasNegotiable = true;
+      lines += `${i + 1}. ${it.name} × ${it.qty} = 💬 *تفاوض*\n`;
+    } else {
+      const subtotal = (it.price || 0) * it.qty;
+      total += subtotal;
+      lines += `${i + 1}. ${it.name} × ${it.qty} = ${subtotal} ${currency}\n`;
+    }
   });
-  lines += `\n💰 *الإجمالي: ${total} ${currency}*`;
+  if (hasNegotiable) {
+    lines += total > 0
+      ? `\n💰 إجمالي المنتجات المسعّرة: ${total} ${currency}\n💬 *والباقي عند الاتفاق مع المتجر*`
+      : `\n💬 *كل الأسعار عند الاتفاق مع المتجر*`;
+  } else {
+    lines += `\n💰 *الإجمالي: ${total} ${currency}*`;
+  }
   return lines;
 }
 
@@ -2660,10 +2672,11 @@ async function handleProductSelection(from, msg, session) {
     const PUB = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
     const _abs = u => u.startsWith("http") ? u : `${PUB}${u}`;
 
+    const priceTxt = product.priceOnRequest ? "💬 السعر عند الطلب (يتفق عليه)" : `💰 ${product.price} ${currency}`;
     for (let i = 0; i < Math.min(imageList.length, 5); i++) {
       const url = _abs(imageList[i]);
       const caption = i === 0
-        ? `*${product.name}*\n${product.description || ""}\n💰 ${product.price} ${currency}` +
+        ? `*${product.name}*\n${product.description || ""}\n${priceTxt}` +
           (imageList.length > 1 ? `\n\n📷 ${imageList.length} صور — اسحب لاستعراضها` : "")
         : `صورة ${i + 1} من ${imageList.length}`;
       try { await sendImage(from, url, caption); }
@@ -2673,6 +2686,20 @@ async function handleProductSelection(from, msg, session) {
     }
   }
 
+  // 💬 لمنتج السعر-عند-الطلب: لا تعرض كميات، فقط زر "اطلب الآن" واحد
+  if (product.priceOnRequest) {
+    return sendList(from, {
+      body: `*${product.name}*\n${product.description ? product.description + "\n" : ""}\n💬 *السعر عند الطلب*\nسيتفق المتجر معك على السعر بعد إرسال طلبك.`,
+      buttonText: "ابدأ الطلب",
+      sections: [{
+        title: "الإجراء",
+        rows: [
+          { id: "QTY_1", title: "📩 إرسال طلب",   description: "سنرسل الطلب وتتفاوض على السعر" },
+          { id: "BACK_CAT", title: "🔙 تغيير الصنف", description: "العودة لقائمة الأصناف" },
+        ],
+      }],
+    });
+  }
   return sendList(from, {
     body:        `*${product.name}*\n${product.description ? product.description + "\n" : ""}💰 السعر: *${product.price} ${currency}*\n\nاختر الكمية:`,
     buttonText:  "اختر الكمية",
@@ -2716,13 +2743,17 @@ async function addToCart(from, session, qty) {
   const cart     = session.cart || [];
   const existing = cart.find(i => i.id === product.id);
   if (existing) existing.qty += qty;
-  else cart.push({ id: product.id, name: product.name, price: product.price, qty, imageUrl: product.imageUrl||null });
+  else cart.push({ id: product.id, name: product.name, price: product.price, qty, imageUrl: product.imageUrl||null, priceOnRequest: !!product.priceOnRequest });
 
   sessionManager.update(from, { step: "CART_ACTION", cart, pendingProduct: null });
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const hasNegotiable = cart.some(i => i.priceOnRequest);
+  const total = cart.reduce((s, i) => s + (i.priceOnRequest ? 0 : i.price * i.qty), 0);
+  const totalLine = hasNegotiable
+    ? `\n💬 *بعض الأسعار للتفاوض* — سيتم الاتفاق عليها مع المتجر`
+    : `\n💰 إجمالي السلة: *${total.toFixed(2)} ${currency}*`;
 
   return sendList(from, {
-    body:       `✅ تمت الإضافة!\n\n*${product.name}* × ${qty}\n💰 إجمالي السلة: *${total.toFixed(2)} ${currency}*`,
+    body:       `✅ تمت الإضافة!\n\n*${product.name}* × ${qty}${totalLine}`,
     buttonText: "اختر",
     sections: [{
       title: "ماذا تريد؟",
@@ -3389,11 +3420,14 @@ async function showOrderSummary(from, session) {
     : 0;
 
   const cart        = session.cart || [];
-  const rawSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const hasNegotiable = cart.some(i => i.priceOnRequest);
+  const rawSubtotal = cart.reduce((s, i) => s + (i.priceOnRequest ? 0 : i.price * i.qty), 0);
   const discount    = session.appliedDiscount || 0;
-  const grandTotal  = Math.max(0, rawSubtotal - discount) + fee;
+  const grandTotal  = hasNegotiable && rawSubtotal === 0 ? null : Math.max(0, rawSubtotal - discount) + fee;
 
-  const lines  = cart.map(i => `• ${i.name} × ${i.qty} ........... ${(i.price*i.qty).toFixed(2)} ${currency}`);
+  const lines  = cart.map(i => i.priceOnRequest
+    ? `• ${i.name} × ${i.qty} ........... 💬 *تفاوض*`
+    : `• ${i.name} × ${i.qty} ........... ${(i.price*i.qty).toFixed(2)} ${currency}`);
 
   // 🤖 اعرض إجابات الأسئلة الديناميكية لو وُجدت
   const customAnswers = session.customAnswers || {};
@@ -3419,6 +3453,21 @@ async function showOrderSummary(from, session) {
       (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "")
     : "";
 
+  // 💬 totals لمنتجات السعر-عند-الطلب
+  const totalSection = (hasNegotiable && rawSubtotal === 0)
+    ? `💬 *السعر يُحدّد بعد التواصل مع المتجر*\n\n📩 الطلب سيُرسل، وسيتفق المتجر معك على السعر النهائي قبل التأكيد.`
+    : (hasNegotiable
+        ? `المنتجات المسعّرة: ${rawSubtotal.toFixed(2)} ${currency}\n` +
+          (discount > 0 ? `🎟️ الخصم: -${discount.toFixed(2)} ${currency}\n` : "") +
+          (labels.feeLabel ? `${labels.feeLabel}: ${fee.toFixed(2)} ${currency}\n` : "") +
+          `💬 *والباقي يُحدّد بالاتفاق مع المتجر*\n` +
+          `طريقة الدفع: عند الاستلام 💵`
+        : `المجموع: ${rawSubtotal.toFixed(2)} ${currency}\n` +
+          (discount > 0 ? `🎟️ الخصم (${session.discountLabel || "كوبون"}): -${discount.toFixed(2)} ${currency}\n` : "") +
+          (labels.feeLabel ? `${labels.feeLabel}: ${fee.toFixed(2)} ${currency}\n` : "") +
+          `*الإجمالي الكلي: ${grandTotal.toFixed(2)} ${currency}*\n\n` +
+          `طريقة الدفع: عند الاستلام 💵`);
+
   const invoice =
     `🧾 *ملخص طلبك:*\n\n` +
     (session.customerName && session.customerName !== "عميل" ? `الاسم: ${session.customerName}\n` : "") +
@@ -3426,11 +3475,7 @@ async function showOrderSummary(from, session) {
     legacyDetails +
     `\n${lines.join("\n")}\n` +
     `──────────────\n` +
-    `المجموع: ${rawSubtotal.toFixed(2)} ${currency}\n` +
-    (discount > 0 ? `🎟️ الخصم (${session.discountLabel || "كوبون"}): -${discount.toFixed(2)} ${currency}\n` : "") +
-    (labels.feeLabel ? `${labels.feeLabel}: ${fee.toFixed(2)} ${currency}\n` : "") +
-    `*الإجمالي الكلي: ${grandTotal.toFixed(2)} ${currency}*\n\n` +
-    `طريقة الدفع: عند الاستلام 💵`;
+    totalSection;
 
   sessionManager.update(from, { pendingInvoice: invoice, grandTotal });
 
