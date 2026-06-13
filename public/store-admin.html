@@ -746,7 +746,7 @@ tr:hover td{background:#fafcfa}
     <button class="tab active" id="tabDash"     onclick="showTab('dash')">📊 لوحة التحكم</button>
     <button class="tab"        id="tabMenu"     onclick="showTab('menu')"><span data-biz="catalog">📋 القائمة</span></button>
     <button class="tab"        id="tabOrders"   onclick="showTab('orders')"><span data-biz="orderInbox">📦 الطلبات</span></button>
-    <button class="tab"        id="tabHandoffs" onclick="showTab('handoffs')">🆘 طلبات مسؤول <span id="handoffsBadge" style="display:none;background:#dc2626;color:#fff;border-radius:999px;padding:1px 7px;font-size:11px;font-weight:900;margin-right:4px">0</span></button>
+    <button class="tab"        id="tabSupport"  onclick="showTab('support')">🆘 الدعم <span id="supportBadge" style="display:none;background:#dc2626;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;margin-right:5px">0</span></button>
     <button class="tab"        id="tabSettings"  onclick="showTab('settings')">⚙️ إعدادات المتجر</button>
     <button class="tab"        id="tabCustomers" onclick="showTab('customers')">👥 العملاء</button>
     <button class="tab"        id="tabBroadcast" onclick="showTab('broadcast')">📢 بث رسالة</button>
@@ -777,8 +777,8 @@ tr:hover td{background:#fafcfa}
       </div>
     </div>
 
-    <!-- 🆘 Handoff banner (يظهر فقط لو يوجد عملاء ينتظرون) -->
-    <div id="handoffBanner" style="display:none;background:linear-gradient(135deg,#fef2f2,#fee2e2);border:2px solid #dc2626;border-radius:12px;padding:14px 18px;margin:14px 0"></div>
+    <!-- Banner: عملاء ينتظرون مسؤول (يظهر فقط لو عددهم > 0) -->
+    <div id="supportBanner" style="display:none"></div>
 
     <!-- ── Dashboard ── -->
     <section id="dashSection">
@@ -1313,17 +1313,17 @@ tr:hover td{background:#fafcfa}
   </div>
 </div>
 
-    <!-- ── Handoffs (طلبات مسؤول) ── -->
-    <section id="handoffsSection" style="display:none">
-      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+    <!-- ── 🆘 الدعم: عملاء طلبوا مسؤول والبوت متوقف معهم ── -->
+    <section id="supportSection" style="display:none">
+      <div style="background:linear-gradient(135deg,#fef2f2 0%,#fff 100%);border:1px solid #fecaca;border-radius:14px;padding:18px 22px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-          <h2 style="margin:0;font-size:22px;color:#7f1d1d">🆘 العملاء الذين يحتاجون مسؤول</h2>
-          <p style="color:#6b7280;font-size:13px;margin:4px 0 0">البوت متوقف لهؤلاء العملاء. تواصل معهم من واتساب مباشرة، ثم اضغط "▶ استئناف البوت" لإعادة تشغيله.</p>
+          <h2 style="margin:0;font-size:20px;font-weight:900;color:#7f1d1d">🆘 العملاء الذين طلبوا مسؤول</h2>
+          <p style="color:#9b1c1c;font-size:13px;margin:4px 0 0">البوت ساكت معهم. تواصل من واتساب ثم اضغط ▶ استئناف البوت.</p>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="loadHandoffsTab()">🔄 تحديث</button>
+        <button onclick="supportLoad()" style="background:#fff;border:1px solid #fecaca;color:#7f1d1d;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">🔄 تحديث</button>
       </div>
-      <div id="handoffsTabContent">
-        <div class="empty-state" style="padding:40px"><div class="icon">⏳</div><p>جاري التحميل...</p></div>
+      <div id="supportList">
+        <div style="text-align:center;padding:40px;color:#9ca3af">⏳ جاري التحميل...</div>
       </div>
     </section>
 
@@ -2005,9 +2005,9 @@ async function _finishLogin(r) {
       window.showFirstTimeWelcome(STORE_NAME);
     }
   }, 800);
-  // Handoff polling (banner notification إذا عميل يطلب مسؤول)
-  pollHandoffs();
-  if (!_handoffPollTimer) _handoffPollTimer = setInterval(pollHandoffs, 20000);
+  // Support polling — يحدّث الـ badge + banner كل 15 ث
+  supportPoll();
+  if (!_supportTimer) _supportTimer = setInterval(supportPoll, 15000);
 }
 
 async function doLogin() {
@@ -2145,7 +2145,7 @@ function toggleDeliveryFeeS() {
 }
 
 function showTab(tab) {
-  ["dash","menu","orders","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory","ratings"].forEach(t => {
+  ["dash","menu","orders","support","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory","ratings"].forEach(t => {
     const sec = document.getElementById(t + "Section");
     const btn = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1));
     if (sec) sec.style.display = t === tab ? "" : "none";
@@ -2153,7 +2153,7 @@ function showTab(tab) {
   });
   if (tab === "menu")      loadProducts();
   if (tab === "orders")    loadOrders();
-  if (tab === "handoffs")  loadHandoffsTab();
+  if (tab === "support")   supportLoad();
   if (tab === "settings")  loadSettings();
   if (tab === "customers") {
     const locked = !PLAN_FEATURES.customerRegistry;
@@ -3705,121 +3705,130 @@ async function completeOrder(orderId) {
   } catch (e) { showToast("فشل: " + (e?.data?.error || e.message), "error"); }
 }
 
-// ─── Handoff polling (banner notification) ──────────────────
-let _handoffPollTimer = null;
-async function pollHandoffs() {
+// ═════════════ 🆘 Support — العملاء الذين طلبوا مسؤول ═════════════
+let _supportTimer = null;
+let _supportData  = []; // cached آخر pull
+
+function _supTimeAgo(iso) {
+  if (!iso) return "—";
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1)  return "الآن";
+  if (m < 60) return m + " دقيقة";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + " ساعة";
+  return Math.floor(h / 24) + " يوم";
+}
+
+function _supCleanPhone(p) {
+  return String(p || "").replace("@s.whatsapp.net", "").replace("@lid", "").replace(/\D/g, "");
+}
+
+// pull من السيرفر + يحدّث badge + banner (يعمل من أي صفحة)
+async function supportPoll() {
   try {
     const r = await api("GET", "/store/handoffs");
-    const banner = document.getElementById("handoffBanner");
-    const badge  = document.getElementById("handoffsBadge");
-    const count  = r.handoffs ? r.handoffs.length : 0;
-    // تحديث badge في tab "🆘 طلبات مسؤول"
+    const list = Array.isArray(r.handoffs) ? r.handoffs : [];
+    _supportData = list;
+    const badge = document.getElementById("supportBadge");
     if (badge) {
-      if (count > 0) { badge.style.display = ""; badge.textContent = count; }
+      if (list.length > 0) { badge.style.display = "inline-block"; badge.textContent = list.length; }
       else { badge.style.display = "none"; }
     }
-    if (!banner) return;
-    if (!count) { banner.style.display = "none"; return; }
-    banner.style.display = "";
-    banner.innerHTML = `
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <span style="font-size:28px">🆘</span>
-        <div style="flex:1;min-width:200px">
-          <div style="font-weight:900;font-size:15px;color:#7f1d1d">${r.handoffs.length} عميل يحتاج مسؤول</div>
-          <div style="font-size:12px;color:#991b1b;margin-top:2px">البوت متوقف لهؤلاء العملاء — تواصل معهم من واتساب مباشرة</div>
-        </div>
-        <button onclick="openHandoffsList()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit">عرض القائمة</button>
+    _supportRenderBanner(list);
+    // لو tab مفتوح حالياً، حدّثه أيضاً
+    const sec = document.getElementById("supportSection");
+    if (sec && sec.style.display !== "none") _supportRenderList(list);
+  } catch (e) { /* silent */ }
+}
+
+function _supportRenderBanner(list) {
+  const banner = document.getElementById("supportBanner");
+  if (!banner) return;
+  if (!list.length) { banner.style.display = "none"; banner.innerHTML = ""; return; }
+  banner.style.display = "block";
+  banner.innerHTML = `
+    <div style="background:linear-gradient(135deg,#fef2f2,#fee2e2);border:2px solid #dc2626;border-radius:12px;padding:14px 18px;margin:14px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span style="font-size:32px">🆘</span>
+      <div style="flex:1;min-width:200px">
+        <div style="font-weight:900;font-size:15px;color:#7f1d1d">${list.length} عميل ينتظر مسؤول</div>
+        <div style="font-size:12px;color:#991b1b;margin-top:2px">البوت متوقف معهم — افتح "🆘 الدعم" للتواصل</div>
       </div>
-      <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
-        ${r.handoffs.map(h => `
-          <div style="background:#fff;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:13px">
-            <span dir="ltr" style="font-family:monospace;color:#991b1b;font-weight:700">${esc((h.phone||"").replace("@s.whatsapp.net",""))}</span>
-            <span style="color:#6b7280;flex:1">"${esc(h.lastMsg||"")}"</span>
-            <a href="https://wa.me/${esc((h.phone||"").replace(/[^\d]/g,""))}" target="_blank" style="background:#16a34a;color:#fff;padding:4px 12px;border-radius:6px;text-decoration:none;font-size:12px">💬 رد</a>
-            <button onclick="resumeBot('${esc(h.phone)}')" style="background:#374151;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit">▶ استئناف البوت</button>
-          </div>
-        `).join("")}
-      </div>`;
-  } catch {}
+      <button onclick="showTab('support')" style="background:#dc2626;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px">فتح القائمة ←</button>
+    </div>`;
 }
 
-async function resumeBot(customerPhone) {
-  if (!confirm("هل تريد استئناف البوت للعميل ورد رسالة له بذلك؟")) return;
-  try {
-    // الـ endpoint الجديد يقبل phone مباشرة بدون orderId
-    const clean = String(customerPhone || "").replace(/\D/g, "");
-    await api("POST", `/store/handoff/resume`, { phone: clean });
-    showToast("✅ تم استئناف البوت + إرسال رسالة للعميل", "success");
-    pollHandoffs();
-  } catch (e) { showToast("فشل: " + e.message, "error"); }
-}
-
-function openHandoffsList() {
-  showTab('handoffs');
-}
-
-// ─── Handoffs Tab — قائمة كاملة بكل العملاء المتوقف عنهم البوت ──────────────
-async function loadHandoffsTab() {
-  const box = document.getElementById("handoffsTabContent");
+// load عند فتح tab الدعم
+async function supportLoad() {
+  const box = document.getElementById("supportList");
   if (!box) return;
-  box.innerHTML = `<div class="empty-state" style="padding:40px"><div class="icon">⏳</div><p>جاري التحميل...</p></div>`;
+  box.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af">⏳ جاري التحميل...</div>`;
   try {
     const r = await api("GET", "/store/handoffs");
-    const list = r.handoffs || [];
-    const debug = `<div style="background:#f3f4f6;border:1px dashed #9ca3af;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:#374151;direction:ltr;text-align:left;font-family:monospace">store:${r.storeId||"?"} | count:${list.length} | server:${new Date().toLocaleTimeString()}</div>`;
-    if (!list.length) {
-      box.innerHTML = debug + `
-        <div class="empty-state" style="padding:60px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px">
-          <div class="icon" style="font-size:48px">✅</div>
-          <h3 style="color:#166534;margin:14px 0 6px">لا يوجد عملاء بانتظار</h3>
-          <p style="color:#16a34a;font-size:14px">البوت يخدم كل عملائك بدون مشاكل حالياً</p>
-          <p style="color:#6b7280;font-size:12px;margin-top:14px">إذا كان عميل طلب "مسؤول" ولم يظهر هنا، اضغط <b>Ctrl+Shift+R</b> لإعادة تحميل الصفحة كاملة</p>
-        </div>`;
-      return;
-    }
-    box.innerHTML = `
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:14px 18px;margin-bottom:18px">
-        <div style="font-weight:900;font-size:16px;color:#7f1d1d">⚠️ ${list.length} عميل بانتظارك</div>
-        <div style="font-size:13px;color:#991b1b;margin-top:6px">📲 افتح واتساب وتواصل مع كل عميل، ثم اضغط <b>▶ استئناف البوت</b> ليكمل البوت معه.</div>
-      </div>
-      <div style="display:grid;gap:12px">
-        ${list.map(h => {
-          const phone = (h.phone || "").replace("@s.whatsapp.net","").replace(/\D/g,"");
-          const at = h.startedAt ? new Date(h.startedAt) : null;
-          const ago = at ? _timeAgo(at) : "—";
-          return `
-          <div style="background:#fff;border:1px solid #e5e7eb;border-right:4px solid #dc2626;border-radius:12px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-              <div style="flex:1;min-width:200px">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-                  <span style="font-size:22px">🆘</span>
-                  <span dir="ltr" style="font-family:monospace;color:#111827;font-weight:800;font-size:15px">+${esc(phone)}</span>
-                  <span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px">منذ ${ago}</span>
-                </div>
-                <div style="background:#f9fafb;padding:8px 12px;border-radius:8px;color:#374151;font-size:13px;border-right:3px solid #d1d5db">
-                  "${esc(h.lastMsg||"—")}"
-                </div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:6px;min-width:160px">
-                <a href="https://wa.me/${esc(phone)}" target="_blank" style="background:#16a34a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;text-align:center;display:block">💬 افتح واتساب</a>
-                <button onclick="resumeBot('${esc(h.phone)}')" style="background:#374151;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit">▶ استئناف البوت</button>
-              </div>
-            </div>
-          </div>`;
-        }).join("")}
-      </div>`;
+    const list = Array.isArray(r.handoffs) ? r.handoffs : [];
+    _supportData = list;
+    _supportRenderList(list);
   } catch (e) {
-    box.innerHTML = `<div class="empty-state" style="padding:40px"><div class="icon">⚠️</div><p>فشل التحميل: ${esc(e.message||"")}</p></div>`;
+    box.innerHTML = `<div style="text-align:center;padding:40px;color:#dc2626">⚠️ فشل التحميل: ${esc(e.message || "")}</div>`;
   }
 }
 
-function _timeAgo(d) {
-  const m = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (m < 1)   return "الآن";
-  if (m < 60)  return m + " د";
-  const h = Math.floor(m / 60);
-  if (h < 24)  return h + " س";
-  return Math.floor(h / 24) + " يوم";
+function _supportRenderList(list) {
+  const box = document.getElementById("supportList");
+  if (!box) return;
+  if (!list.length) {
+    box.innerHTML = `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:60px 24px;text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">✅</div>
+        <h3 style="color:#166534;margin:0 0 6px;font-size:18px">لا يوجد عملاء بانتظار</h3>
+        <p style="color:#16a34a;font-size:14px;margin:0">البوت يخدم كل عملائك حالياً</p>
+      </div>`;
+    return;
+  }
+  box.innerHTML = list.map(h => {
+    const phone = _supCleanPhone(h.phone);
+    const phoneDisplay = phone ? "+" + phone : esc(h.phone || "—");
+    const ago = _supTimeAgo(h.startedAt);
+    const msg = esc(h.lastMsg || "—");
+    const phoneRaw = esc(h.phone || phone);
+    return `
+      <div style="background:#fff;border:1px solid #e5e7eb;border-right:5px solid #dc2626;border-radius:12px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+              <span style="font-size:24px">🆘</span>
+              <span dir="ltr" style="font-family:monospace;color:#111827;font-weight:800;font-size:16px">${phoneDisplay}</span>
+              <span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">منذ ${ago}</span>
+            </div>
+            <div style="background:#f9fafb;padding:10px 14px;border-radius:8px;color:#374151;font-size:13px;border-right:3px solid #d1d5db">
+              <span style="color:#9ca3af;font-size:11px;display:block;margin-bottom:3px">آخر رسالة:</span>
+              <span style="font-weight:600">"${msg}"</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:170px">
+            <a href="https://wa.me/${phone}" target="_blank"
+               style="background:#16a34a;color:#fff;padding:11px 16px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:700;text-align:center;display:block">
+              💬 فتح واتساب
+            </a>
+            <button onclick="supportResume('${phoneRaw}')"
+                    style="background:#1f2937;color:#fff;border:none;padding:11px 16px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit">
+              ▶ استئناف البوت
+            </button>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function supportResume(phoneRaw) {
+  if (!confirm("استئناف البوت لهذا العميل؟ سيتلقى رسالة 'البوت يعمل من جديد'.")) return;
+  try {
+    const clean = _supCleanPhone(phoneRaw);
+    await api("POST", "/store/handoff/resume", { phone: clean });
+    showToast("✅ استؤنف البوت + أُرسلت رسالة للعميل", "success");
+    supportPoll(); // حدّث القائمة
+  } catch (e) {
+    showToast("فشل: " + (e.message || "خطأ غير معروف"), "error");
+  }
 }
 
 async function createTestOrder() {
