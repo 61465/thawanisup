@@ -2816,13 +2816,16 @@ async function getAIVideoRecommendation() {
   } catch (e) { box.innerHTML = `<div style="color:#dc2626">تعذّر الحصول على التوصية</div>`; }
 }
 
-// ─── Archive (شهري) ──────────────────────────────────────────
+// ─── Archive (يومي + شهري) ──────────────────────────────────────────
 async function loadArchives() {
   const sec = document.getElementById("archiveSection");
   if (!sec) return;
   sec.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af">جاري التحميل...</div>`;
   try {
-    const r = await api("GET", "/store/archives");
+    const [r, daily] = await Promise.all([
+      api("GET", "/store/archives").catch(() => ({ archives: [] })),
+      api("GET", "/store/archive/daily").catch(() => ({ totals:{}, days:[], change:{} })),
+    ]);
     const archives = r.archives || [];
     const cur = localStorage.getItem("store_currency") || "ر.س";
     const arabicMonth = (ym) => {
@@ -2831,7 +2834,63 @@ async function loadArchives() {
       const names = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
       return `${names[parseInt(m,10)-1] || m} ${y}`;
     };
-    sec.innerHTML = `
+    // ── 📊 ملخص الشهر الحالي (من daily archive) ──
+    const t = daily.totals || {};
+    const ch = daily.change || {};
+    const days = daily.days || [];
+    const maxRev = Math.max(...days.map(d => d.revenue || 0), 1);
+    const changeColor = (v) => v > 0 ? "#16a34a" : v < 0 ? "#dc2626" : "#6b7280";
+    const changeArrow = (v) => v > 0 ? "↑" : v < 0 ? "↓" : "→";
+    const dailyTopHTML = `
+      <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,#f0fdf4 0%,#fff 100%);border:1px solid #bbf7d0">
+        <div class="card-header">
+          <div class="card-title">📊 إحصائيات هذا الشهر (${arabicMonth(daily.month)})</div>
+          <span style="font-size:11px;color:#6b7280">${t.daysCount || 0} يوم مؤرشف · يصفر يومياً 00:00 الرياض</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;padding:14px">
+          <div style="background:#fff;border:1px solid #e5e7eb;border-right:4px solid #16a34a;border-radius:10px;padding:12px">
+            <div style="font-size:11px;color:#6b7280;font-weight:600">💰 إيرادات الشهر</div>
+            <div style="font-size:22px;font-weight:900;color:#15803d;margin-top:4px">${(t.revenue||0).toFixed(0)} <span style="font-size:12px;color:#9ca3af">${cur}</span></div>
+            ${ch.revenue !== undefined ? `<div style="font-size:11px;margin-top:4px;color:${changeColor(ch.revenue)};font-weight:700">${changeArrow(ch.revenue)} ${Math.abs(ch.revenue)}% عن الشهر السابق</div>` : ""}
+          </div>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-right:4px solid #2563eb;border-radius:10px;padding:12px">
+            <div style="font-size:11px;color:#6b7280;font-weight:600">📦 إجمالي الطلبات</div>
+            <div style="font-size:22px;font-weight:900;color:#1d4ed8;margin-top:4px">${t.total||0}</div>
+            ${ch.orders !== undefined ? `<div style="font-size:11px;margin-top:4px;color:${changeColor(ch.orders)};font-weight:700">${changeArrow(ch.orders)} ${Math.abs(ch.orders)}% عن الشهر السابق</div>` : ""}
+          </div>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-right:4px solid #f59e0b;border-radius:10px;padding:12px">
+            <div style="font-size:11px;color:#6b7280;font-weight:600">✅ مكتمل</div>
+            <div style="font-size:22px;font-weight:900;color:#b45309;margin-top:4px">${t.confirmed||0}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">متوسط الطلب: ${(t.avgOrder||0).toFixed(0)} ${cur}</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e5e7eb;border-right:4px solid #dc2626;border-radius:10px;padding:12px">
+            <div style="font-size:11px;color:#6b7280;font-weight:600">❌ ملغي / مرفوض</div>
+            <div style="font-size:22px;font-weight:900;color:#b91c1c;margin-top:4px">${(t.cancelled||0)+(t.rejected||0)}</div>
+            <div style="font-size:11px;color:#9ca3af;margin-top:4px">${t.uniqueCustomers||0} عميل فريد</div>
+          </div>
+        </div>
+        ${days.length ? `
+          <div style="padding:0 14px 14px">
+            <div style="font-weight:700;color:#374151;margin-bottom:10px;font-size:14px">📅 الأيام (تفصيلاً)</div>
+            <div style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto">
+              ${days.map(d => `
+                <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:13px">
+                  <div style="font-weight:700;color:#111827;min-width:90px">${d.date}</div>
+                  <div style="flex:1;background:#f3f4f6;border-radius:8px;height:10px;overflow:hidden">
+                    <div style="background:linear-gradient(90deg,#16a34a,#15803d);height:100%;width:${((d.revenue||0)/maxRev*100).toFixed(0)}%"></div>
+                  </div>
+                  <div style="min-width:80px;text-align:left;font-weight:700;color:#15803d">${(d.revenue||0).toFixed(0)} ${cur}</div>
+                  <div style="min-width:60px;text-align:left;color:#6b7280">${d.total||0} طلب</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        ` : `
+          <div style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">لا توجد أيام مؤرشفة بعد. يتم الأرشفة عند منتصف الليل.</div>
+        `}
+      </div>`;
+
+    sec.innerHTML = dailyTopHTML + `
       <div class="card" style="margin-bottom:14px">
         <div class="card-header">
           <div class="card-title">📚 أرشيف العمل الشهري</div>

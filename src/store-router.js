@@ -407,6 +407,42 @@ router.get("/store/stats", auth, (req, res) => {
   });
 });
 
+// ─── Daily Archive — أرشيف يومي + ملخص شهري ────────────────────────────────
+router.get("/store/archive/daily", auth, (req, res) => {
+  const dailyArchive = require("./daily-archive");
+  // الشهر = ?month=YYYY-MM (افتراضي الشهر الحالي بتوقيت الرياض)
+  const today = dailyArchive._todayRiyadh();
+  const month = req.query.month || today.slice(0, 7);
+  const current = dailyArchive.getMonthSummary(req.storeId, month);
+  // قارن بالشهر السابق
+  const [y, m] = month.split("-").map(Number);
+  const prevDate = new Date(y, m - 2, 1);
+  const prevMonth = prevDate.toISOString().slice(0, 7);
+  const previous = dailyArchive.getMonthSummary(req.storeId, prevMonth);
+  // قارن change %
+  const pct = (curr, prev) => prev ? Math.round(((curr - prev) / prev) * 100) : (curr > 0 ? 100 : 0);
+  res.json({
+    month,
+    today,
+    totals: current.totals,
+    days: current.days,
+    previousMonth: prevMonth,
+    previousTotals: previous.totals,
+    change: {
+      orders:  pct(current.totals.total, previous.totals.total),
+      revenue: pct(current.totals.revenue, previous.totals.revenue),
+    },
+  });
+});
+
+// POST /store/archive/force — اختبار يدوي (يأرشف أمس فوراً)
+router.post("/store/archive/force-yesterday", auth, (req, res) => {
+  const dailyArchive = require("./daily-archive");
+  const yest = dailyArchive._yesterdayRiyadh();
+  const result = dailyArchive.archiveDay(req.storeId, yest);
+  res.json({ ok: true, date: yest, saved: !!result, snapshot: result });
+});
+
 // ─── KPI endpoint — يخدم كل أنواع البيزنس (services/projects/cafe/restaurant…)
 router.get("/store/kpi", auth, (req, res) => {
   const allOrders = readOrders(req.storeId);

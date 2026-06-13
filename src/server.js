@@ -1125,7 +1125,8 @@ function normalizeDigits(s) {
 // ⏸ Mute logic: مدة الصمت بعد إرسال المنيو إذا العميل لم يختار
 const MUTE_DURATION_MS = 5 * 60 * 1000;  // 5 دقائق
 // إشارات تكسر الـ mute فوراً (طلب مساعدة فعلي)
-const UNMUTE_TRIGGERS = /^(مسؤول|بشري|انسان|human|الغاء|إلغاء|cancel|start|ابدأ|البداية|الرئيسية|stop|توقف|إيقاف)$/i;
+// بعد normalizeAr: ؤ→و، أ→ا، إ→ا
+const UNMUTE_TRIGGERS = /^(مسوول|بشري|انسان|human|الغاء|cancel|start|ابدا|البدايه|الرءيسيه|الرءيسيه|stop|توقف|ايقاف)$/i;
 
 // 🚦 Rate limit per customer (anti-spam) — 30 رسالة/دقيقة
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -1534,7 +1535,7 @@ async function handleMessage(from, incoming) {
 
   // ⏸ Mute check: إذا الجلسة مُسكّتة، تجاهل كل الرسائل (إلا إشارات الكسر)
   if (session.mutedUntil && Date.now() < session.mutedUntil) {
-    const trimmed = String(incoming || "").trim();
+    const trimmed = aiParser.normalizeAr(String(incoming || "").trim());
     if (UNMUTE_TRIGGERS.test(trimmed)) {
       // العميل طلب مساعدة فعلياً — أزل الـ mute واستمر معالجة عادية
       sessionManager.update(from, { mutedUntil: 0, menuAwaitingSince: 0 });
@@ -1581,7 +1582,7 @@ async function handleMessage(from, incoming) {
   }
 
   // 🔁 Quick reorder — "كرر" أو "أعد آخر طلب" تستعيد آخر طلب
-  if (/^(كرر|كرّر|اعد|أعد|reorder|repeat|نفس الطلب|اطلب مثل)/i.test(String(incoming).trim())) {
+  if (/^(كرر|اعد|reorder|repeat|نفس\s*الطلب|اطلب\s*مثل|كرر\s*طلبي)/i.test(aiParser.normalizeAr(String(incoming).trim()))) {
     if (session.lastOrderItems && Array.isArray(session.lastOrderItems)) {
       const cart = session.lastOrderItems.map(i => ({
         id: i.id, name: i.name, price: Number(i.price) || 0,
@@ -1618,9 +1619,10 @@ async function handleMessage(from, incoming) {
     );
   }
 
-  // ── Human Handoff: العميل يطلب مسؤول (يقبل كلمات في أي مكان في النص) ──────
-  const HANDOFF_TRIGGERS = /(احتاج\s*مسؤول|اريد\s*مسؤول|عايز\s*مسؤول|ابغى\s*مسؤول|بدي\s*مسؤول|^مسؤول$|المسؤول|اريد\s*التحدث|بشري|انسان|human\s*agent|live\s*agent|real\s*person|كلم\s*مسؤول|تحدث\s*مع\s*مسؤول)/i;
-  if (HANDOFF_TRIGGERS.test(String(incoming).trim())) {
+  // ── Human Handoff: العميل يطلب مسؤول (بعد normalize ؤ→و: "مسؤول"="مسوول") ─
+  const _normIncoming = aiParser.normalizeAr(String(incoming || ""));
+  const HANDOFF_TRIGGERS = /(احتاج\s*مسوول|اريد\s*مسوول|عايز\s*مسوول|ابغي\s*مسوول|بدي\s*مسوول|^مسوول$|المسوول|اريد\s*التحدث|بشري|انسان|human\s*agent|live\s*agent|real\s*person|كلم\s*مسوول|تحدث\s*مع\s*مسوول|اطلب\s*مسوول)/i;
+  if (HANDOFF_TRIGGERS.test(_normIncoming)) {
     const fs = require("fs");
     const path = require("path");
     const atomicFs = require("./atomic-fs");
@@ -1648,8 +1650,8 @@ async function handleMessage(from, incoming) {
   }
 
   // ── Cancel last order: العميل يكتب "إلغاء" أو "إلغاء طلبي" ─────────────────
-  const CANCEL_TRIGGERS = /^(إلغاء|الغاء|إلغاء طلبي|الغاء طلبي|إلغاء الطلب|الغاء الطلب|cancel|cancel order)$/i;
-  if (CANCEL_TRIGGERS.test(String(incoming).trim())) {
+  const CANCEL_TRIGGERS = /^(الغاء|الغاء\s*طلبي|الغاء\s*الطلب|cancel|cancel\s*order|الغ|بطل\s*الطلب)$/i;
+  if (CANCEL_TRIGGERS.test(aiParser.normalizeAr(String(incoming).trim()))) {
     try {
       const phone = phoneNum(from);
       const ordersFile = storeId === "nakheel_001"
@@ -6094,6 +6096,7 @@ if (require.main === module) {
       dailyReport.start();
       orderScheduler.start();
       require("./monthly-archive").startMonthlyCron();
+      require("./daily-archive").startScheduler();
       require("./accounting").startMonthlyAccountingCron();
       require("./health-monitor").startPeriodicChecks();
       // resume broadcasts التي توقفت لو السيرفر crashed

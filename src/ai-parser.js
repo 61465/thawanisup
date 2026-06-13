@@ -19,14 +19,14 @@ const GROQ_URL      = "https://api.groq.com/openai/v1/chat/completions";
 const AI_ENABLED    = process.env.AI_ENABLED === "1" && !!GROQ_API_KEY;
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 6000;
 
-// ─── Fast-path matchers (لا تستهلك API) ──────────────────────────────────────
-const KW_MENU    = /^(قائمة|قائمه|منيو|menu|قائمة\s*الطلب|اعرض\s*القائمة)$/i;
-const KW_CART    = /^(سلة|سلتي|عربة|cart|اعرض\s*السلة)$/i;
-const KW_CONFIRM = /^(تأكيد|أكد|اكد|تمام|تم|اوكي|اوك|confirm|ok|done)$/i;
-const KW_CANCEL  = /^(إلغاء|الغاء|الغ|بطل|cancel|stop|الغي\s*الطلب)$/i;
-const KW_PATH_BTN = /^(1|اختيار|ازرار|أزرار|buttons|تقليدي)$/i;
-const KW_PATH_WEB = /^(2|رابط|لينك|link|webview|تفاعلية)$/i;
-const KW_PATH_AI  = /^(3|كلام|كتابة|اكتب|ai|chat)$/i;
+// ─── Fast-path matchers (تُطبَّق بعد normalizeAr، فلا حاجة لأشكال الهمزة)
+const KW_MENU    = /^(قاءمه|قاءمه\s*الطلب|اعرض\s*القاءمه|منيو|menu)$/i;
+const KW_CART    = /^(سله|سلتي|عربه|cart|اعرض\s*السله|طلبي)$/i;
+const KW_CONFIRM = /^(تاكيد|اكد|تمام|تم|اوكي|اوك|confirm|ok|done|خلص|انتهيت)$/i;
+const KW_CANCEL  = /^(الغاء|الغ|بطل|cancel|stop|الغي\s*الطلب|ايقاف)$/i;
+const KW_PATH_BTN = /^(1|اختيار|ازرار|buttons|تقليدي)$/i;
+const KW_PATH_WEB = /^(2|رابط|لينك|link|webview|تفاعليه)$/i;
+const KW_PATH_AI  = /^(3|كلام|كتابه|اكتب|ai|chat)$/i;
 
 /**
  * يُرجع `{type, value}`. الأنواع المتوقعة:
@@ -46,9 +46,25 @@ const KW_PATH_AI  = /^(3|كلام|كتابة|اكتب|ai|chat)$/i;
  * @param {object} session    — حالة الجلسة (step, cart, path, category)
  * @param {object} menuCtx    — { categories: string[], items: {[cat]: [{name, price}]} }
  */
+// 🔤 Arabic normalization — يوحّد التشكيل وأشكال الهمزة قبل أي مطابقة
+function normalizeAr(s) {
+  if (!s) return "";
+  return String(s)
+    .toLowerCase()
+    .replace(/[ً-ٰٟ]/g, "")  // تشكيل + sukoon + tatweel
+    .replace(/ـ/g, "")                  // ـ tatweel
+    .replace(/[إأآٱ]/g, "ا")                  // كل أشكال الهمزة على الألف → ا
+    .replace(/ى/g, "ي")                       // ألف مقصورة → ي
+    .replace(/ؤ/g, "و")                       // واو + همزة → و
+    .replace(/ئ/g, "ي")                       // ياء + همزة → ي
+    .replace(/ة/g, "ه")                       // تاء مربوطة → هاء (للمقارنة فقط)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function parseIntent(text, session = {}, menuCtx = null) {
   const raw  = String(text || "").trim();
-  const norm = raw.toLowerCase();
+  const norm = normalizeAr(raw); // ⭐ normalize كل اللهجات الآن
 
   // ── Fast path 1: رقم مباشر ────────────────────────────────────────────────
   if (/^\d{1,3}$/.test(raw)) {
@@ -226,7 +242,7 @@ async function _aiClassify(text, session, menuCtx) {
 
 // ─── Heuristic fallback عند فشل AI تماماً (keyword matching ذكي) ─────────────
 function _heuristicFallback(text) {
-  const t = (text || "").toLowerCase().trim();
+  const t = normalizeAr(text);
   // أرقام كميات + كلمات أكل/شرب شائعة
   const qtyMatch = t.match(/^(\d+|واحد|اثنين|ثلاثة|اربعة|خمسة|اتنين)\s*(.+)/);
   const numMap = { "واحد":1, "اثنين":2, "اتنين":2, "ثلاثة":3, "اربعة":4, "خمسة":5 };
@@ -342,6 +358,7 @@ async function aiParseTime(text) {
 module.exports = {
   parseIntent,
   aiParseTime,
+  normalizeAr,
   AI_ENABLED,
   GROQ_MODEL,
 };
