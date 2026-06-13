@@ -1180,7 +1180,12 @@ const COMMON_KEYWORDS = ["قائمة", "قائمه", "منيو", "menu", "سلة
                          "مسؤول", "مساعدة", "help", "بشري",
                          "ابدأ", "start", "البداية", "الرئيسية",
                          "تتبع", "track", "نقاطي", "points",
-                         "كرر", "كرّر", "اعد", "أعد", "reorder"];
+                         "كرر", "كرّر", "اعد", "أعد", "reorder",
+                         // ⏰ كلمات الوقت الشائعة — لا يجب تصحيحها لأي شيء آخر
+                         "الان", "الآن", "now", "فوراً", "فورا"];
+
+// كلمات تعفى من typo-fix (لو تطابقت تماماً، لا تصحّح حتى لو distance = 1)
+const PROTECTED_WORDS = new Set(["الان", "الآن", "now", "فورا", "فوراً", "تم", "نعم", "لا"]);
 
 // 🌍 Language detection — يكتشف لغة الرسالة (ar/en)
 function _detectLang(text) {
@@ -1776,9 +1781,18 @@ async function handleMessage(from, incoming) {
   }
 
   // 🔤 Typo tolerance — لو الرسالة قريبة من keyword معروف، صحّحها
-  if (msg && msg.length >= 3 && !msg.startsWith("CAT_") && !msg.startsWith("PROD_") && !msg.startsWith("QTY_") && !/^[A-Z_]+$/.test(msg)) {
+  // ⚠️ في خطوة الجدولة/الموقع لا نصحّح (الأوقات والعناوين قد تتداخل مع الكلمات المحمية)
+  const skipTypoFix = ["SCHEDULE_ORDER","COLLECT_TIME","COLLECT_LOCATION"].includes(session.step);
+  const msgLower = String(msg || "").toLowerCase().trim();
+  if (
+    msg && msg.length >= 3 &&
+    !skipTypoFix &&
+    !PROTECTED_WORDS.has(msgLower) &&
+    !msg.startsWith("CAT_") && !msg.startsWith("PROD_") && !msg.startsWith("QTY_") &&
+    !/^[A-Z_]+$/.test(msg)
+  ) {
     const corrected = _fuzzyMatch(msg, COMMON_KEYWORDS);
-    if (corrected && corrected !== msg.toLowerCase()) {
+    if (corrected && corrected !== msgLower) {
       console.log(`[typo-fix] [${storeId}] "${msg}" → "${corrected}"`);
       msg = corrected;
     }
