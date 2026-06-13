@@ -4007,8 +4007,13 @@ async function botqLoad() {
   if (!box) return;
   box.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af">⏳ جاري التحميل...</div>`;
   try {
-    const r = await api("GET", "/store/bot-questions");
+    // اجلب الأسئلة + بيانات المتجر (لرسالة الترحيب)
+    const [r, storeData] = await Promise.all([
+      api("GET", "/store/bot-questions"),
+      api("GET", "/store/settings").catch(() => ({ welcomeMessage: "" })),
+    ]);
     _botqFields = Array.isArray(r.fields) ? r.fields : [];
+    _botqWelcome = String(storeData.welcomeMessage || "").trim();
     document.getElementById("botqSource").textContent =
       r.source === "custom" ? "(مخصصة)" : "(افتراضية — لم تُحفظ بعد)";
     _botqRender();
@@ -4016,6 +4021,8 @@ async function botqLoad() {
     box.innerHTML = `<div style="text-align:center;padding:30px;color:#dc2626">⚠️ فشل: ${esc(e.message||"")}</div>`;
   }
 }
+
+let _botqWelcome = "";
 
 function _botqRender() {
   const box = document.getElementById("botqList");
@@ -4026,7 +4033,40 @@ function _botqRender() {
     return;
   }
   const activeCount = _botqFields.filter(f => f.enabled !== false).length;
-  box.innerHTML = _botqFields.map((f, i) => {
+
+  // 🔹 بطاقة "رسالة الترحيب" (للقراءة فقط — تأتي قبل الأسئلة)
+  const welcomePreview = _botqWelcome
+    ? esc(_botqWelcome.length > 140 ? _botqWelcome.slice(0, 140) + "…" : _botqWelcome)
+    : `<span style="color:#9ca3af;font-style:italic">لم تُكتب بعد — اضغط "تعديل من الإعدادات"</span>`;
+  const welcomeCard = `
+    <div style="background:linear-gradient(135deg,#fef3c7 0%,#fffbeb 100%);border:1px solid #fcd34d;border-right:5px solid #f59e0b;border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">👋</span>
+      <span style="background:#f59e0b1a;color:#92400e;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap">قبل الأسئلة</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:#78350f;font-size:14px;display:flex;align-items:center;gap:6px">
+          رسالة الترحيب
+          <span style="color:#9ca3af;font-size:11px">(تظهر في أول رسالة للعميل)</span>
+        </div>
+        <div style="font-size:12px;color:#78350f;margin-top:3px;line-height:1.6">${welcomePreview}</div>
+      </div>
+      <button onclick="showTab('settings'); setTimeout(()=>{const el=document.getElementById('s_welcome'); if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();}}, 300)" title="تعديل من الإعدادات" style="background:#fff;border:1px solid #fcd34d;color:#92400e;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">✏️ تعديل</button>
+    </div>
+    <div style="text-align:center;color:#9ca3af;font-size:11px;margin:6px 0 10px;font-weight:600">⬇️ ثم تأتي الأسئلة بالترتيب ⬇️</div>`;
+
+  // 🔹 بطاقة "ملخص الطلب" (للقراءة فقط — تأتي بعد الأسئلة)
+  const summaryCard = `
+    <div style="text-align:center;color:#9ca3af;font-size:11px;margin:10px 0 6px;font-weight:600">⬇️ بعد كل الأسئلة ⬇️</div>
+    <div style="background:linear-gradient(135deg,#dcfce7 0%,#f0fdf4 100%);border:1px solid #86efac;border-right:5px solid #16a34a;border-radius:10px;padding:12px 14px;margin-top:0;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">📋</span>
+      <span style="background:#16a34a1a;color:#166534;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap">بعد الأسئلة</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:#14532d;font-size:14px">ملخص الطلب + التأكيد</div>
+        <div style="font-size:12px;color:#15803d;margin-top:3px;line-height:1.6">يعرض البوت كل البيانات (المنتجات + الإجابات) ثم يطلب تأكيد العميل</div>
+      </div>
+      <span style="background:#16a34a;color:#fff;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;white-space:nowrap">تلقائي</span>
+    </div>`;
+
+  box.innerHTML = welcomeCard + _botqFields.map((f, i) => {
     const b = TYPE_BADGES[f.type] || TYPE_BADGES.text;
     const isOff = f.enabled === false;
     const dimmed = isOff ? "opacity:0.5" : "";
@@ -4051,17 +4091,23 @@ function _botqRender() {
       <button onclick="botqEdit(${i})" title="تعديل" style="background:#f3f4f6;border:none;width:32px;height:32px;border-radius:7px;cursor:pointer;font-size:14px">✏️</button>
       <button onclick="botqDelete(${i})" title="حذف نهائي" style="background:#fef2f2;border:none;width:32px;height:32px;border-radius:7px;cursor:pointer;font-size:14px;color:#dc2626">🗑️</button>
     </div>`;
-  }).join("");
+  }).join("") + summaryCard;
   // ملخص العداد
   const totalSpan = document.getElementById("botqSource");
   if (totalSpan) {
     const baseText = totalSpan.textContent.replace(/\s*·.*$/, "");
     totalSpan.textContent = `${baseText} · ${activeCount} مفعّل من ${_botqFields.length}`;
   }
-  // معاينة — فقط المفعّلة
-  preview.textContent = _botqFields.filter(f => f.enabled !== false).map((f, i) =>
-    `سؤال ${i+1}${f.required ? " (إلزامي)" : ""}:\n${f.prompt}\n`
-  ).join("\n") || "(لا أسئلة مفعّلة — البوت لن يطرح أي سؤال على العميل)";
+  // معاينة كاملة كما يراها العميل (ترحيب → أسئلة → ملخص)
+  const welcomePart = _botqWelcome
+    ? `👋 رسالة الترحيب:\n${_botqWelcome}\n────────────────\n`
+    : `👋 رسالة الترحيب: (لم تُكتب — لن يظهر ترحيب)\n────────────────\n`;
+  const activeFields = _botqFields.filter(f => f.enabled !== false);
+  const questionsPart = activeFields.length
+    ? activeFields.map((f, i) => `سؤال ${i+1}${f.required ? " (إلزامي)" : ""}:\n${f.prompt}`).join("\n────────────────\n") +
+      "\n────────────────\n📋 ملخص الطلب + تأكيد العميل"
+    : "(لا أسئلة مفعّلة — يذهب مباشرة لملخص الطلب)";
+  preview.textContent = welcomePart + "\n" + questionsPart;
 }
 
 function botqToggle(i) {
