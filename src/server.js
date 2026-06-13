@@ -3394,11 +3394,36 @@ async function showOrderSummary(from, session) {
   const grandTotal  = Math.max(0, rawSubtotal - discount) + fee;
 
   const lines  = cart.map(i => `• ${i.name} × ${i.qty} ........... ${(i.price*i.qty).toFixed(2)} ${currency}`);
+
+  // 🤖 اعرض إجابات الأسئلة الديناميكية لو وُجدت
+  const customAnswers = session.customAnswers || {};
+  const customFields = (store?.botQuestions?.fields || []).filter(f => f.enabled !== false);
+  let dynamicLines = "";
+  if (customFields.length && Object.keys(customAnswers).length) {
+    const ICON = { location: "📍", schedule: "⏰", phone: "📞", number: "🔢", date: "📅", choice: "☑️", text: "📝" };
+    dynamicLines = customFields
+      .map(f => {
+        const v = customAnswers[f.id];
+        if (!v) return null;
+        const ico = ICON[f.type] || "•";
+        return `${ico} ${f.label}: *${v}*`;
+      })
+      .filter(Boolean)
+      .join("\n");
+    if (dynamicLines) dynamicLines += "\n";
+  }
+
+  // legacy: لو لا توجد customAnswers، استخدم الحقول القديمة
+  const legacyDetails = !dynamicLines
+    ? (session.customerLocation ? `العنوان: ${session.customerLocation}\n` : "") +
+      (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "")
+    : "";
+
   const invoice =
     `🧾 *ملخص طلبك:*\n\n` +
-    `الاسم: ${session.customerName}\n` +
-    (session.customerLocation ? `العنوان: ${session.customerLocation}\n` : "") +
-    (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "") +
+    (session.customerName && session.customerName !== "عميل" ? `الاسم: ${session.customerName}\n` : "") +
+    dynamicLines +
+    legacyDetails +
     `\n${lines.join("\n")}\n` +
     `──────────────\n` +
     `المجموع: ${rawSubtotal.toFixed(2)} ${currency}\n` +
@@ -3498,6 +3523,8 @@ async function handleConfirmOrder(from, msg, session) {
       coupon:           session.appliedCoupon || null,
       discount,
       scheduledTime:    session.scheduledTime || null,
+      // 🤖 إجابات الأسئلة المخصصة (لو وُجدت) — تظهر في صفحة الطلبات بالأدمن
+      customAnswers:    session.customAnswers && Object.keys(session.customAnswers).length ? session.customAnswers : null,
       date:   new Date().toISOString().slice(0, 10),
       status: "pending_confirmation",
     });

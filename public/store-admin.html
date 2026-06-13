@@ -4393,16 +4393,23 @@ function renderOrdersTable() {
         </td>
         <td class="col-hide" style="font-size:13px;color:var(--gray);max-width:240px">
           ${(() => {
-            // إذا توفر رابط Maps من موقع مشترك → نعرض الاسم + زر "🗺️ الموقع"
             const mapsUrl = o.customerLocationMapsUrl || (o.customerLocationLat && o.customerLocationLng ? `https://maps.google.com/?q=${o.customerLocationLat},${o.customerLocationLng}` : null);
-            const name = o.customerLocationName || o.customerLocation || "—";
-            // ننظف اسم العنوان إذا كان يحوي رابط (legacy)
-            const cleanName = String(name).replace(/\s*\(📍\s*https?:\/\/[^\)]+\)/g, "").trim() || "—";
-            if (mapsUrl) {
-              return `<div style="font-weight:600;color:#374151">${esc(cleanName)}</div>
-                <a href="${esc(mapsUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 10px;background:#dbeafe;color:#1e40af;border-radius:14px;font-size:11px;font-weight:700;text-decoration:none">🗺️ فتح في خرائط Google</a>`;
+            const name = o.customerLocationName || o.customerLocation || "";
+            const cleanName = String(name).replace(/\s*\(📍\s*https?:\/\/[^\)]+\)/g, "").trim();
+            // 🤖 اعرض إجابات الأسئلة المخصصة (لو وُجدت)
+            const customLines = (o.customAnswers && typeof o.customAnswers === "object")
+              ? Object.entries(o.customAnswers).filter(([_,v]) => v).map(([k,v]) =>
+                  `<div style="font-size:12px;margin-top:3px"><b>${esc(k)}:</b> ${esc(String(v).slice(0,80))}</div>`
+                ).join("")
+              : "";
+            let locationHtml = "";
+            if (cleanName) {
+              locationHtml = mapsUrl
+                ? `<div style="font-weight:600;color:#374151">${esc(cleanName)}</div>
+                   <a href="${esc(mapsUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 10px;background:#dbeafe;color:#1e40af;border-radius:14px;font-size:11px;font-weight:700;text-decoration:none">🗺️ فتح في خرائط Google</a>`
+                : `<div style="font-weight:600;color:#374151">${esc(cleanName)}</div>`;
             }
-            return esc(cleanName);
+            return locationHtml + customLines || "—";
           })()}
         </td>
         <td style="font-size:12px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(items)}</td>
