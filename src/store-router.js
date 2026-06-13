@@ -380,15 +380,24 @@ router.get("/store/stats", auth, (req, res) => {
   // استثني _test orders من كل الإحصاءات
   const orders = allOrders.filter(o => !o._test);
   const today  = new Date().toISOString().slice(0, 10);
-  const todayOr = orders.filter(o => (o.timestamp || "").slice(0, 10) === today);
+  // 🌙 cutoff للـ "وردية الحالية":
+  //   - إذا أُنهي يوم يدوياً → من lastShiftEnd
+  //   - وإلا → من 00:00 توقيت الرياض اليوم
+  const dailyArchive = require("./daily-archive");
+  const lastEnd = dailyArchive.getLastShiftEnd(req.storeId);
+  const cutoffTs = lastEnd
+    ? new Date(lastEnd).getTime()
+    : new Date(today + "T00:00:00Z").getTime() - (3 * 60 * 60 * 1000); // 00:00 Riyadh = 21:00 prev UTC
+  const isCurrentShift = (o) => new Date(o.timestamp || 0).getTime() > cutoffTs;
+  const todayOr = orders.filter(isCurrentShift);
 
-  // الإيرادات تُحسَب فقط من المُكدّة/المؤكدة (يستثني rejected/cancelled/pending)
+  // 🌙 الـ Dashboard يعرض الوردية الحالية فقط (تنظّف نفسها تلقائياً يومياً)
   const earningStatuses = new Set(["confirmed", "completed", "delivered", "done"]);
-  const earnedOrders   = orders.filter(o => earningStatuses.has(o.status));
   const earnedToday    = todayOr.filter(o => earningStatuses.has(o.status));
 
+  // Top products لهذه الوردية فقط
   const productCounts = {};
-  for (const o of earnedOrders) {
+  for (const o of earnedToday) {
     for (const item of (o.items || [])) {
       productCounts[item.name] = (productCounts[item.name] || 0) + (item.qty || 1);
     }
@@ -397,13 +406,25 @@ router.get("/store/stats", auth, (req, res) => {
     .sort((a, b) => b[1] - a[1]).slice(0, 5)
     .map(([name, qty]) => ({ name, qty }));
 
+  // متوسط الطلب + عملاء فريدين (للوردية)
+  const uniqueCustomers = new Set(todayOr.map(o => o.customerPhone).filter(Boolean)).size;
+  const avgOrder = earnedToday.length
+    ? parseFloat((earnedToday.reduce((s,o) => s + (o.total||0), 0) / earnedToday.length).toFixed(2))
+    : 0;
+
   res.json({
-    ordersTotal:  orders.length,
-    ordersToday:  todayOr.length,
-    revenueTotal: parseFloat(earnedOrders.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
+    // الوردية الحالية فقط — تنظّف يومياً
+    ordersTotal:  todayOr.length,                                // عدد طلبات الوردية
+    ordersToday:  todayOr.length,                                // alias للاتساق
+    revenueTotal: parseFloat(earnedToday.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
     revenueToday: parseFloat(earnedToday.reduce((s, o) => s + (o.total || 0), 0).toFixed(2)),
-    pending:      orders.filter(o => o.status === "pending_confirmation").length,
+    pending:      todayOr.filter(o => o.status === "pending_confirmation").length,
+    confirmed:    earnedToday.length,
+    avgOrder,
+    uniqueCustomers,
     topProducts,
+    shiftStart:   new Date(cutoffTs).toISOString(),
+    manualShift:  !!lastEnd,
   });
 });
 
@@ -441,6 +462,36 @@ router.post("/store/archive/force-yesterday", auth, (req, res) => {
   const yest = dailyArchive._yesterdayRiyadh();
   const result = dailyArchive.archiveDay(req.storeId, yest);
   res.json({ ok: true, date: yest, saved: !!result, snapshot: result });
+});
+
+// 🌙 POST /store/shift/end — يدوي: "إنهاء اليوم" قبل منتصف الليل
+router.post("/store/shift/end", auth, (req, res) => {
+  const dailyArchive = require("./daily-archive");
+  const result = dailyArchive.endDayNow(req.storeId);
+  audit({
+    actor: req.impersonatedBy ? { type: "master", id: "master" } : { type: "store", id: req.storeId },
+    action: "shift.end",
+    target: { type: "store", id: req.storeId },
+    meta: { saved: result.saved, ordersCount: result.snapshot ? result.snapshot.total : 0 },
+  }, req);
+  res.json({
+    ok: true,
+    saved: result.saved,
+    merged: result.merged || false,
+    reason: result.reason || null,
+    snapshot: result.snapshot || null,
+    message: result.saved
+      ? `تم إنهاء اليوم وحفظ ${result.snapshot.total} طلب في الأرشيف. الداشبورد سيبدأ من الصفر للوردية الجديدة.`
+      : "تم إنهاء اليوم. لا توجد طلبات جديدة منذ آخر إغلاق.",
+  });
+});
+
+// GET /store/shift/status — آخر إغلاق + ساعات منذ آخر إغلاق
+router.get("/store/shift/status", auth, (req, res) => {
+  const dailyArchive = require("./daily-archive");
+  const last = dailyArchive.getLastShiftEnd(req.storeId);
+  const minutesSince = last ? Math.floor((Date.now() - new Date(last).getTime()) / 60000) : null;
+  res.json({ lastShiftEnd: last, minutesSince });
 });
 
 // ─── KPI endpoint — يخدم كل أنواع البيزنس (services/projects/cafe/restaurant…)

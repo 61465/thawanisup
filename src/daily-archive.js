@@ -44,8 +44,8 @@ function _archiveFile(storeId) {
   return path.join(DATA_DIR, `daily_archive_${storeId}.jsonl`);
 }
 
-// snapshot ليوم محدد (date = YYYY-MM-DD)
-function _buildDailySnapshot(storeId, date) {
+// snapshot ليوم محدد (date = YYYY-MM-DD) أو ضمن نافذة زمنية (sinceTs..untilTs)
+function _buildDailySnapshot(storeId, date, sinceTs = null, untilTs = null) {
   const file = _ordersFile(storeId);
   if (!fs.existsSync(file)) return null;
 
@@ -59,8 +59,15 @@ function _buildDailySnapshot(storeId, date) {
     try {
       const o = JSON.parse(l);
       if (o._test) continue;
-      const ts = (o.timestamp || "").slice(0, 10);
-      if (ts !== date) continue;
+      // إذا حُدّدت نافذة زمنية، فلتر بها (للـ manual day-end)
+      if (sinceTs !== null || untilTs !== null) {
+        const t = new Date(o.timestamp || 0).getTime();
+        if (sinceTs && t < sinceTs) continue;
+        if (untilTs && t > untilTs) continue;
+      } else {
+        const ts = (o.timestamp || "").slice(0, 10);
+        if (ts !== date) continue;
+      }
       total++;
       if (o.customerPhone) customers.add(String(o.customerPhone));
       if (EARN_STATUSES.has(o.status)) {
@@ -179,12 +186,95 @@ function startScheduler() {
   console.log("📅 Daily archive scheduler نشط (00:00 توقيت الرياض)");
 }
 
+// ─── إغلاق يدوي للـ shift (للبيزنس الذي ينتهي يومه قبل 24س) ────────────────
+function _dayEndFile(storeId) {
+  return path.join(DATA_DIR, `day_end_${storeId}.json`);
+}
+
+// آخر وقت إغلاق يدوي (يُستخدم في /store/stats كـ cutoff للـ "اليوم")
+function getLastShiftEnd(storeId) {
+  try {
+    return JSON.parse(fs.readFileSync(_dayEndFile(storeId), "utf8")).closedAt || null;
+  } catch { return null; }
+}
+
+// أنهِ اليوم الآن: snapshot للنشاط منذ آخر إغلاق + احفظ closedAt = الآن
+function endDayNow(storeId, businessDate) {
+  const archFile = _archiveFile(storeId);
+  const today = businessDate || _todayRiyadh();
+  const lastEnd = getLastShiftEnd(storeId);
+  // النافذة: من آخر إغلاق (أو من 00:00 اليوم) إلى الآن
+  const sinceTs = lastEnd
+    ? new Date(lastEnd).getTime()
+    : new Date(today + "T00:00:00").getTime();
+  const untilTs = Date.now();
+
+  const snap = _buildDailySnapshot(storeId, today, sinceTs, untilTs);
+  if (!snap || snap.total === 0) {
+    // ما زال نسجل closedAt حتى لا نحسب الفترة مرة أخرى
+    atomicFs.writeJsonSync(_dayEndFile(storeId), {
+      closedAt: new Date().toISOString(),
+      businessDate: today,
+      manual: true,
+      ordersCount: 0,
+    });
+    return { saved: false, reason: "no_activity", closedAt: new Date().toISOString() };
+  }
+
+  snap.shiftMode = "manual";
+  snap.shiftSince = new Date(sinceTs).toISOString();
+  snap.shiftUntil = new Date(untilTs).toISOString();
+
+  // لو اليوم موجود بالفعل في الأرشيف (أرشف صباحاً وعاد فتح)، نضمّ القيم
+  let merged = false;
+  if (fs.existsSync(archFile)) {
+    const lines = fs.readFileSync(archFile, "utf8").split("\n").filter(Boolean);
+    let foundIdx = -1, existing = null;
+    for (let i = 0; i < lines.length; i++) {
+      try {
+        const d = JSON.parse(lines[i]);
+        if (d.date === today) { foundIdx = i; existing = d; break; }
+      } catch {}
+    }
+    if (existing && foundIdx >= 0) {
+      // اجمع الجلستين
+      existing.total      += snap.total;
+      existing.confirmed  += snap.confirmed;
+      existing.rejected   += snap.rejected;
+      existing.cancelled  += snap.cancelled;
+      existing.revenue    = parseFloat(((existing.revenue || 0) + snap.revenue).toFixed(2));
+      existing.avgOrder   = existing.confirmed ? parseFloat((existing.revenue / existing.confirmed).toFixed(2)) : 0;
+      existing.uniqueCustomers = Math.max(existing.uniqueCustomers || 0, snap.uniqueCustomers);
+      existing.shifts = (existing.shifts || 1) + 1;
+      existing.shiftMode = "manual";
+      lines[foundIdx] = JSON.stringify(existing);
+      atomicFs.writeSync(archFile, lines.join("\n") + "\n");
+      merged = true;
+    } else {
+      atomicFs.appendJsonlSync(archFile, snap);
+    }
+  } else {
+    atomicFs.appendJsonlSync(archFile, snap);
+  }
+
+  atomicFs.writeJsonSync(_dayEndFile(storeId), {
+    closedAt: new Date().toISOString(),
+    businessDate: today,
+    manual: true,
+    ordersCount: snap.total,
+  });
+  console.log(`[shift-end] ${storeId} closed shift: orders=${snap.total} revenue=${snap.revenue} merged=${merged}`);
+  return { saved: true, merged, snapshot: snap };
+}
+
 module.exports = {
   startScheduler,
   runDailyArchive,
   archiveDay,
   readArchive,
   getMonthSummary,
+  endDayNow,
+  getLastShiftEnd,
   _todayRiyadh,
   _yesterdayRiyadh,
 };

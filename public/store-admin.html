@@ -785,6 +785,21 @@ tr:hover td{background:#fafcfa}
       <!-- AI-generated content (tagline + cards + quick actions + features panel) يُحقن هنا -->
       <div id="aiAdminContainer"></div>
 
+      <!-- 🌙 شريط إنهاء اليوم — للبيزنس الذي يقفل قبل 24س -->
+      <div id="shiftBar" style="background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);color:#fff;border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="font-size:28px">🌙</span>
+          <div>
+            <div style="font-weight:900;font-size:15px">الوردية الحالية</div>
+            <div id="shiftStatus" style="font-size:12px;color:#cbd5e1;margin-top:3px">جاري التحميل...</div>
+          </div>
+        </div>
+        <button onclick="endShiftNow()"
+                style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;padding:11px 22px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 4px 14px rgba(217,119,6,0.4)">
+          🌙 إنهاء اليوم الآن
+        </button>
+      </div>
+
       <div class="stats-grid" id="statsGrid">
         <div class="stat-card"><div class="stat-label">إجمالي الطلبات</div><div class="stat-value">—</div></div>
         <div class="stat-card green"><div class="stat-label">طلبات اليوم</div><div class="stat-value">—</div></div>
@@ -3023,6 +3038,7 @@ async function applyStoreColor() {
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 async function loadDashboard() {
+  refreshShiftStatus(); // ⏱️ حدّث شريط الوردية
   try {
     const [statsData, ordersData] = await Promise.all([
       api("GET", "/store/stats").catch(() => ({})),
@@ -3038,11 +3054,15 @@ async function loadDashboard() {
     };
 
     const currency = localStorage.getItem("store_currency") || "ر.س";
+    const confirmed = Number(statsData.confirmed) || 0;
+    const avgOrder  = Number(statsData.avgOrder)  || 0;
+    const customers = Number(statsData.uniqueCustomers) || 0;
+    const pending   = Number(statsData.pending) || 0;
     document.getElementById("statsGrid").innerHTML = `
-      <div class="stat-card"><div class="stat-label">📦 إجمالي الطلبات</div><div class="stat-value">${s.ordersTotal}</div><div class="stat-sub">منذ البداية</div></div>
-      <div class="stat-card green"><div class="stat-label">🕐 طلبات اليوم</div><div class="stat-value">${s.ordersToday}</div><div class="stat-sub">اليوم فقط</div></div>
-      <div class="stat-card"><div class="stat-label">💰 إجمالي الإيرادات</div><div class="stat-value">${s.revenueTotal.toFixed(0)}</div><div class="stat-sub">${currency}</div></div>
-      <div class="stat-card blue"><div class="stat-label">💵 إيرادات اليوم</div><div class="stat-value">${s.revenueToday.toFixed(0)}</div><div class="stat-sub">${currency} اليوم</div></div>
+      <div class="stat-card"><div class="stat-label">📦 طلبات الوردية</div><div class="stat-value">${s.ordersToday}</div><div class="stat-sub">${pending ? pending + " بانتظار التأكيد" : "كل الطلبات"}</div></div>
+      <div class="stat-card green"><div class="stat-label">💰 إيرادات الوردية</div><div class="stat-value">${s.revenueTotal.toFixed(0)}</div><div class="stat-sub">${currency}</div></div>
+      <div class="stat-card"><div class="stat-label">✅ مكتمل</div><div class="stat-value">${confirmed}</div><div class="stat-sub">متوسط: ${avgOrder.toFixed(0)} ${currency}</div></div>
+      <div class="stat-card blue"><div class="stat-label">👥 عملاء فريدين</div><div class="stat-value">${customers}</div><div class="stat-sub">في الوردية الحالية</div></div>
     `;
 
     // Top products bar chart
@@ -4218,6 +4238,38 @@ function updateToggle(checkbox) {
 function setToggle(id, value) {
   const cb = document.getElementById(id);
   if (cb) { cb.checked = !!value; updateToggle(cb); }
+}
+
+// ─── 🌙 Shift End — إنهاء اليوم يدوياً ──────────────────────────
+async function refreshShiftStatus() {
+  const el = document.getElementById("shiftStatus");
+  if (!el) return;
+  try {
+    const r = await api("GET", "/store/shift/status");
+    if (r.lastShiftEnd) {
+      const d = new Date(r.lastShiftEnd);
+      const h = Math.floor((r.minutesSince || 0) / 60);
+      const m = (r.minutesSince || 0) % 60;
+      const span = h ? `${h} ساعة و ${m} دقيقة` : `${m} دقيقة`;
+      el.innerHTML = `بدأت منذ <b>${span}</b> · آخر إغلاق: ${d.toLocaleString("ar-EG",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"short"})}`;
+    } else {
+      el.innerHTML = `لم يُنه يوم سابقاً — كل الطلبات تُحسب لليوم الحالي`;
+    }
+  } catch (e) {
+    el.textContent = "غير متاح";
+  }
+}
+
+async function endShiftNow() {
+  if (!confirm("إنهاء اليوم الآن؟\n\n• سيُحفظ snapshot للوردية الحالية في الأرشيف\n• الداشبورد سيبدأ من الصفر فوراً للوردية الجديدة\n• الطلبات نفسها تبقى في tab الطلبات\n\nهذا مفيد لو متجرك يقفل قبل منتصف الليل (مثلاً 10 مساءً).")) return;
+  try {
+    const r = await api("POST", "/store/shift/end");
+    showToast("✅ " + (r.message || "تم إنهاء اليوم"), "success");
+    // حدّث الـ dashboard فوراً
+    setTimeout(() => { loadDashboard(); refreshShiftStatus(); }, 500);
+  } catch (e) {
+    showToast("فشل: " + (e.message || "خطأ غير معروف"), "error");
+  }
 }
 
 async function resetAllSessions() {
