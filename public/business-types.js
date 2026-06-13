@@ -296,7 +296,7 @@ const TAB_ALIAS = {
 };
 
 // Core tabs — تظهر دائماً بصرف النظر عن AI config (إن كانت متاحة لباقة المتجر)
-const CORE_TABS = ["dash", "broadcast", "loyalty", "customers", "archive", "ratings", "rejections", "inventory", "accounting", "settings", "whatsapp"];
+const CORE_TABS = ["dash", "handoffs", "broadcast", "loyalty", "customers", "archive", "ratings", "rejections", "inventory", "accounting", "settings", "whatsapp"];
 
 function applyTabsOrder(orderedTabIds) {
   const tabContainer = document.querySelector(".tabs");
