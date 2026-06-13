@@ -1414,6 +1414,29 @@ router.post("/store/handoff/resume", auth, async (req, res) => {
 });
 
 // GET /store/handoffs — قائمة العملاء الذين يحتاجون مسؤول
+// POST /store/sessions/reset — يُجبر كل عملاء هذا المتجر على استقبال الترحيب من جديد
+router.post("/store/sessions/reset", auth, (req, res) => {
+  const sessFile = path.join(DATA_DIR, "sessions", "bot-sessions.json");
+  let removed = 0;
+  try {
+    const all = JSON.parse(fs.readFileSync(sessFile, "utf8") || "{}");
+    for (const key of Object.keys(all)) {
+      // المفتاح: storeId|phone
+      if (key.startsWith(req.storeId + "|")) { delete all[key]; removed++; }
+    }
+    atomicFs.writeJsonSync(sessFile, all);
+  } catch (e) {
+    return res.status(500).json({ error: "فشل المسح: " + e.message });
+  }
+  audit({
+    actor: req.impersonatedBy ? { type: "master", id: "master" } : { type: "store", id: req.storeId },
+    action: "sessions.reset",
+    target: { type: "store", id: req.storeId },
+    meta: { removed },
+  }, req);
+  res.json({ ok: true, removed, message: `تم مسح ${removed} جلسة. سيستقبل العملاء الترحيب الجديد عند رسالتهم القادمة.` });
+});
+
 router.get("/store/handoffs", auth, (req, res) => {
   const fs = require("fs");
   const path = require("path");
@@ -1425,7 +1448,7 @@ router.get("/store/handoffs", auth, (req, res) => {
     .filter(([_, h]) => h.storeId === req.storeId)
     .map(([phone, h]) => ({ phone, ...h }))
     .sort((a, b) => (b.startedAt || "").localeCompare(a.startedAt || ""));
-  res.json({ handoffs: mine });
+  res.json({ handoffs: mine, storeId: req.storeId, total: Object.keys(handoffs).length });
 });
 
 router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {

@@ -14,6 +14,7 @@
 
 const GROQ_API_KEY  = process.env.GROQ_API_KEY || "";
 const GROQ_MODEL    = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_FALLBACK = process.env.GROQ_FALLBACK || "llama-3.1-8b-instant"; // عند 429/timeout على الأساسي
 const GROQ_URL      = "https://api.groq.com/openai/v1/chat/completions";
 const AI_ENABLED    = process.env.AI_ENABLED === "1" && !!GROQ_API_KEY;
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 6000;
@@ -80,8 +81,9 @@ function _cacheKey(text, menuCtx, step) {
 }
 
 async function _aiClassify(text, session, menuCtx) {
-  // 🧠 Cache check
-  const cacheKey = _cacheKey(text, menuCtx, session.step || "idle");
+  // 🧠 Cache check (يشمل recent messages لتجنب رد قديم في سياق جديد)
+  const recentMsgs = (session.recentMessages || []).slice(-3);
+  const cacheKey = _cacheKey(text, menuCtx, session.step || "idle") + "|" + recentMsgs.map(m => m.slice(0,20)).join("→");
   const cached = _aiCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < AI_CACHE_TTL) {
     return cached.result;
@@ -97,6 +99,7 @@ async function _aiClassify(text, session, menuCtx) {
     : '{"categories":[],"items":{}}';
   const cartJson = JSON.stringify(session.cart || []);
   const step     = session.step || "idle";
+  const recentJson = JSON.stringify(recentMsgs);
 
   const systemPrompt =
 `أنت العقل الذكي لبوت طلبات تجاري عربي. تفهم كل اللهجات العربية: المصرية، السعودية، الخليجية، الشامية، المغربية. ردك JSON صرف بـ"type" و"value".
@@ -105,6 +108,10 @@ async function _aiClassify(text, session, menuCtx) {
 - المنيو: ${menuJson}
 - السلة: ${cartJson}
 - الخطوة: ${step}
+- آخر رسائل من العميل (للسياق): ${recentJson}
+
+اقرأ آخر رسائل العميل قبل أن تقرر. مثال: لو سأل "كم سعرها؟" بعد أن عرضت قائمة قهوة → عن القهوة.
+لو قال "نفس الطلب الأخير" أو "نفس اللي طلبته قبل" → {"type":"reorder","value":null}
 
 أمثلة شاملة:
 
@@ -158,58 +165,94 @@ async function _aiClassify(text, session, menuCtx) {
 3. لو ما فهمت → "unknown"
 4. JSON فقط بدون شرح`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-        "Content-Type":  "application/json",
-      },
-      body: JSON.stringify({
-        model:           GROQ_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user",   content: text },
-        ],
-        max_tokens:       250,
-        temperature:      0.2,
-        response_format:  { type: "json_object" },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      console.warn(`[ai-parser] HTTP ${res.status} — fallback to unknown`);
-      return { type: "unknown" };
-    }
-
-    const data    = await res.json();
-    const content = data.choices?.[0]?.message?.content || "{}";
-    let parsed;
+  // محاولة بنموذجين متتاليين (لو فشل الأساسي 429/timeout يجرب الاحتياطي)
+  for (const model of [GROQ_MODEL, GROQ_FALLBACK]) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
     try {
-      parsed = JSON.parse(content);
-    } catch (e) {
-      console.warn(`[ai-parser] JSON parse failed. Raw: ${content.slice(0, 200)}`);
-      return { type: "unknown" };
-    }
+      const res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Content-Type":  "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user",   content: text },
+          ],
+          max_tokens:       250,
+          temperature:      0.2,
+          response_format:  { type: "json_object" },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
 
-    if (typeof parsed?.type !== "string") {
-      console.warn(`[ai-parser] no type field. Raw: ${content.slice(0, 200)}`);
-      return { type: "unknown" };
+      if (!res.ok) {
+        console.warn(`[ai-parser] ${model} HTTP ${res.status} — trying fallback`);
+        if (model === GROQ_FALLBACK) return _heuristicFallback(text);
+        continue; // جرّب النموذج التالي
+      }
+
+      const data    = await res.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+      let parsed;
+      try {
+        parsed = JSON.parse(content);
+      } catch (e) {
+        console.warn(`[ai-parser] JSON parse failed. Raw: ${content.slice(0, 200)}`);
+        if (model === GROQ_FALLBACK) return _heuristicFallback(text);
+        continue;
+      }
+
+      if (typeof parsed?.type !== "string") {
+        if (model === GROQ_FALLBACK) return _heuristicFallback(text);
+        continue;
+      }
+      console.log(`[ai-parser:${model.slice(0,15)}] "${text.slice(0, 40)}" → ${parsed.type}${parsed.value ? ` ${JSON.stringify(parsed.value).slice(0,80)}` : ""}`);
+      // 🧠 Cache the result
+      _aiCache.set(cacheKey, { ts: Date.now(), result: parsed });
+      return parsed;
+    } catch (e) {
+      clearTimeout(timer);
+      console.warn(`[ai-parser] ${model} failed: ${e.message}`);
+      if (model === GROQ_FALLBACK) return _heuristicFallback(text);
     }
-    console.log(`[ai-parser] "${text.slice(0, 40)}" → ${parsed.type}${parsed.value ? ` ${JSON.stringify(parsed.value).slice(0,80)}` : ""}`);
-    // 🧠 Cache the result
-    _aiCache.set(cacheKey, { ts: Date.now(), result: parsed });
-    return parsed;
-  } catch (e) {
-    console.warn(`[ai-parser] failed: ${e.message}`);
-    return { type: "unknown" };
-  } finally {
-    clearTimeout(timer);
   }
+  return _heuristicFallback(text);
+}
+
+// ─── Heuristic fallback عند فشل AI تماماً (keyword matching ذكي) ─────────────
+function _heuristicFallback(text) {
+  const t = (text || "").toLowerCase().trim();
+  // أرقام كميات + كلمات أكل/شرب شائعة
+  const qtyMatch = t.match(/^(\d+|واحد|اثنين|ثلاثة|اربعة|خمسة|اتنين)\s*(.+)/);
+  const numMap = { "واحد":1, "اثنين":2, "اتنين":2, "ثلاثة":3, "اربعة":4, "خمسة":5 };
+  if (qtyMatch) {
+    const qty = parseInt(qtyMatch[1]) || numMap[qtyMatch[1]] || 1;
+    const name = qtyMatch[2].trim();
+    if (name.length >= 2) return { type: "add", value: [{ name, qty }] };
+  }
+  // كلمات نية واضحة
+  if (/(ع?ا?يز|ابغى|اريد|عاوز|بدي|اشتي|نفسي|محتاج).{1,30}/.test(t)) {
+    const name = t.replace(/^(ع?ا?يز|ابغى|اريد|عاوز|بدي|اشتي|نفسي|محتاج)\s*/, "").trim();
+    if (name.length >= 2) return { type: "add", value: [{ name, qty: 1 }] };
+  }
+  if (/(شيل|الغ|بطل|احذف|امسح)/.test(t)) {
+    const name = t.replace(/^(شيل|الغ|بطل|احذف|امسح)\s*/, "").trim();
+    if (name) return { type: "remove", value: { name } };
+  }
+  if (/(تأكيد|تاكيد|اوكي|اوك|تمام|اكد|خلص|انتهيت)/.test(t)) return { type: "confirm" };
+  if (/(الغ|بطل|ايقاف|stop|cancel)/.test(t)) return { type: "cancel" };
+  if (/(منيو|قائم|menu|اعرض)/.test(t)) return { type: "menu" };
+  if (/(سلة|عربة|cart|طلبي)/.test(t)) return { type: "cart" };
+  if (/(اهلا|مرحب|هلا|سلام|hi|hello|صباح|مساء)/.test(t)) return { type: "greeting" };
+  if (/(مسؤول|انسان|human|بشري)/.test(t)) return { type: "handoff" };
+  if (/(كم|بكم|سعر|price)/.test(t)) return { type: "question", value: text.slice(0, 100) };
+  if (/^(.{0,3}\?+|.{0,3}!+|[?!؟]+|ا{3,}|ه{3,})$/.test(t)) return { type: "gibberish" };
+  return { type: "unknown" };
 }
 
 // ─── AI Time Parser — يفهم أوقاتاً عامية معقدة ───────────────────────────────

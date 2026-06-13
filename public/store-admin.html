@@ -866,7 +866,10 @@ tr:hover td{background:#fafcfa}
       <div class="card">
         <div class="card-header">
           <div class="card-title">⚙️ إعدادات المتجر</div>
-          <button class="btn btn-primary" onclick="saveSettings()">💾 حفظ التغييرات</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="resetAllSessions()" title="يُجبر كل العملاء على استقبال الترحيب من جديد عند رسالتهم القادمة" style="font-size:13px">🔄 إعادة جلسات العملاء</button>
+            <button class="btn btn-primary" onclick="saveSettings()">💾 حفظ التغييرات</button>
+          </div>
         </div>
 
         <div class="section-label">معلومات المتجر الأساسية</div>
@@ -3763,12 +3766,14 @@ async function loadHandoffsTab() {
   try {
     const r = await api("GET", "/store/handoffs");
     const list = r.handoffs || [];
+    const debug = `<div style="background:#f3f4f6;border:1px dashed #9ca3af;border-radius:8px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:#374151;direction:ltr;text-align:left;font-family:monospace">store:${r.storeId||"?"} | count:${list.length} | server:${new Date().toLocaleTimeString()}</div>`;
     if (!list.length) {
-      box.innerHTML = `
+      box.innerHTML = debug + `
         <div class="empty-state" style="padding:60px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px">
           <div class="icon" style="font-size:48px">✅</div>
           <h3 style="color:#166534;margin:14px 0 6px">لا يوجد عملاء بانتظار</h3>
           <p style="color:#16a34a;font-size:14px">البوت يخدم كل عملائك بدون مشاكل حالياً</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:14px">إذا كان عميل طلب "مسؤول" ولم يظهر هنا، اضغط <b>Ctrl+Shift+R</b> لإعادة تحميل الصفحة كاملة</p>
         </div>`;
       return;
     }
@@ -4145,6 +4150,16 @@ function updateToggle(checkbox) {
 function setToggle(id, value) {
   const cb = document.getElementById(id);
   if (cb) { cb.checked = !!value; updateToggle(cb); }
+}
+
+async function resetAllSessions() {
+  if (!confirm("سيتم مسح كل جلسات العملاء الحالية. كل عميل سيستقبل رسالة الترحيب من جديد عند إرسال رسالة. هل تريد المتابعة؟")) return;
+  try {
+    const r = await api("POST", "/store/sessions/reset");
+    showToast(`✅ تم مسح ${r.removed} جلسة. التغييرات ستظهر فوراً للعملاء.`, "success");
+  } catch (e) {
+    showToast("فشل: " + e.message, "error");
+  }
 }
 
 async function saveSettings() {

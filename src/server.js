@@ -1495,8 +1495,36 @@ async function handleMessage(from, incoming) {
   // normalize Arabic/Persian digits → English قبل أي معالجة
   incoming = normalizeDigits(incoming);
 
-  // 🎛️ Owner commands من واتساب: قبول/رفض/جاهز/خرج/تم — للمالك فقط
+  // 🚫 Cross-store loop guard: لو الرسالة آتية من رقم مالك متجر آخر في نفس النظام،
+  //    أو من رقم البلاتفورم (supportPhone)، تجاهلها لمنع loops.
   const customerPhone = phoneNum(from);
+  try {
+    const otherOwners = new Set();
+    for (const s of getAllStores()) {
+      if (s.id === storeId) continue;
+      const op = String(s.ownerPhone || "").replace(/\D/g, "");
+      if (op) otherOwners.add(op);
+    }
+    // أضف الـ supportPhone للنظام
+    try {
+      const masterRouter = require("./master-router");
+      const settings = (typeof masterRouter.readOwnerSettings === "function") ? masterRouter.readOwnerSettings() : {};
+      const sup = String(settings.supportPhone || "").replace(/\D/g, "");
+      if (sup) otherOwners.add(sup);
+    } catch {}
+    if (customerPhone && otherOwners.has(customerPhone)) {
+      console.warn(`[loop-guard] [${storeId}] ignoring message from system phone ${customerPhone.slice(0,6)}***`);
+      return;
+    }
+    // كذلك: تجاهل الرسائل التي تبدو إعادة بث لردود البوت (لكسر loops بأرقام متاجر تستقبل)
+    const lower = String(incoming || "").trim();
+    if (lower.length > 25 && /^(اهلا|أهلاً|🤖|بسم الله|اختر رقماً|للاستفسار اكتب)/.test(lower)) {
+      console.warn(`[loop-guard] [${storeId}] ignoring bot-echo from ${customerPhone.slice(0,6)}***: "${lower.slice(0,30)}..."`);
+      return;
+    }
+  } catch (e) { console.warn("[loop-guard] failed:", e.message); }
+
+  // 🎛️ Owner commands من واتساب: قبول/رفض/جاهز/خرج/تم — للمالك فقط
   const ownerPhoneClean = String(store?.ownerPhone || "").replace(/\D/g, "");
   if (ownerPhoneClean && customerPhone === ownerPhoneClean) {
     const result = await handleOwnerCommand(from, String(incoming || "").trim(), store, storeId);
@@ -1596,11 +1624,12 @@ async function handleMessage(from, incoming) {
     );
   }
 
-  // ── Human Handoff: العميل يطلب مسؤول ──────────────────────
-  const HANDOFF_TRIGGERS = /^(احتاج مسؤول|اريد مسؤول|مسؤول|اريد التحدث مع مسؤول|بشري|انسان|human)$/i;
+  // ── Human Handoff: العميل يطلب مسؤول (يقبل كلمات في أي مكان في النص) ──────
+  const HANDOFF_TRIGGERS = /(احتاج\s*مسؤول|اريد\s*مسؤول|عايز\s*مسؤول|ابغى\s*مسؤول|بدي\s*مسؤول|^مسؤول$|المسؤول|اريد\s*التحدث|بشري|انسان|human\s*agent|live\s*agent|real\s*person|كلم\s*مسؤول|تحدث\s*مع\s*مسؤول)/i;
   if (HANDOFF_TRIGGERS.test(String(incoming).trim())) {
     const fs = require("fs");
     const path = require("path");
+    const atomicFs = require("./atomic-fs");
     const handoffFile = path.join(__dirname, "..", "data", "handoffs.json");
     let handoffs = {};
     try { handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8")); } catch {}
@@ -1610,7 +1639,8 @@ async function handleMessage(from, incoming) {
       startedAt: new Date().toISOString(),
       lastMsg:   String(incoming).slice(0, 200),
     };
-    fs.writeFileSync(handoffFile, JSON.stringify(handoffs, null, 2));
+    atomicFs.writeJsonSync(handoffFile, handoffs); // atomic + safe
+    console.log(`[handoff] saved for ${from} @ ${storeId}: "${String(incoming).slice(0,40)}"`);
     // أبلغ الستور owner عبر MASTER_PHONE
     try {
       const ownerJid = (store?.ownerPhone || "").replace(/[^\d]/g,"") + "@s.whatsapp.net";
@@ -2316,7 +2346,10 @@ async function handleAIMode(from, text, session) {
     );
   }
 
-  const intent = await aiParser.parseIntent(text, { step: session.step, cart, path: "ai" }, menuCtx);
+  // أضف الرسالة الحالية إلى السياق (آخر 4 رسائل فقط)
+  const recentMessages = [...(session.recentMessages || []), text].slice(-4);
+  sessionManager.update(from, { recentMessages });
+  const intent = await aiParser.parseIntent(text, { step: session.step, cart, path: "ai", recentMessages }, menuCtx);
 
   // 1️⃣ عرض القائمة
   if (intent.type === "menu") {
