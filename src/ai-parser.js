@@ -71,7 +71,27 @@ async function parseIntent(text, session = {}, menuCtx = null) {
   return await _aiClassify(raw, session, menuCtx);
 }
 
+// 🧠 AI cache — مفتاح: text + menu hash + step، TTL 5 دقائق
+const _aiCache = new Map();
+const AI_CACHE_TTL = 5 * 60 * 1000;
+function _cacheKey(text, menuCtx, step) {
+  const menuHash = menuCtx ? (menuCtx.categories || []).length + "|" + Object.keys(menuCtx.items || {}).length : "0";
+  return `${step}|${menuHash}|${text.slice(0, 80).toLowerCase()}`;
+}
+
 async function _aiClassify(text, session, menuCtx) {
+  // 🧠 Cache check
+  const cacheKey = _cacheKey(text, menuCtx, session.step || "idle");
+  const cached = _aiCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < AI_CACHE_TTL) {
+    return cached.result;
+  }
+  // cleanup قديم كل بضع دقائق
+  if (_aiCache.size > 500) {
+    const cutoff = Date.now() - AI_CACHE_TTL;
+    for (const [k, v] of _aiCache) if (v.ts < cutoff) _aiCache.delete(k);
+  }
+
   const menuJson = menuCtx
     ? JSON.stringify(menuCtx)
     : '{"categories":[],"items":{}}';
@@ -79,51 +99,64 @@ async function _aiClassify(text, session, menuCtx) {
   const step     = session.step || "idle";
 
   const systemPrompt =
-`أنت محلل نية لبوت طلبات طعام عربي. ردك يجب أن يكون JSON صرف بحقلين فقط: "type" و "value".
+`أنت العقل الذكي لبوت طلبات تجاري عربي. تفهم كل اللهجات العربية: المصرية، السعودية، الخليجية، الشامية، المغربية. ردك JSON صرف بـ"type" و"value".
 
 السياق:
 - المنيو: ${menuJson}
 - السلة: ${cartJson}
 - الخطوة: ${step}
 
-أمثلة على الردود المطلوبة:
+أمثلة شاملة:
 
-رسالة: "اعرض القائمة"
-رد: {"type":"menu","value":null}
+عربي فصحى:
+"اعرض القائمة" → {"type":"menu","value":null}
+"السلة" → {"type":"cart","value":null}
+"أكد الطلب" → {"type":"confirm","value":null}
 
-رسالة: "سلتي"
-رد: {"type":"cart","value":null}
+عامية مصرية:
+"عايز قهوة" → {"type":"add","value":[{"name":"قهوة","qty":1}]}
+"هات لي اتنين شاي" → {"type":"add","value":[{"name":"شاي","qty":2}]}
+"شيل الكنافة" → {"type":"remove","value":{"name":"كنافة"}}
+"يلا تمام" → {"type":"confirm","value":null}
+"بكام الكباب؟" → {"type":"question","value":"سعر الكباب"}
+"بطل" → {"type":"cancel","value":null}
 
-رسالة: "تمام أكد الطلب"
-رد: {"type":"confirm","value":null}
+عامية سعودية/خليجية:
+"ابغى قهوة" → {"type":"add","value":[{"name":"قهوة","qty":1}]}
+"اكفي" أو "زين تمام" → {"type":"confirm","value":null}
+"وش السعر؟" → {"type":"question","value":"السعر"}
+"الغي الطلب" → {"type":"cancel","value":null}
+"عطني المنيو" → {"type":"menu","value":null}
 
-رسالة: "بطل الطلب"
-رد: {"type":"cancel","value":null}
+عامية شامية/عراقية:
+"رح آخذ شاي" → {"type":"add","value":[{"name":"شاي","qty":1}]}
+"شو في عندك" → {"type":"menu","value":null}
+"خلص أكد" → {"type":"confirm","value":null}
 
-رسالة: "عايز كباب وعصير برتقال"
-رد: {"type":"add","value":[{"name":"كباب حلة","qty":1},{"name":"عصير برتقال","qty":1}]}
+كميات:
+"3 شاي" أو "ثلاثة شاي" → qty=3
+"اتنين قهوة" → qty=2
+"خمسة كنافة" → qty=5
 
-رسالة: "أضف 3 شيش طاووق"
-رد: {"type":"add","value":[{"name":"شيش طاووق","qty":3}]}
+تعديل:
+"خلي الشاي 4" → {"type":"update","value":{"name":"شاي","qty":4}}
+"زود كنافة" → {"type":"update","value":{"name":"كنافة","qty":"+1"}}
 
-رسالة: "شيل العصير"
-رد: {"type":"remove","value":{"name":"عصير برتقال"}}
+كشف Spam/Off-topic:
+"اهلا" "هلا" "السلام عليكم" → {"type":"greeting","value":null}
+"كيف حالك" "عامل ايه" "شخبارك" → {"type":"smalltalk","value":null}
+"asdkjasdh" "اااااا" "؟؟؟؟" → {"type":"gibberish","value":null}
+"كم عمرك" "من انت" → {"type":"offtopic","value":null}
+"بكره الجو" "الفلوس مين معاه" → {"type":"offtopic","value":null}
 
-رسالة: "خلي الكباب 2"
-رد: {"type":"update","value":{"name":"كباب حلة","qty":2}}
-
-رسالة: "كم سعر الكنافة؟"
-رد: {"type":"question","value":"سعر الكنافة"}
-
-رسالة: "السلام عليكم"
-رد: {"type":"unknown","value":null}
+طلب مسؤول:
+"اريد مسؤول" "عايز انسان" "human help" → {"type":"handoff","value":null}
 
 قواعد صارمة:
-- استخدم بالضبط اسم المنتج من المنيو (مثلاً "كباب حلة" وليس "كباب").
-- لا تخترع منتجات غير موجودة في المنيو.
-- للإضافة استخدم مصفوفة value حتى لو منتج واحد.
-- لو لم تحدد كمية، qty=1.
-- أعد JSON فقط، بدون شرح أو نص إضافي.`;
+1. استخدم اسم المنتج من المنيو حرفياً
+2. لا تخترع منتجات
+3. لو ما فهمت → "unknown"
+4. JSON فقط بدون شرح`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
@@ -168,6 +201,8 @@ async function _aiClassify(text, session, menuCtx) {
       return { type: "unknown" };
     }
     console.log(`[ai-parser] "${text.slice(0, 40)}" → ${parsed.type}${parsed.value ? ` ${JSON.stringify(parsed.value).slice(0,80)}` : ""}`);
+    // 🧠 Cache the result
+    _aiCache.set(cacheKey, { ts: Date.now(), result: parsed });
     return parsed;
   } catch (e) {
     console.warn(`[ai-parser] failed: ${e.message}`);

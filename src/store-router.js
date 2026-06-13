@@ -1264,6 +1264,52 @@ router.post("/store/archives/run", auth, (req, res) => {
   }
 });
 
+// POST /store/handoff/resume — استئناف البوت بـ phone مباشرة (بدون orderId)
+router.post("/store/handoff/resume", auth, async (req, res) => {
+  const phone = String(req.body?.phone || "").replace(/\D/g, "");
+  if (!phone) return res.status(400).json({ error: "رقم الهاتف مطلوب" });
+
+  const fs   = require("fs");
+  const path = require("path");
+  const handoffFile = path.join(__dirname, "..", "data", "handoffs.json");
+  let handoffs = {};
+  try { handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8")); } catch {}
+
+  // ابحث عن أي مفتاح ينتهي بـ phone (قد يكون @s.whatsapp.net أو رقم فقط)
+  const matchedKey = Object.keys(handoffs).find(k => {
+    const cleanKey = String(k).replace(/\D/g, "");
+    return cleanKey === phone || cleanKey.endsWith(phone) || phone.endsWith(cleanKey);
+  });
+  if (!matchedKey) return res.status(404).json({ error: "لا يوجد محادثة موقوفة لهذا الرقم" });
+
+  // تحقق من الـ storeId
+  if (handoffs[matchedKey].storeId !== req.storeId) {
+    return res.status(403).json({ error: "هذا العميل ليس من متجرك" });
+  }
+
+  delete handoffs[matchedKey];
+  fs.writeFileSync(handoffFile, JSON.stringify(handoffs, null, 2));
+
+  // أبلغ العميل بعودة البوت
+  try {
+    const waMgr = require("./whatsapp-manager");
+    await waMgr.sendMessage(req.storeId, matchedKey,
+      `✅ *البوت يعمل من جديد*\n\nيمكنك الكتابة لي مباشرة. شكراً لصبرك 🙏\n\n_اكتب: ابدأ — لبدء طلب جديد_`);
+  } catch {}
+
+  // ⚡ Audit log — مهم لتتبع من أعاد البوت
+  audit({
+    actor: req.impersonatedBy
+      ? { type: "master", id: "master", impersonating: req.storeId }
+      : { type: "store", id: req.storeId },
+    action: "handoff.resume",
+    target: { type: "customer", id: matchedKey.replace(/\D/g, "").slice(0, 6) + "***" },
+    meta: { storeId: req.storeId, durationSec: Math.round((Date.now() - new Date(handoffs[matchedKey]?.startedAt || Date.now()).getTime()) / 1000) },
+  }, req);
+
+  res.json({ ok: true, phone: matchedKey, resumed: true });
+});
+
 // GET /store/handoffs — قائمة العملاء الذين يحتاجون مسؤول
 router.get("/store/handoffs", auth, (req, res) => {
   const fs = require("fs");

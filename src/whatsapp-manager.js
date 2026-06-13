@@ -542,16 +542,19 @@ async function sendNativeButtons(storeId, to, { body, buttons, footer = "", head
   const jid  = to.includes("@") ? to : `${to}@s.whatsapp.net`;
   const safe = buttons.slice(0, 12);
 
+  // ⚡ poll messages لا تدعم footer — نُدمج في body
+  const fullBody = footer ? `${body}\n\n${footer}` : body;
+
   // ── 1: pollMessage — FIRST (guaranteed tap-to-select on all personal accounts) ──
   try {
     const valueToId  = Object.fromEntries(safe.map(b => [b.title, b.id]));
-    const pollSecret = randomBytes(32);  // generate secret ourselves so we always have it
+    const pollSecret = randomBytes(32);
     const result     = await session.sock.sendMessage(jid, {
       poll: {
-        name:            body,
+        name:            fullBody,
         values:          safe.map(b => b.title),
         selectableCount: 1,
-        messageSecret:   pollSecret,  // Baileys: messageSecret || randomBytes(32)
+        messageSecret:   pollSecret,
       },
     });
     if (result?.key?.id) {
@@ -581,16 +584,19 @@ async function sendNativeList(storeId, to, { body, sections, footer = "", button
   if (!session || session.status !== "open") return false;
   const jid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
 
+  // ⚡ poll messages لا تدعم footer — نُدمج في body
+  const fullBody = footer ? `${body}\n\n${footer}` : body;
+
   // ── pollMessage FIRST — guaranteed interactive on all personal accounts ──
   try {
     const allRows   = sections.flatMap(s => s.rows || []);
     const pollRows  = allRows.slice(0, 12);
     const valueToId = Object.fromEntries(pollRows.map(r => [r.title, r.id]));
 
-    const pollSecret = randomBytes(32);  // generate secret ourselves so we always have it
+    const pollSecret = randomBytes(32);
     const result     = await session.sock.sendMessage(jid, {
       poll: {
-        name:            body,
+        name:            fullBody,
         values:          pollRows.map(r => r.title),
         selectableCount: 1,
         messageSecret:   pollSecret,

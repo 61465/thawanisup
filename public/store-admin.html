@@ -3704,13 +3704,12 @@ async function pollHandoffs() {
 }
 
 async function resumeBot(customerPhone) {
-  // نحتاج orderId — نبحث عن آخر طلب لهذا الرقم
+  if (!confirm("هل تريد استئناف البوت للعميل ورد رسالة له بذلك؟")) return;
   try {
-    const r = await api("GET", "/store/orders");
-    const ord = (r.orders || []).find(o => o.customerPhone === customerPhone);
-    if (!ord) { showToast("لم يُعثَر على طلب لهذا الرقم", "error"); return; }
-    await api("POST", `/store/orders/${ord.orderId}/handoff/resume`);
-    showToast("✅ تم استئناف البوت لهذا العميل", "success");
+    // الـ endpoint الجديد يقبل phone مباشرة بدون orderId
+    const clean = String(customerPhone || "").replace(/\D/g, "");
+    await api("POST", `/store/handoff/resume`, { phone: clean });
+    showToast("✅ تم استئناف البوت + إرسال رسالة للعميل", "success");
     pollHandoffs();
   } catch (e) { showToast("فشل: " + e.message, "error"); }
 }

@@ -1744,8 +1744,24 @@ async function handleMessage(from, incoming) {
   const isHardReset = msg === "MAIN_MENU" || /^(start|ابدأ|البدايه|البداية|الرئيسية)$/i.test(msg);
   // التحيات (تعمل reset فقط لو خارج mid-flow — لا نُربك العميل وسط إكمال طلبه)
   const isGreeting  = /^(مرحبا|مرحباً|السلام عليكم|وعليكم السلام|هلا|هلو|أهلا|اهلا|hi|hello|hey|رجوع)$/i.test(msg);
-  const midFlow     = ["COLLECT_NAME","COLLECT_LOCATION","SCHEDULE_ORDER","COLLECT_TIME","CONFIRM_ORDER","QUANTITY","CART_ACTION","CART_EDIT","POST_ORDER","COUPON","ORDER_BROWSE","AI_BROWSE","NUMERIC_MENU","NUMERIC_FEEDBACK"]
+  // ⚠️ CATEGORY/PRODUCT/PATH_SELECT/MAIN_MENU جزء من الـ flow الفعّال — التحية لا تعيد welcome
+  const midFlow     = ["PATH_SELECT","MAIN_MENU","CATEGORY","PRODUCT",
+                       "COLLECT_NAME","COLLECT_LOCATION","SCHEDULE_ORDER","COLLECT_TIME",
+                       "CONFIRM_ORDER","QUANTITY","CART_ACTION","CART_EDIT","POST_ORDER",
+                       "COUPON","ORDER_BROWSE","AI_BROWSE","NUMERIC_MENU","NUMERIC_FEEDBACK"]
     .includes(session.step);
+
+  // 🚫 Anti-spam: لو العميل أرسل تحية قبل أقل من 30 ثانية، عاملها كـ invalid (counter)
+  if (isGreeting && !isHardReset) {
+    const now = Date.now();
+    const lastGreeting = session.lastGreetingAt || 0;
+    if (now - lastGreeting < 30_000) {
+      // تحية متكررة في < 30s = spam → counter
+      console.log(`[greet-spam] ${from} — تحية متكررة بعد ${Math.round((now-lastGreeting)/1000)}s`);
+      return triggerMuteOnInvalidMenuChoice(from, session);
+    }
+    sessionManager.update(from, { lastGreetingAt: now });
+  }
 
   const isResetCmd = isHardReset || (isGreeting && !midFlow);
 
@@ -2877,32 +2893,50 @@ async function handleCouponStep(from, msg, session) {
     });
   }
 
+  // ⚡ Helper: ينقل لمرحلة الموقع/الجدولة مباشرة (تخطي طلب الاسم)
+  function _moveToNextAfterCart() {
+    const btype  = getBusinessType(store);
+    const labels = businessLabels(btype);
+    sessionManager.update(from, { customerName: "عميل", customerLocation: null });
+    if (!labels.needsLocation) {
+      sessionManager.update(from, { step: "SCHEDULE_ORDER" });
+      return sendScheduleAsk(from, "");
+    }
+    sessionManager.update(from, { step: "COLLECT_LOCATION" });
+    return sendText(from,
+      `📍 *${labels.locationPrompt}*\n\n` +
+      `🗺️ *الطريقة الأسرع:* أرسل موقعك من واتساب\n` +
+      `   اضغط 📎 (أو ➕) ← *الموقع* ← *موقعي الحالي*\n\n` +
+      `أو اكتب اسم الحي / العنوان كنص 👇\n\n` +
+      `_اكتب *"تعديل"* للعودة للسلة_`
+    );
+  }
+
   // Redeem loyalty points
   if (msg === "POINTS_REDEEM") {
     const pts = getPoints(storeId, from);
     const _loySet2 = require("./loyalty").getSettings(store);
     const redeemable = Math.floor(pts.points / _loySet2.pointsForDiscount) * _loySet2.pointsForDiscount;
     if (redeemable < _loySet2.pointsForDiscount) {
-      sessionManager.update(from, { step: "COLLECT_NAME" });
-      return sendButtons(from, { body: "❌ نقاطك غير كافية للاستبدال.\n\n📝 *اكتب اسمك الكريم* لإكمال الطلب:", buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }] });
+      await sendText(from, "❌ نقاطك غير كافية للاستبدال");
+      return _moveToNextAfterCart();
     }
     const result = redeemPoints(storeId, from, redeemable, store);
     if (!result) {
-      sessionManager.update(from, { step: "COLLECT_NAME" });
-      return sendButtons(from, { body: "❌ تعذّر استبدال النقاط.\n\n📝 *اكتب اسمك الكريم* لإكمال الطلب:", buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }] });
+      await sendText(from, "❌ تعذّر استبدال النقاط");
+      return _moveToNextAfterCart();
     }
     const newSubtotal = Math.max(0, subtotal - result.discount);
     sessionManager.update(from, {
-      step: "COLLECT_NAME",
       couponWaiting: false,
       appliedDiscount: result.discount,
       discountLabel: `🏆 استبدال ${redeemable} نقطة`,
       discountedSubtotal: newSubtotal,
     });
-    return sendButtons(from, {
-      body:    `✅ تم استبدال *${redeemable}* نقطة!\n💰 خصم: *${result.discount.toFixed(2)} ${currency}*\n🏆 نقاطك المتبقية: *${result.remainingPoints}*\n\n📝 *اكتب اسمك الكريم* لإكمال الطلب 😊`,
-      buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
-    });
+    await sendText(from,
+      `✅ تم استبدال *${redeemable}* نقطة!\n💰 خصم: *${result.discount.toFixed(2)} ${currency}*\n🏆 المتبقي: *${result.remainingPoints}*`
+    );
+    return _moveToNextAfterCart();
   }
 
   // User typed a coupon code — only process when explicitly waiting for one
@@ -2920,25 +2954,19 @@ async function handleCouponStep(from, msg, session) {
     }
     const newSubtotal = Math.max(0, subtotal - result.discount);
     sessionManager.update(from, {
-      step: "COLLECT_NAME",
       couponWaiting: false,
       appliedCoupon: result.code,
       appliedDiscount: result.discount,
       discountLabel: result.message,
       discountedSubtotal: newSubtotal,
     });
-    return sendButtons(from, {
-      body:    `${result.message}\n💰 وفرت: *${result.discount.toFixed(2)} ${currency}*\n\n📝 *اكتب اسمك الكريم* لإكمال الطلب 😊`,
-      buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
-    });
+    await sendText(from, `${result.message}\n💰 وفرت: *${result.discount.toFixed(2)} ${currency}*`);
+    return _moveToNextAfterCart();
   }
 
-  // Fallback
-  sessionManager.update(from, { step: "COLLECT_NAME", couponWaiting: false });
-  return sendButtons(from, {
-    body:    "📝 *إتمام الطلب*\n\nمن فضلك *اكتب اسمك الكريم* لإكمال الطلب 😊",
-    buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
-  });
+  // Fallback — ننتقل مباشرة للمرحلة التالية (بدون طلب الاسم)
+  sessionManager.update(from, { couponWaiting: false });
+  return _moveToNextAfterCart();
 }
 
 async function handleCollectName(from, msg, session) {
