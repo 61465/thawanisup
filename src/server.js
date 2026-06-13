@@ -1588,20 +1588,14 @@ async function handleMessage(from, incoming) {
         qty: Number(i.qty) || 1, imageUrl: i.imageUrl || null,
       }));
       sessionManager.set(from, {
-        step: "COLLECT_NAME",
         cart,
         path: "webview",
-        customerName: session.lastCustomerName || null,
+        customerName: "عميل",
         customerLocation: session.lastCustomerLocation || null,
       });
       const summary = cart.map(i => `• ${i.name} ×${i.qty}`).join("\n");
-      return sendText(from,
-        `✅ *تم استرجاع آخر طلب*\n\n${summary}\n\n` +
-        (session.lastCustomerName
-          ? `الاسم: ${session.lastCustomerName}\nالعنوان: ${session.lastCustomerLocation || "—"}\n\nاكتب *تأكيد* للمتابعة، أو *تعديل* للتغيير`
-          : `📝 من فضلك اكتب *اسمك* لإتمام الطلب`
-        )
-      );
+      await sendText(from, `✅ *تم استرجاع آخر طلب*\n\n${summary}`);
+      return _moveToNextAfterCart();
     } else {
       return sendText(from, `لا يوجد طلب سابق لاسترجاعه.\nاكتب: *ابدأ* لتصفّح القائمة`);
     }
@@ -2429,11 +2423,12 @@ async function handleAIMode(from, text, session) {
     return sendText(from, `✅ حُدِّث.\n\n${_formatCart(cart, currency)}`);
   }
 
-  // 6️⃣ تأكيد الطلب
+  // 6️⃣ تأكيد الطلب — تخطّ الاسم، اذهب مباشرة للموقع/الجدولة
   if (intent.type === "confirm") {
     if (!cart.length) return sendText(from, "🛒 السلة فارغة. اكتب طلبك أولاً.");
-    sessionManager.update(from, { step: "COLLECT_NAME", path: "ai" });
-    return sendText(from, _formatCart(cart, currency) + `\n\n✏️ *اكتب اسمك للمتابعة:*`);
+    sessionManager.update(from, { path: "ai" });
+    await sendText(from, _formatCart(cart, currency));
+    return _moveToNextAfterCart();
   }
 
   // 7️⃣ إلغاء
@@ -2882,13 +2877,9 @@ async function startCheckout(from, session) {
   const couponsEnabled = store?.enableCoupons !== false;
   const pointsEnabled  = redeemable >= 100; // النقاط فقط لو فيه رصيد
 
-  // لو الكوبونات معطّلة ولا توجد نقاط → نتخطى الخطوة ونذهب لجمع الاسم مباشرة
+  // لو الكوبونات معطّلة ولا توجد نقاط → تخطّ مباشرة لطلب الموقع/الجدولة
   if (!couponsEnabled && !pointsEnabled) {
-    sessionManager.update(from, { step: "COLLECT_NAME" });
-    const isFreeText = session.path === "ai" || session.path === "numeric" || session.path === "webview";
-    const ask = `🛍️ *تأكيد الطلب*\n\n💰 الإجمالي: *${subtotal.toFixed(2)} ${currency}*\n\n📝 من فضلك *اكتب اسمك الكريم* لإتمام الطلب:`;
-    if (isFreeText) return sendText(from, ask);
-    return sendButtons(from, { body: ask, buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }] });
+    return _moveToNextAfterCart();
   }
 
   sessionManager.update(from, { step: "COUPON", couponWaiting: false });
@@ -2932,13 +2923,10 @@ async function handleCouponStep(from, msg, session) {
   if (msg === "VIEW_CART") { sessionManager.update(from, { step: "CART_ACTION", couponWaiting: false }); return showCart(from, sessionManager.get(from)); }
   if (msg === "BACK_PROD") { sessionManager.update(from, { step: "PRODUCT",    couponWaiting: false }); return showProductsPage(from, session.currentCategory || "", session.currentPage || 0); }
 
-  // Skip coupon → proceed to collect name
+  // Skip coupon → تخطّ مباشرة لطلب الموقع/الجدولة (لا اسم)
   if (msg === "COUPON_SKIP") {
-    sessionManager.update(from, { step: "COLLECT_NAME", couponWaiting: false });
-    return sendButtons(from, {
-      body:    "📝 *إتمام الطلب*\n\nمن فضلك *اكتب اسمك الكريم* لإكمال الطلب 😊",
-      buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
-    });
+    sessionManager.update(from, { couponWaiting: false });
+    return _moveToNextAfterCart();
   }
 
   // Open text entry for coupon code
@@ -3027,36 +3015,28 @@ async function handleCouponStep(from, msg, session) {
 }
 
 async function handleCollectName(from, msg, session) {
-  const name = msg.trim().slice(0, 80);
-  const isFreeText = session.path === "ai" || session.path === "numeric";
-  // رفض: gibberish، أسئلة شخصية، button IDs، أو أي شيء لا يبدو اسماً
-  if (!isValidName(name) || /^[A-Z][A-Z0-9_]*$/.test(name)) {
-    const hint = isOffTopicQuery(name)
-      ? "🤖 *لاحظت أن هذا سؤال!*\n\nأنا بوت لاستقبال الطلبات فقط. من فضلك اكتب اسمك الكريم لإكمال طلبك 😊"
-      : isGibberish(name)
-        ? "🤔 *هذا لا يبدو اسماً صحيحاً!*\n\nمن فضلك *اكتب اسمك الكريم* لإكمال الطلب 😊"
-        : "📝 *إتمام الطلب*\n\nمن فضلك *اكتب اسمك الكريم* لإكمال الطلب 😊";
-    if (isFreeText) return sendText(from, hint);
-    return sendButtons(from, {
-      body:    hint,
-      buttons: [{ id: "BACK_CART", title: "🔙 تعديل السلة" }],
-    });
-  }
+  // 🚫 خطوة الاسم محذوفة بالكامل — أي رسالة وصلت هنا = العميل يحاول إدخال العنوان/الموقع
+  // ننتقل مباشرة لـ COLLECT_LOCATION أو SCHEDULE_ORDER (حسب نوع البيزنس) ونعالج النص كموقع
   const { store } = storeCtx.getStore() || {};
   const btype  = getBusinessType(store);
   const labels = businessLabels(btype);
 
-  sessionManager.update(from, { customerName: name, customerLocation: null });
+  sessionManager.update(from, { customerName: "عميل", customerLocation: null });
 
-  // pickup & walkin: skip location step entirely
+  // pickup/walkin: تخطّ الموقع → SCHEDULE_ORDER
   if (!labels.needsLocation) {
     sessionManager.update(from, { step: "SCHEDULE_ORDER" });
-    return sendScheduleAsk(from, `شكراً ${name} 😊`);
+    return sendScheduleAsk(from, "");
   }
 
+  // delivery: عالج الرسالة الحالية كموقع مباشرة (لو هي bypass = LOC_*) أو طلب موقع جديد
   sessionManager.update(from, { step: "COLLECT_LOCATION" });
+  // لو الرسالة تبدو موقعاً صالحاً، عالجها فوراً
+  if (msg && msg.length >= 3 && !["BACK_CART","BACK_MAIN"].includes(msg)) {
+    return handleCollectLocation(from, msg, sessionManager.get(from));
+  }
   return sendText(from,
-    `شكراً ${name} 😊\n\n📍 *${labels.locationPrompt}*\n\n` +
+    `📍 *${labels.locationPrompt}*\n\n` +
     `🗺️ *الطريقة الأسرع:* أرسل موقعك من واتساب\n` +
     `   اضغط 📎 (أو ➕) ← *الموقع* ← *موقعي الحالي*\n\n` +
     `أو اكتب اسم الحي / العنوان كنص 👇\n\n` +
@@ -3891,10 +3871,10 @@ async function handleOrderBrowse(from, msg, session) {
     const total   = cart.reduce((s, i) => s + i.price * i.qty, 0);
     const summary = `✅ *تأكيد طلبك:*\n\n` +
       cart.map(i => `• ${i.name} × ${i.qty} — ${(i.price * i.qty).toFixed(2)} ${currency}`).join("\n") +
-      `\n\n💰 *المجموع: ${total.toFixed(2)} ${currency}*\n\n` +
-      `📝 *اكتب اسمك الكريم* لإتمام الطلب:`;
-    sessionManager.update(from, { step: "COLLECT_NAME", orderProdMap: undefined });
-    return sendText(from, summary);
+      `\n\n💰 *المجموع: ${total.toFixed(2)} ${currency}*`;
+    sessionManager.update(from, { orderProdMap: undefined });
+    await sendText(from, summary);
+    return _moveToNextAfterCart();
   }
 
   // تعديل السلة / حذف عنصر
@@ -6049,18 +6029,29 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
 
   if (!cartItems.length) return res.status(400).json({ ok: false, error: "invalid items" });
 
-  // Set rule-based session: cart is ready, waiting for name
-  // path="webview" يضمن استخدام text plain (لا polls) في checkout flow
-  sessionManager.set(from, { step: "COLLECT_NAME", cart: cartItems, path: "webview", orderNotes: cleanNotes });
+  // ❌ خطوة الاسم محذوفة — انتقل مباشرة لطلب الموقع/الجدولة حسب نوع البيزنس
+  const storeData = getStoreById(storeId);
+  const btype  = getBusinessType(storeData);
+  const labels = businessLabels(btype);
+  const nextStep = labels.needsLocation ? "COLLECT_LOCATION" : "SCHEDULE_ORDER";
+  sessionManager.set(from, {
+    step: nextStep,
+    cart: cartItems,
+    path: "webview",
+    orderNotes: cleanNotes,
+    customerName: "عميل",
+  });
 
-  // Send WhatsApp name request directly (outside storeCtx)
-  console.log(`[web-order] sending reply → storeId=${storeId} from=${from} notes=${cleanNotes.length}`);
+  console.log(`[web-order] sending reply → storeId=${storeId} from=${from} notes=${cleanNotes.length} nextStep=${nextStep}`);
   try {
+    const tail = labels.needsLocation
+      ? `\n\n📍 *${labels.locationPrompt}*\nأرسل موقعك من واتساب 📎 ← الموقع، أو اكتبه نصاً 👇`
+      : `\n\n📅 *حدد وقت الطلب*\nاكتب: *الآن* أو الوقت المرغوب (مثلاً: 8 مساءً)`;
     await waMgr.sendMessage(storeId, from,
       `✅ *تم استلام طلبك!*\n\n` +
       cartItems.map(i => `• ${i.name} × ${i.qty}`).join("\n") +
       (cleanNotes ? `\n\n📝 *ملاحظات:* ${cleanNotes}` : "") +
-      `\n\n📝 من فضلك *اكتب اسمك الكريم* لإتمام الطلب:`
+      tail
     );
     console.log(`[web-order] ✅ reply sent → ${from}`);
   } catch (e) {
