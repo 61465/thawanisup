@@ -6450,6 +6450,14 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
   const store = resolveStore(storeId);
   if (!store) return res.status(404).json({ ok: false, error: "store not found" });
 
+  // ⭐ التفاف في storeCtx ليتطابق session key (storeId|phone) مع باقي الـ flow
+  return storeCtx.run({ storeId, store }, async () => {
+    return _handleWebOrderSubmit(req, res, { storeId, from, store, items, cleanNotes });
+  });
+});
+
+async function _handleWebOrderSubmit(req, res, { storeId, from, store, items, cleanNotes }) {
+
   // Build cart with imageUrl + priceOnRequest from store products (source of truth)
   // ⚠️ السعر يُؤخذ من المنتج لا من الـ client (لمنع التزوير)
   const cartItems = items
@@ -6519,7 +6527,7 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
   }
 
   res.json({ ok: true });
-});
+}
 
 // ─── Test send (master only) ──────────────────────────────────────────────────
 app.post("/master/test-send", async (req, res) => {
