@@ -2063,6 +2063,12 @@ async function sendWelcome(from) {
   if (header) msg = header + "\n\n" + msg;
   if (footer) msg = msg + "\n\n" + footer;
 
+  // ─── HELP_HINT: للاستفسار اكتب: مسؤول (في كل رسالة ترحيب) ──────────────────
+  const HELP_HINT = "💬 للاستفسار اكتب: *مسؤول*";
+  if (!msg.includes("مسؤول") && !msg.includes(HELP_HINT)) {
+    msg = msg + "\n\n" + HELP_HINT;
+  }
+
   return sendText(from, msg);
 }
 

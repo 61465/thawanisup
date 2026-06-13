@@ -1183,6 +1183,28 @@ router.get("/store/notifications", auth, (req, res) => {
       });
     }
   }
+  // 🆘 Handoff notifications — عملاء يطلبون مسؤول
+  try {
+    const handoffFile = path.join(DATA_DIR, "handoffs.json");
+    if (fs.existsSync(handoffFile)) {
+      const handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8") || "{}");
+      for (const [phone, h] of Object.entries(handoffs)) {
+        if (h.storeId !== req.storeId) continue;
+        const ts = new Date(h.startedAt || h.at || 0).getTime();
+        if (ts > sinceTs) {
+          notif.push({
+            kind: "handoff",
+            id: "handoff_" + phone,
+            title: "🆘 عميل يطلب مسؤول",
+            body: `${String(phone).replace(/\D/g,"").slice(0,9) + "***"} — "${(h.lastMsg||"").slice(0,40)}"`,
+            ts,
+            link: "#handoffs",
+          });
+        }
+      }
+    }
+  } catch {}
+  notif.sort((a, b) => b.ts - a.ts);
   res.json({ notifications: notif, serverTime: Date.now() });
 });
 
