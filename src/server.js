@@ -4020,12 +4020,17 @@ async function _finalizeRating(from, comment) {
       }
     } catch (e) { console.warn("[service-recovery] failed:", e.message); }
   }
-  // 🌟 5★ follow-up
-  else if (rating === 5) {
+  // 🌟 Thank-you message للتقييم المرتفع (4-5 نجوم) — قابل للتخصيص من الأدمن
+  else if (rating >= 4) {
     try {
       await new Promise(r => setTimeout(r, 2000));
-      await waMgr.sendMessage(pending.storeId, from, ratingsMod.fiveStarFollowUp(pending.storeName));
-    } catch (e) { console.warn("[5star-followup] failed:", e.message); }
+      const store = pending.store;
+      const custom = String(store?.thankYouMessage || "").trim();
+      const message = custom
+        ? custom.replace(/\{\{store_name\}\}/g, pending.storeName).replace(/\{\{stars\}\}/g, stars)
+        : ratingsMod.fiveStarFollowUp(pending.storeName);
+      await waMgr.sendMessage(pending.storeId, from, message);
+    } catch (e) { console.warn("[thank-you] failed:", e.message); }
   }
 }
 
@@ -4045,7 +4050,8 @@ function scheduleRatingReminder(from, storeId, storeName, orderId) {
 
 // ─── Order Tracking ───────────────────────────────────────────────────────────
 async function handleOrderTracking(from, orderId) {
-  const orders = readOrders(200);
+  const { storeId } = storeCtx.getStore() || {};
+  const orders = readOrders(storeId, 200);
   const phone = phoneNum(from);
   // 🧠 إذا لم يُرسل orderId، احصل على آخر طلب نشط لهذا العميل تلقائياً
   let order;

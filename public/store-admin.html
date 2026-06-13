@@ -1387,6 +1387,76 @@ tr:hover td{background:#fafcfa}
       </div>
     </section>
 
+    <!-- 💝 Thank-You Message Modal -->
+    <div id="tyModal" onclick="if(event.target===this)closeThankYouEdit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+      <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.3);overflow:hidden;margin-top:30px">
+        <div style="background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:900">💝 رسالة الشكر النهائية</div>
+            <div style="font-size:12px;opacity:.9;margin-top:3px">تظهر بعد التقييم المرتفع (4-5 ⭐) فقط</div>
+          </div>
+          <button onclick="closeThankYouEdit()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+        </div>
+        <div style="padding:20px 22px">
+          <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:8px">
+            نص الرسالة:
+          </label>
+          <textarea id="tyText" rows="9" placeholder="اكتب رسالة شكر مخصصة..."
+                    style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;direction:rtl"></textarea>
+          <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:12px;color:#78350f;line-height:1.7">
+            💡 <b>متغيّرات يمكن استخدامها:</b><br>
+            • <code>{{store_name}}</code> — يُستبدل باسم متجرك<br>
+            • <code>{{stars}}</code> — يُستبدل بنجوم العميل (⭐⭐⭐⭐⭐)<br>
+            • استخدم <code>*نص*</code> للخط الغامق<br>
+            • استخدم <code>_نص_</code> للمائل
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button onclick="closeThankYouEdit()" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:11px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+            <button onclick="tyResetDefault()" style="flex:1;background:#fff;border:1px solid #fcd34d;color:#92400e;padding:11px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">↺ افتراضي</button>
+            <button onclick="saveThankYou()" style="flex:2;background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;border:none;padding:11px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit;box-shadow:0 3px 10px rgba(236,72,153,.3)">💾 حفظ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⏱️ Confirm Order + ETA Modal -->
+    <div id="etaModal" onclick="if(event.target===this)closeEtaModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1200;align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;border-radius:16px;max-width:480px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.3);overflow:hidden">
+        <div style="background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:11px;opacity:.9">تأكيد الطلب</div>
+            <div id="etaOrderLabel" style="font-size:18px;font-weight:900;font-family:monospace">—</div>
+          </div>
+          <span style="font-size:28px">⏱️</span>
+        </div>
+        <div style="padding:22px">
+          <label style="display:block;font-size:14px;font-weight:700;color:#111827;margin-bottom:10px">
+            كم دقيقة تحتاج لتجهيز/توصيل الطلب؟
+          </label>
+          <input id="etaMinutes" type="number" min="1" max="720" placeholder="مثلاً: 30" inputmode="numeric"
+                 style="width:100%;padding:14px;font-size:18px;border:2px solid #d1d5db;border-radius:10px;font-family:inherit;text-align:center;font-weight:800"
+                 onkeydown="if(event.key==='Enter')submitEta(false)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;justify-content:center">
+            <button onclick="etaQuick(15)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">15 د</button>
+            <button onclick="etaQuick(30)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">30 د</button>
+            <button onclick="etaQuick(45)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">45 د</button>
+            <button onclick="etaQuick(60)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">1 ساعة</button>
+            <button onclick="etaQuick(90)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">1.5 ساعة</button>
+            <button onclick="etaQuick(120)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">2 ساعة</button>
+          </div>
+          <div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12px;color:#1e40af;line-height:1.6">
+            💡 سيُرسَل للعميل: <b>"⏱️ الوقت المتوقع: X دقيقة"</b><br>
+            وسيظهر في صفحة التتبع للعميل.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button onclick="closeEtaModal()" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:12px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+            <button onclick="submitEta(true)" style="flex:1;background:#f3f4f6;border:1px solid #d1d5db;color:#374151;padding:12px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">قبول بلا مدة</button>
+            <button onclick="submitEta(false)" style="flex:2;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;padding:12px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit;box-shadow:0 3px 10px rgba(22,163,74,.3)">✅ تأكيد + إرسال المدة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 👁️ Order Details Modal -->
     <div id="orderDetailsModal" onclick="if(event.target===this)closeOrderDetails()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1100;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;backdrop-filter:blur(2px)">
       <div style="background:#fff;border-radius:16px;max-width:620px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 25px 70px rgba(0,0,0,0.35);margin-top:30px" onclick="event.stopPropagation()">
@@ -4042,6 +4112,7 @@ async function botqLoad() {
     ]);
     _botqFields = Array.isArray(r.fields) ? r.fields : [];
     _botqWelcome = String(storeData.welcomeMessage || "").trim();
+    _botqThankYou = String(storeData.thankYouMessage || "").trim();
     document.getElementById("botqSource").textContent =
       r.source === "custom" ? "(مخصصة)" : "(افتراضية — لم تُحفظ بعد)";
     _botqRender();
@@ -4051,6 +4122,27 @@ async function botqLoad() {
 }
 
 let _botqWelcome = "";
+let _botqThankYou = "";
+
+function openThankYouEdit() {
+  document.getElementById("tyText").value = _botqThankYou || `🔥 *شكراً من القلب!*\n\nتقييمك الرائع لـ *{{store_name}}* يعني لنا الكثير 🌟\n\nخصم 10% على طلبك القادم 💚`;
+  document.getElementById("tyModal").style.display = "flex";
+  setTimeout(() => document.getElementById("tyText").focus(), 100);
+}
+function closeThankYouEdit() { document.getElementById("tyModal").style.display = "none"; }
+async function saveThankYou() {
+  const text = document.getElementById("tyText").value.trim();
+  try {
+    await api("PUT", "/store/settings", { thankYouMessage: text });
+    _botqThankYou = text;
+    showToast("✅ تم حفظ رسالة الشكر", "success");
+    closeThankYouEdit();
+    _botqRender();
+  } catch (e) { showToast("فشل: " + (e.message||""), "error"); }
+}
+function tyResetDefault() {
+  document.getElementById("tyText").value = `🔥 *شكراً من القلب!*\n\nتقييمك الرائع لـ *{{store_name}}* يعني لنا الكثير 🌟\n\nلو حابب تساعدنا أكثر:\n✨ شاركنا تجربتك مع صديق/قريب\n📲 احكي عننا في حالة الواتساب\n\nخصم 10% على طلبك القادم 💚`;
+}
 
 function _botqRender() {
   const box = document.getElementById("botqList");
@@ -4081,7 +4173,10 @@ function _botqRender() {
     </div>
     <div style="text-align:center;color:#9ca3af;font-size:11px;margin:6px 0 10px;font-weight:600">⬇️ ثم تأتي الأسئلة بالترتيب ⬇️</div>`;
 
-  // 🔹 بطاقة "ملخص الطلب" (للقراءة فقط — تأتي بعد الأسئلة)
+  // 🔹 بطاقة "ملخص الطلب" + "رسالة الشكر" (للقراءة، مع زر تعديل للشكر)
+  const thankYouPreview = _botqThankYou
+    ? esc(_botqThankYou.length > 140 ? _botqThankYou.slice(0, 140) + "…" : _botqThankYou)
+    : `<span style="color:#9ca3af;font-style:italic">القالب الافتراضي — اضغط ✏️ لتخصيصه</span>`;
   const summaryCard = `
     <div style="text-align:center;color:#9ca3af;font-size:11px;margin:10px 0 6px;font-weight:600">⬇️ بعد كل الأسئلة ⬇️</div>
     <div style="background:linear-gradient(135deg,#dcfce7 0%,#f0fdf4 100%);border:1px solid #86efac;border-right:5px solid #16a34a;border-radius:10px;padding:12px 14px;margin-top:0;display:flex;align-items:center;gap:10px">
@@ -4092,6 +4187,19 @@ function _botqRender() {
         <div style="font-size:12px;color:#15803d;margin-top:3px;line-height:1.6">يعرض البوت كل البيانات (المنتجات + الإجابات) ثم يطلب تأكيد العميل</div>
       </div>
       <span style="background:#16a34a;color:#fff;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;white-space:nowrap">تلقائي</span>
+    </div>
+    <div style="text-align:center;color:#9ca3af;font-size:11px;margin:10px 0 6px;font-weight:600">⬇️ بعد التقييم المرتفع (4-5⭐) ⬇️</div>
+    <div style="background:linear-gradient(135deg,#fce7f3 0%,#fff 100%);border:1px solid #f9a8d4;border-right:5px solid #ec4899;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">💝</span>
+      <span style="background:#ec48991a;color:#9d174d;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap">بعد التقييم 4-5⭐</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:#9d174d;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          رسالة الشكر النهائية
+          <span style="color:#9ca3af;font-size:11px">(للعملاء السعداء فقط)</span>
+        </div>
+        <div style="font-size:12px;color:#9d174d;margin-top:3px;line-height:1.6">${thankYouPreview}</div>
+      </div>
+      <button onclick="openThankYouEdit()" title="تعديل رسالة الشكر" style="background:#fff;border:1px solid #f9a8d4;color:#9d174d;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">✏️ تعديل</button>
     </div>`;
 
   box.innerHTML = welcomeCard + _botqFields.map((f, i) => {
@@ -4603,25 +4711,41 @@ async function cancelOrder(orderId) {
   }
 }
 
-async function confirmOrder(orderId) {
-  // ⏱️ المتجر يحدّد المدة المتوقعة قبل التأكيد (اختياري)
-  const etaStr = prompt(`تأكيد الطلب ${orderId}\n\n⏱️ كم دقيقة تحتاج لتجهيز الطلب؟\n(اتركه فارغاً للتجاوز)`, "");
-  if (etaStr === null) return; // المستخدم ضغط cancel
+function confirmOrder(orderId) {
+  // ⏱️ افتح modal واضح بدل prompt
+  _etaOrderId = orderId;
+  document.getElementById("etaOrderLabel").textContent = orderId;
+  document.getElementById("etaMinutes").value = "";
+  document.getElementById("etaModal").style.display = "flex";
+  setTimeout(() => document.getElementById("etaMinutes").focus(), 100);
+}
+
+let _etaOrderId = null;
+function closeEtaModal() {
+  document.getElementById("etaModal").style.display = "none";
+  _etaOrderId = null;
+}
+function etaQuick(mins) {
+  document.getElementById("etaMinutes").value = mins;
+}
+async function submitEta(skip) {
+  if (!_etaOrderId) return;
   let body = {};
-  if (etaStr.trim()) {
-    const eta = parseInt(etaStr);
-    if (isNaN(eta) || eta <= 0) {
-      showToast("⚠️ مدة غير صحيحة", "error");
+  if (!skip) {
+    const eta = parseInt(document.getElementById("etaMinutes").value);
+    if (!eta || eta <= 0 || eta > 720) {
+      showToast("⚠️ أدخل عدد دقائق صحيح (1-720)", "error");
       return;
     }
     body.estimatedMinutes = eta;
   }
+  const oid = _etaOrderId;
+  closeEtaModal();
   try {
-    await api("POST", `/store/orders/${orderId}/confirm`, body);
-    const msg = body.estimatedMinutes
+    await api("POST", `/store/orders/${oid}/confirm`, body);
+    showToast(body.estimatedMinutes
       ? `✅ تأكيد + إرسال "خلال ${body.estimatedMinutes} دقيقة" للعميل`
-      : "✅ تم تأكيد الطلب وإرسال إشعار للعميل";
-    showToast(msg, "success");
+      : "✅ تم تأكيد الطلب", "success");
     loadOrders();
   } catch (e) {
     showToast(e.message || "فشل التأكيد", "error");

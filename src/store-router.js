@@ -745,6 +745,7 @@ const SETTING_VALIDATORS = {
   workingHoursStart:  v => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 && n <= 24 ? n : null; },
   workingHoursEnd:    v => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 && n <= 24 ? n : null; },
   welcomeMessage:     v => String(v || "").slice(0, 2000),
+  thankYouMessage:    v => String(v || "").slice(0, 1500),
   invoiceColor:       v => /^#[0-9a-f]{3,8}$/i.test(String(v || "")) ? v : null,
   themeAccent:        v => /^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\)|rgba?\([^)]+\))$/i.test(String(v || "")) ? v : null,
   themeText:          v => /^(#[0-9a-f]{3,8}|var\(--[a-z0-9-]+\))$/i.test(String(v || "")) ? v : null,
