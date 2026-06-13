@@ -4604,10 +4604,24 @@ async function cancelOrder(orderId) {
 }
 
 async function confirmOrder(orderId) {
-  if (!confirm(`تأكيد الطلب ${orderId} وإرسال رسالة واتساب للعميل؟`)) return;
+  // ⏱️ المتجر يحدّد المدة المتوقعة قبل التأكيد (اختياري)
+  const etaStr = prompt(`تأكيد الطلب ${orderId}\n\n⏱️ كم دقيقة تحتاج لتجهيز الطلب؟\n(اتركه فارغاً للتجاوز)`, "");
+  if (etaStr === null) return; // المستخدم ضغط cancel
+  let body = {};
+  if (etaStr.trim()) {
+    const eta = parseInt(etaStr);
+    if (isNaN(eta) || eta <= 0) {
+      showToast("⚠️ مدة غير صحيحة", "error");
+      return;
+    }
+    body.estimatedMinutes = eta;
+  }
   try {
-    await api("POST", `/store/orders/${orderId}/confirm`);
-    showToast("تم تأكيد الطلب وإرسال إشعار للعميل ✅", "success");
+    await api("POST", `/store/orders/${orderId}/confirm`, body);
+    const msg = body.estimatedMinutes
+      ? `✅ تأكيد + إرسال "خلال ${body.estimatedMinutes} دقيقة" للعميل`
+      : "✅ تم تأكيد الطلب وإرسال إشعار للعميل";
+    showToast(msg, "success");
     loadOrders();
   } catch (e) {
     showToast(e.message || "فشل التأكيد", "error");

@@ -1645,25 +1645,29 @@ router.post("/store/handoff/resume", auth, async (req, res) => {
   let handoffs = {};
   try { handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8")); } catch {}
 
-  // ابحث عن أي مفتاح ينتهي بـ phone (قد يكون @s.whatsapp.net أو رقم فقط)
-  const matchedKey = Object.keys(handoffs).find(k => {
-    const cleanKey = String(k).replace(/\D/g, "");
-    return cleanKey === phone || cleanKey.endsWith(phone) || phone.endsWith(cleanKey);
-  });
-  if (!matchedKey) return res.status(404).json({ error: "لا يوجد محادثة موقوفة لهذا الرقم" });
-
-  // تحقق من الـ storeId
-  if (handoffs[matchedKey].storeId !== req.storeId) {
-    return res.status(403).json({ error: "هذا العميل ليس من متجرك" });
+  // ابحث عن المفتاح المناسب — مفضّل storeId|phone (composite)
+  // ثم fallback للـ legacy keys
+  let matchedKey = null;
+  let entry = null;
+  for (const [k, h] of Object.entries(handoffs)) {
+    if (h.storeId !== req.storeId) continue;
+    const targetPhone = String(h.phone || k).replace(/\D/g, "");
+    if (targetPhone === phone || targetPhone.endsWith(phone) || phone.endsWith(targetPhone)) {
+      matchedKey = k;
+      entry = h;
+      break;
+    }
   }
+  if (!matchedKey || !entry) return res.status(404).json({ error: "لا يوجد محادثة موقوفة لهذا الرقم" });
 
   delete handoffs[matchedKey];
   fs.writeFileSync(handoffFile, JSON.stringify(handoffs, null, 2));
 
-  // أبلغ العميل بعودة البوت
+  // أبلغ العميل بعودة البوت (نستخدم entry.phone لا matchedKey)
+  const customerPhone = entry.phone || matchedKey.split("|").pop();
   try {
     const waMgr = require("./whatsapp-manager");
-    await waMgr.sendMessage(req.storeId, matchedKey,
+    await waMgr.sendMessage(req.storeId, customerPhone,
       `✅ *البوت يعمل من جديد*\n\nيمكنك الكتابة لي مباشرة. شكراً لصبرك 🙏\n\n_اكتب: ابدأ — لبدء طلب جديد_`);
   } catch {}
 
@@ -1710,10 +1714,10 @@ router.get("/store/handoffs", auth, (req, res) => {
   const handoffFile = path.join(__dirname, "..", "data", "handoffs.json");
   let handoffs = {};
   try { handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8")); } catch {}
-  // فلتر هذا المتجر فقط
+  // فلتر هذا المتجر فقط — يدعم الـ keys الجديدة (storeId|phone) والقديمة (phone فقط)
   const mine = Object.entries(handoffs)
     .filter(([_, h]) => h.storeId === req.storeId)
-    .map(([phone, h]) => ({ phone, ...h }))
+    .map(([key, h]) => ({ phone: h.phone || key.split("|").pop(), ...h }))
     .sort((a, b) => (b.startedAt || "").localeCompare(a.startedAt || ""));
   res.json({ handoffs: mine, storeId: req.storeId, total: Object.keys(handoffs).length });
 });
@@ -1764,7 +1768,14 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
   if (!order) return res.status(404).json({ error: "الطلب غير موجود" });
   if (order.status === "confirmed") return res.status(400).json({ error: "الطلب مؤكد مسبقاً" });
 
-  updateOrderStatus(req.storeId, orderId, "confirmed");
+  // ⏱️ مدة التحضير (اختيارية — يحددها المتجر عند التأكيد)
+  const estimatedMinutes = Number(req.body?.estimatedMinutes) > 0
+    ? Math.min(720, Math.round(Number(req.body.estimatedMinutes)))
+    : null;
+  const extraMeta = estimatedMinutes ? { estimatedMinutes } : null;
+
+  updateOrderStatus(req.storeId, orderId, "confirmed", extraMeta);
+  if (extraMeta) Object.assign(order, extraMeta);
 
   audit({
     actor: req.impersonatedBy ? { type: "master", id: "master", impersonating: req.storeId } : { type: "store", id: req.storeId },
@@ -1802,11 +1813,15 @@ router.post("/store/orders/:orderId/confirm", auth, async (req, res) => {
     const pointsLine = (earned && earned.newPoints > 0)
       ? `\n🏆 كسبت *${earned.newPoints}* نقطة! رصيدك: *${earned.totalPoints}*\n`
       : "";
+    const etaLine = estimatedMinutes
+      ? `⏱️ الوقت المتوقع: *${estimatedMinutes} دقيقة* تقريباً\n`
+      : "";
     const confirmMsg =
       `✅ *تم تأكيد طلبك!*\n\n` +
       `رقم الطلب: *${orderId}*\n` +
+      etaLine +
       pointsLine +
-      `سيتم توصيل طلبك قريباً إن شاء الله 🚴\n\n` +
+      `📦 لتتبع طلبك في أي وقت اكتب: *تتبع*\n\n` +
       `شكراً لاختيارك *${storeName}*`;
     try { await waMgr.sendMessage(req.storeId, order.customerPhone, confirmMsg); } catch {}
 

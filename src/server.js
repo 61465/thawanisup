@@ -20,7 +20,7 @@ const path      = require("path");
 const fs        = require("fs");
 const { AsyncLocalStorage } = require("async_hooks");
 
-const { sessionManager }                           = require("./session");
+const { sessionManager: _sessionRaw }              = require("./session");
 const { buildInvoice }                             = require("./invoice");
 const { generateInvoiceImage, generateSummaryImage } = require("./invoice-image");
 const { generateMenuImage } = require("./menu-image");
@@ -164,6 +164,20 @@ const hourEnd     = parseInt(WORKING_HOURS_END)   || 24;
 // ─── Context stores (AsyncLocalStorage) ──────────────────────────────────────
 const demoCtx  = new AsyncLocalStorage(); // web simulator
 const storeCtx = new AsyncLocalStorage(); // active storeId + store config
+
+// ─── Session scoping: كل متجر له session منفصل لنفس الرقم ───────────────────
+// المفتاح: storeId|phone — يمنع تداخل mute/handoff بين متجرين
+function _sessKey(from) {
+  const { storeId } = storeCtx.getStore() || {};
+  const phone = String(from || "").replace(/\|/g, "");
+  return (storeId || "global") + "|" + phone;
+}
+const sessionManager = {
+  get:    (from)         => _sessionRaw.get(_sessKey(from)),
+  set:    (from, data)   => _sessionRaw.set(_sessKey(from), data),
+  update: (from, patch)  => _sessionRaw.update(_sessKey(from), patch),
+  reset:  (from)         => _sessionRaw.reset(_sessKey(from)),
+};
 
 // ─── Health (public minimal + admin verbose) + Version ────────────────────────
 const _bootTime = Date.now();
@@ -1262,8 +1276,9 @@ async function handleOwnerCommand(from, text, store, storeId) {
       const handoffs = fs.existsSync(handoffFile) ? JSON.parse(fs.readFileSync(handoffFile, "utf8")) : {};
       const mine = Object.entries(handoffs).filter(([_, h]) => h.storeId === storeId);
       if (!mine.length) { await sendText(from, "✅ لا يوجد عملاء بانتظار مسؤول حالياً"); return true; }
-      const list = mine.map(([phone, h], i) => {
-        const cleanPh = String(phone).replace("@s.whatsapp.net", "").replace(/\D/g, "");
+      const list = mine.map(([key, h], i) => {
+        const phStr = h.phone || key.split("|").pop();
+        const cleanPh = String(phStr).replace("@s.whatsapp.net", "").replace(/\D/g, "");
         const mins = Math.floor((Date.now() - new Date(h.startedAt || h.at || 0).getTime()) / 60000);
         return `${i+1}. +${cleanPh}\n   منذ ${mins} د — "${(h.lastMsg||"").slice(0,40)}"`;
       }).join("\n\n");
@@ -1285,22 +1300,25 @@ async function handleOwnerCommand(from, text, store, storeId) {
       const handoffs = fs.existsSync(handoffFile) ? JSON.parse(fs.readFileSync(handoffFile, "utf8")) : {};
       let removed = 0, notified = [];
       if (/^(الكل|all|الجميع)$/i.test(target)) {
-        for (const [phone, h] of Object.entries(handoffs)) {
+        for (const [key, h] of Object.entries(handoffs)) {
           if (h.storeId === storeId) {
-            delete handoffs[phone];
+            const phStr = h.phone || key.split("|").pop();
+            delete handoffs[key];
             removed++;
-            notified.push(phone);
+            notified.push(phStr);
           }
         }
       } else {
         // رقم محدد
         const cleanTarget = target.replace(/\D/g, "");
-        for (const [phone, h] of Object.entries(handoffs)) {
-          const cleanPh = String(phone).replace(/\D/g, "");
-          if (h.storeId === storeId && (cleanPh === cleanTarget || cleanPh.endsWith(cleanTarget))) {
-            delete handoffs[phone];
+        for (const [key, h] of Object.entries(handoffs)) {
+          if (h.storeId !== storeId) continue;
+          const phStr = h.phone || key.split("|").pop();
+          const cleanPh = String(phStr).replace(/\D/g, "");
+          if (cleanPh === cleanTarget || cleanPh.endsWith(cleanTarget)) {
+            delete handoffs[key];
             removed++;
-            notified.push(phone);
+            notified.push(phStr);
           }
         }
       }
@@ -1718,7 +1736,9 @@ async function handleMessage(from, incoming) {
     const handoffFile = path.join(__dirname, "..", "data", "handoffs.json");
     let handoffs = {};
     try { handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8")); } catch {}
-    handoffs[from] = {
+    // 🔑 المفتاح المركّب: storeId|phone — لمنع تداخل الـ handoffs بين متجرين
+    const hkey = storeId + "|" + from;
+    handoffs[hkey] = {
       storeId,
       phone:     from,
       startedAt: new Date().toISOString(),
@@ -1799,18 +1819,24 @@ async function handleMessage(from, incoming) {
   }
 
   // إذا العميل في handoff state، البوت يسكت تماماً (مع TTL تلقائي 24h)
+  // مفصول لكل متجر: مفتاح storeId|from + backward compat للـ keys القديمة (from فقط)
   try {
     const fs = require("fs");
     const path = require("path");
     const handoffFile = path.join(__dirname, "..", "data", "handoffs.json");
     if (fs.existsSync(handoffFile)) {
       const handoffs = JSON.parse(fs.readFileSync(handoffFile, "utf8"));
-      if (handoffs[from] && handoffs[from].storeId === storeId) {
+      const hkey = storeId + "|" + from;
+      // ابحث في الـ key الجديد أولاً، ثم الـ legacy key (لو موجود من قبل التحديث)
+      const entry = handoffs[hkey] || (handoffs[from] && handoffs[from].storeId === storeId ? handoffs[from] : null);
+      const legacyMatch = !handoffs[hkey] && handoffs[from] && handoffs[from].storeId === storeId;
+      if (entry) {
         const HANDOFF_TTL_MS = 24 * 60 * 60 * 1000; // 24 ساعة
-        const startedAt = new Date(handoffs[from].at || 0).getTime();
+        const startedAt = new Date(entry.startedAt || entry.at || 0).getTime();
         const expired = startedAt && (Date.now() - startedAt > HANDOFF_TTL_MS);
         if (expired) {
-          delete handoffs[from];
+          delete handoffs[hkey];
+          if (legacyMatch) delete handoffs[from];
           try { require("./atomic-fs").writeJsonSync(handoffFile, handoffs); } catch {}
           console.log(`[handoff] auto-resumed (TTL expired) for ${from} @ ${storeId}`);
         } else {
@@ -1830,8 +1856,22 @@ async function handleMessage(from, incoming) {
   }
 
   // ── Rating intercept: handle rating reply even after session reset ──────────
-  if (pendingRatings.has(from) && isRatingInput(incoming)) {
-    return handleRatingSubmit(from, incoming);
+  // ⭐ Rating: رقم → handleRatingSubmit، نص بعد الرقم → _finalizeRating كتعليق
+  if (pendingRatings.has(from)) {
+    const pending = pendingRatings.get(from);
+    if (pending.awaitingComment) {
+      // العميل في خطوة "اكتب تعليقك"
+      const trimmed = String(incoming || "").trim();
+      const norm = aiParser.normalizeAr(trimmed);
+      if (/^(تخطي|تخطى|skip|لا|بدون|no)$/i.test(norm)) {
+        return _finalizeRating(from, "");
+      }
+      if (trimmed.length >= 2) {
+        return _finalizeRating(from, trimmed.slice(0, 500));
+      }
+    } else if (isRatingInput(incoming)) {
+      return handleRatingSubmit(from, incoming);
+    }
   }
 
   // ── Order tracking command ───────────────────────────────────────────────────
@@ -3090,7 +3130,9 @@ async function handleCouponStep(from, msg, session) {
   if (msg === "BACK_PROD") { sessionManager.update(from, { step: "PRODUCT",    couponWaiting: false }); return showProductsPage(from, session.currentCategory || "", session.currentPage || 0); }
 
   // Skip coupon → تخطّ مباشرة لطلب الموقع/الجدولة (لا اسم)
-  if (msg === "COUPON_SKIP") {
+  // يدعم زر COUPON_SKIP + نص "تخطي/skip/لا/بدون"
+  const trimmed = String(msg || "").trim();
+  if (msg === "COUPON_SKIP" || /^(تخطي|تخطى|skip|لا|بدون|لا\s*يوجد|ليس\s*لدي|no)$/i.test(aiParser.normalizeAr(trimmed))) {
     sessionManager.update(from, { couponWaiting: false });
     return _moveToNextAfterCart();
   }
@@ -3199,13 +3241,10 @@ async function _askDynamicQuestion(from, fields, idx) {
   const f = fields[idx];
   if (!f) return _finishDynamicQuestions(from);
   let extra = "";
-  if (f.type === "location") {
-    extra = `\n\n🗺️ _أرسل موقعك من واتساب: 📎 ← الموقع ← موقعي الحالي_`;
-  } else if (f.type === "schedule") {
-    extra = `\n\n_اكتب: *الان* أو الوقت المطلوب_`;
-  } else if (f.type === "choice" && Array.isArray(f.options)) {
+  if (f.type === "choice" && Array.isArray(f.options)) {
     extra = "\n\n" + f.options.map((o, i) => `${i + 1}️⃣ ${o}`).join("\n");
   }
+  // ⚠️ لا نضيف شرح للـ location/schedule — المتجر يحدد النص بنفسه في prompt
   const optional = !f.required ? `\n\n_اكتب *تخطي* للتجاوز_` : "";
   return sendText(from, `${f.prompt}${extra}${optional}\n\n_(سؤال ${idx + 1} من ${fields.length})_`);
 }
@@ -3879,12 +3918,44 @@ async function handleRatingSubmit(from, ratingText) {
   if (!pending) return;
   clearTimeout(pending.timer);
   if (pending.reminderTimer) clearTimeout(pending.reminderTimer);
+  // ⭐ لا نحذف pendingRatings فوراً — نستخدمها لقبول التعليق
+  const rating = parseInt(ratingText);
+
+  // 💬 احفظ التقييم بدون تعليق أولاً، ثم اطلب تعليقاً اختيارياً
+  pending.rating = rating;
+  pending.awaitingComment = true;
+  pendingRatings.set(from, pending);
+
+  // أرسل طلب التعليق + جدول إنهاء بعد 3 دقائق (لو لم يبعث تعليق)
+  const stars = ["","⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"][rating] || "⭐⭐⭐";
+  try {
+    await waMgr.sendMessage(pending.storeId, from,
+      `${stars} *شكراً على تقييمك!*\n\n` +
+      `💬 لو حابب تشاركنا تعليقاً (سيء/إيجابي)، اكتبه الآن.\n` +
+      `أو اكتب *تخطي* لإنهاء التقييم.`
+    );
+  } catch (e) { console.error(`[rating-ask-comment] failed:`, e.message); }
+
+  // timeout: لو لم يبعث تعليق خلال 3 دقائق، أنهِ بدون تعليق
+  pending.commentTimer = setTimeout(() => {
+    const p = pendingRatings.get(from);
+    if (p && p.awaitingComment) _finalizeRating(from, "");
+  }, 3 * 60 * 1000);
+  pending.commentTimer.unref?.();
+  pendingRatings.set(from, pending);
+}
+
+// يلتقط تعليق ما بعد التقييم
+async function _finalizeRating(from, comment) {
+  const pending = pendingRatings.get(from);
+  if (!pending) return;
+  if (pending.commentTimer) clearTimeout(pending.commentTimer);
   pendingRatings.delete(from);
 
-  const rating = parseInt(ratingText);
+  const rating = pending.rating;
   const ratingsMod = require("./ratings");
   try {
-    ratingsMod.saveRating({ storeId: pending.storeId, phone: from, orderId: pending.orderId, rating, source: "bot", lang: "ar" });
+    ratingsMod.saveRating({ storeId: pending.storeId, phone: from, orderId: pending.orderId, rating, comment, source: "bot", lang: "ar" });
   } catch (e) { console.warn("[save-rating] failed:", e.message); }
 
   // 🎁 مكافأة 5 نقاط ولاء على المشاركة في التقييم
@@ -3898,12 +3969,28 @@ async function handleRatingSubmit(from, ratingText) {
 
   const stars = ["","⭐","⭐⭐","⭐⭐⭐","⭐⭐⭐⭐","⭐⭐⭐⭐⭐"][rating] || "⭐⭐⭐";
   const bonusLine = loyaltyBonus > 0 ? `\n\n🎁 +${loyaltyBonus} نقاط ولاء كمكافأة!` : "";
+  const commentLine = comment ? `\n📝 تعليقك: _"${comment.slice(0,200)}"_\n` : "";
 
   try {
     await waMgr.sendMessage(pending.storeId, from,
-      `${stars} شكراً على تقييمك!\n\nنسعد دائماً بخدمتك في *${pending.storeName}* 💚${bonusLine}`
+      `${stars} *تم تسجيل تقييمك* 🌸\n${commentLine}\nنسعد دائماً بخدمتك في *${pending.storeName}* 💚${bonusLine}`
     );
   } catch (e) { console.error(`[rating-reply] failed:`, e.message); }
+
+  // أبلغ المالك بالتعليق (إن وُجد) لإعطائه فرصة الرد
+  if (comment) {
+    try {
+      const store = pending.store;
+      if (store?.ownerPhone) {
+        await waMgr.sendMessage(pending.storeId, String(store.ownerPhone).replace(/[^\d]/g, "") + "@s.whatsapp.net",
+          `💬 *تعليق عميل على طلب*\n\n` +
+          `الطلب: *${pending.orderId}*\n` +
+          `التقييم: ${stars} (${rating}/5)\n` +
+          `العميل: ${from.split("@")[0]}\n\n` +
+          `التعليق:\n_"${comment.slice(0,400)}"_`);
+      }
+    } catch (e) { console.warn("[notify-owner-comment] failed:", e.message); }
+  }
 
   // 🔴 Service recovery للسلبي (1-2 نجمة)
   if (rating <= 2) {
@@ -3958,35 +4045,57 @@ function scheduleRatingReminder(from, storeId, storeName, orderId) {
 
 // ─── Order Tracking ───────────────────────────────────────────────────────────
 async function handleOrderTracking(from, orderId) {
-  if (!orderId) {
-    return sendText(from,
-      `📦 *تتبع طلبك*\n\nأرسل: *تتبع ORD-XXXXXXX*\n\nمثال: تتبع ORD-1234567`
-    );
-  }
   const orders = readOrders(200);
-  const order  = orders.find(o => o.orderId === orderId && phoneNum(o.customerPhone) === phoneNum(from));
+  const phone = phoneNum(from);
+  // 🧠 إذا لم يُرسل orderId، احصل على آخر طلب نشط لهذا العميل تلقائياً
+  let order;
+  if (orderId) {
+    order = orders.find(o => o.orderId === orderId && phoneNum(o.customerPhone) === phone);
+  } else {
+    const customerOrders = orders
+      .filter(o => phoneNum(o.customerPhone) === phone && !o._test)
+      .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
+    if (!customerOrders.length) {
+      return sendText(from,
+        `📦 *تتبع الطلب*\n\nلا توجد طلبات سابقة لرقمك حالياً.\nاكتب *قائمة* لتصفّح المنيو وعمل طلب جديد 🌸`
+      );
+    }
+    // الطلبات النشطة أولاً، وإلا آخر طلب
+    const active = ["pending_confirmation", "confirmed", "preparing", "out_for_delivery", "ready_pickup", "in_progress", "awaiting_review"];
+    order = customerOrders.find(o => active.includes(o.status)) || customerOrders[0];
+  }
   if (!order) {
     return sendText(from,
-      `❌ لم يُعثر على الطلب *${orderId}*\n\nتأكد من رقم الطلب أو تواصل مع المتجر مباشرة.`
+      `❌ لم يُعثر على هذا الطلب\n\nاكتب فقط: *تتبع*\nسأعرض لك آخر طلب لك تلقائياً.`
     );
   }
   const statusMap = {
     pending_confirmation: "⏳ بانتظار التأكيد",
     confirmed:            "✅ تم التأكيد — جاري التحضير",
     preparing:            "🔄 قيد التنفيذ",
+    ready_pickup:         "📦 جاهز للاستلام",
     out_for_delivery:     "🚴 في الطريق إليك",
+    in_progress:          "⚙️ قيد العمل",
+    awaiting_review:      "📋 للمراجعة",
     delivered:            "🎉 تم التوصيل",
+    completed:            "✅ مكتمل",
     cancelled:            "❌ ملغي",
+    rejected:             "❌ مرفوض",
   };
   const statusLabel = statusMap[order.status] || order.status;
   const lines = (order.items || []).map(i => `• ${i.name} ×${i.qty}`).join("\n");
+  // ⏱️ مدة التحضير لو حدّدها المتجر
+  const etaLine = order.estimatedMinutes
+    ? `⏱️ الوقت المتوقع: *${order.estimatedMinutes} دقيقة* تقريباً\n`
+    : "";
   return sendText(from,
-    `📦 *تفاصيل الطلب*\n\n` +
-    `رقم الطلب: *${orderId}*\n` +
+    `📦 *تفاصيل طلبك*\n\n` +
+    `رقم الطلب: *${order.orderId}*\n` +
     `الحالة: *${statusLabel}*\n` +
+    etaLine +
     `التاريخ: ${order.date || ""}\n\n` +
     `المنتجات:\n${lines}\n\n` +
-    `💰 الإجمالي: *${order.total?.toFixed(2)} ${order.currency || "ر.س"}*`
+    `💰 الإجمالي: *${(order.total || 0).toFixed(2)} ${order.currency || "ر.س"}*`
   );
 }
 
@@ -6363,15 +6472,17 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
   // ❌ خطوة الاسم محذوفة — استخدم botQuestions الديناميكية إن وجدت
   const storeData = getStoreById(storeId);
   const allFields = (storeData?.botQuestions?.fields || []).filter(f => f.enabled !== false);
+  const couponsActive = storeData?.enableCoupons !== false;
   let nextStep, firstPrompt;
-  if (allFields.length) {
-    // ⭐ المتجر حفظ أسئلة مخصصة → استخدمها
+  // 🎟️ لو الكوبونات مفعّلة، اعرضها أولاً قبل الأسئلة
+  if (couponsActive) {
+    nextStep = "COUPON";
+    firstPrompt = `🎟️ *كود خصم؟*\nاكتب الكود إن كان لديك، أو اكتب *تخطي* للمتابعة.`;
+  } else if (allFields.length) {
     nextStep = "DYNAMIC_Q";
     const f0 = allFields[0];
     let extra = "";
-    if (f0.type === "location") extra = "\n🗺️ _أرسل موقعك من واتساب: 📎 ← الموقع_";
-    else if (f0.type === "schedule") extra = "\n_اكتب: *الان* أو الوقت المطلوب_";
-    else if (f0.type === "choice" && Array.isArray(f0.options)) extra = "\n" + f0.options.map((o,i)=>`${i+1}️⃣ ${o}`).join("\n");
+    if (f0.type === "choice" && Array.isArray(f0.options)) extra = "\n" + f0.options.map((o,i)=>`${i+1}️⃣ ${o}`).join("\n");
     const optional = !f0.required ? `\n_(اكتب *تخطي* للتجاوز)_` : "";
     firstPrompt = `${f0.prompt}${extra}${optional}\n_(سؤال 1 من ${allFields.length})_`;
   } else {
@@ -6380,8 +6491,8 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
     const labels = businessLabels(btype);
     nextStep = labels.needsLocation ? "COLLECT_LOCATION" : "SCHEDULE_ORDER";
     firstPrompt = labels.needsLocation
-      ? `\n\n📍 *${labels.locationPrompt}*\nأرسل موقعك من واتساب 📎 ← الموقع، أو اكتبه نصاً 👇`
-      : `\n\n📅 *حدد وقت الطلب*\nاكتب: *الآن* أو الوقت المرغوب`;
+      ? `\n\n📍 *${labels.locationPrompt}*`
+      : `\n\n📅 *حدد وقت الطلب*`;
   }
   sessionManager.set(from, {
     step: nextStep,
@@ -6390,7 +6501,8 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
     orderNotes: cleanNotes,
     customerName: "عميل",
     customAnswers: {},
-    questionIdx: allFields.length ? 0 : undefined,
+    couponWaiting: couponsActive,
+    questionIdx: allFields.length && !couponsActive ? 0 : undefined,
   });
 
   console.log(`[web-order] sending reply → storeId=${storeId} from=${from} notes=${cleanNotes.length} nextStep=${nextStep} customQ=${allFields.length}`);
