@@ -2274,7 +2274,7 @@ async function sendNumericProductsList(from) {
     const items = (store?.products || []).filter(p => p.category === c.id && isProductInStock(p));
     if (!items.length) continue;
     msg += `\n${c.emoji || "•"} *${c.name}:*\n`;
-    items.slice(0, 12).forEach(p => { msg += `  • ${p.name} — ${p.price} ${currency}\n`; });
+    items.slice(0, 12).forEach(p => { msg += `  • ${p.name} — ${_priceLabel(p, currency)}\n`; });
   }
   return sendText(from, msg);
 }
@@ -2330,6 +2330,14 @@ function _findProduct(store, name) {
   // مطابقة جزئية (substring)
   p = products.find(p => p.name.toLowerCase().includes(target) || target.includes(p.name.toLowerCase()));
   return p || null;
+}
+
+// 💬 helper: نص السعر — يعرض "تفاوض" للمنتجات بسعر عند الطلب
+function _priceLabel(product, currency, opts = {}) {
+  if (product?.priceOnRequest) {
+    return opts.short ? "💬 تفاوض" : "💬 السعر بالتفاوض";
+  }
+  return `${product?.price || 0} ${currency}`;
 }
 
 function _formatCart(cart, currency) {
@@ -2395,7 +2403,7 @@ async function handleAIMode(from, text, session) {
       const items = (store?.products || []).filter(p => p.category === c.id && isProductInStock(p));
       if (items.length) {
         msg += `\n${c.emoji || "•"} *${c.name}:*\n`;
-        items.slice(0, 8).forEach(p => { msg += `  • ${p.name} — ${p.price} ${currency}\n`; });
+        items.slice(0, 8).forEach(p => { msg += `  • ${p.name} — ${_priceLabel(p, currency)}\n`; });
       }
     }
     msg += `\n_اكتب طلبك بحرية_`;
@@ -2417,7 +2425,7 @@ async function handleAIMode(from, text, session) {
       const qty = Math.max(1, Number(item.qty) || 1);
       const existing = cart.find(c => String(c.id) === String(prod.id));
       if (existing) existing.qty += qty;
-      else cart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty, imageUrl: prod.imageUrl || null });
+      else cart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty, imageUrl: prod.imageUrl || null, priceOnRequest: !!prod.priceOnRequest });
       added.push(`${prod.name} × ${qty}`);
     }
     sessionManager.update(from, { cart });
@@ -2456,7 +2464,7 @@ async function handleAIMode(from, text, session) {
           if (idx >= 0) cart.splice(idx, 1);
         } else existing.qty = qty;
       } else if (qty > 0) {
-        cart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty, imageUrl: prod.imageUrl || null });
+        cart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty, imageUrl: prod.imageUrl || null, priceOnRequest: !!prod.priceOnRequest });
       }
     }
     sessionManager.update(from, { cart });
@@ -2628,7 +2636,7 @@ async function showProductsPage(from, cat, page) {
 
   const rows = pageItems.map(p => ({
     id:          `PROD_${p.id}`,
-    title:       `${p.name} — ${p.price} ${currency}`,
+    title:       `${p.name} — ${_priceLabel(p, currency, { short: true })}`,
     description: p.description || "",
   }));
 
@@ -4014,7 +4022,7 @@ async function sendTextOrderMenu(from) {
           return {
             id:          `PROD_${p.id}`,
             title:       p.name,
-            description: `${p.price} ${currency}${p.description ? " • " + p.description : ""}`,
+            description: `${_priceLabel(p, currency, { short: true })}${p.description ? " • " + p.description : ""}`,
           };
         }),
       });
@@ -4027,7 +4035,7 @@ async function sendTextOrderMenu(from) {
         return {
           id:          `PROD_${p.id}`,
           title:       p.name,
-          description: `${p.price} ${currency}${p.description ? " • " + p.description : ""}`,
+          description: `${_priceLabel(p, currency, { short: true })}${p.description ? " • " + p.description : ""}`,
         };
       }),
     });
@@ -4127,7 +4135,7 @@ async function handleOrderBrowse(from, msg, session) {
     if (existing) {
       existing.qty++;
     } else {
-      newCart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty: 1, imageUrl: prod.imageUrl || null });
+      newCart.push({ id: prod.id, name: prod.name, price: Number(prod.price) || 0, qty: 1, imageUrl: prod.imageUrl || null, priceOnRequest: !!prod.priceOnRequest });
     }
   }
 
@@ -5475,7 +5483,7 @@ CATS.forEach(function(cat, ci) {
 
     var priceEl = document.createElement('div');
     priceEl.className = 'c-price';
-    var priceTxt = (PRODS[pid].price || p.price) + ' ' + CUR;
+    var priceTxt = PRODS[pid].priceOnRequest ? '💬 السعر بالتفاوض' : ((PRODS[pid].price || p.price) + ' ' + CUR);
     if (p.originalPrice && p.originalPrice > p.price) {
       var origSpan = document.createElement('span');
       origSpan.className = 'c-orig-price';
@@ -5539,7 +5547,7 @@ CATS.forEach(function(cat, ci) {
     imgWrap.innerHTML = '<div class="hero-noimg">🌟</div>';
   }
   document.getElementById('heroName').textContent = p.name;
-  document.getElementById('heroMeta').innerHTML = '<span>💰 ' + p.price + ' ' + CUR + '</span><span>•</span><span>طُلب ' + p.popularity + 'x آخر شهر</span>';
+  document.getElementById('heroMeta').innerHTML = '<span>' + (p.priceOnRequest ? '💬 السعر بالتفاوض' : ('💰 ' + p.price + ' ' + CUR)) + '</span><span>•</span><span>طُلب ' + p.popularity + 'x آخر شهر</span>';
   document.getElementById('heroCta').addEventListener('click', function(){ openProductDetail(topPid); });
   banner.style.display = '';
   banner.addEventListener('click', function(e){ if (e.target.closest('.hero-cta')) return; openProductDetail(topPid); });
@@ -5555,7 +5563,7 @@ function saveLastOrder() {
     Object.keys(cart).forEach(function(pid){
       var q = cart[pid]; if (!q || q <= 0) return;
       var p = PRODS[pid]; if (!p) return;
-      items.push({ id: pid, name: p.name, price: p.price, qty: q, size: p.selectedSize || null, notes: p.notes || null });
+      items.push({ id: pid, name: p.name, price: p.price, qty: q, size: p.selectedSize || null, notes: p.notes || null, priceOnRequest: !!p.priceOnRequest });
     });
     if (items.length === 0) return;
     localStorage.setItem(LO_KEY, JSON.stringify({ items: items, savedAt: Date.now(), total: items.reduce(function(s,i){return s+i.price*i.qty;},0) }));
@@ -5869,7 +5877,7 @@ function openProductDetail(pid) {
 
   // Name + Price + Original
   document.getElementById('pdName').textContent = p.name;
-  document.getElementById('pdPrice').textContent = p.price + ' ' + CUR;
+  document.getElementById('pdPrice').textContent = p.priceOnRequest ? '💬 السعر بالتفاوض' : (p.price + ' ' + CUR);
   var orig = document.getElementById('pdOrig');
   if (p.originalPrice) {
     orig.textContent = p.originalPrice + ' ' + CUR;
@@ -6129,25 +6137,34 @@ function openSummary() {
   var items = [];
   Object.keys(cart).forEach(function(id) {
     var q = cart[id];
-    if (q > 0 && PRODS[id]) items.push({ id: id, name: PRODS[id].name, price: PRODS[id].price, qty: q });
+    if (q > 0 && PRODS[id]) items.push({ id: id, name: PRODS[id].name, price: PRODS[id].price, qty: q, priceOnRequest: !!PRODS[id].priceOnRequest });
   });
   if (!items.length) return;
 
   var body = document.getElementById('smBody');
   body.innerHTML = '';
   var total = 0;
+  var hasNeg = false;
   items.forEach(function(it) {
-    var sub = it.price * it.qty;
+    var sub = it.priceOnRequest ? 0 : it.price * it.qty;
+    if (it.priceOnRequest) hasNeg = true;
     total += sub;
     var row = document.createElement('div');
     row.className = 'sm-item';
+    var priceLine = it.priceOnRequest
+      ? '<div class="sm-item-sub" style="color:#7c3aed;font-weight:700">💬 السعر بالتفاوض</div>'
+      : '<div class="sm-item-sub">' + it.qty + ' × ' + it.price + ' ' + CUR + '</div>';
+    var priceCell = it.priceOnRequest
+      ? '<div class="sm-item-price" style="color:#7c3aed;font-weight:700">💬 تفاوض</div>'
+      : '<div class="sm-item-price">' + sub.toFixed(2) + ' ' + CUR + '</div>';
     row.innerHTML =
-      '<div><div class="sm-item-name">' + esc(it.name) + '</div>' +
-      '<div class="sm-item-sub">' + it.qty + ' × ' + it.price + ' ' + CUR + '</div></div>' +
-      '<div class="sm-item-price">' + sub.toFixed(2) + ' ' + CUR + '</div>';
+      '<div><div class="sm-item-name">' + esc(it.name) + '</div>' + priceLine + '</div>' + priceCell;
     body.appendChild(row);
   });
-  document.getElementById('smTotal').textContent = total.toFixed(2) + ' ' + CUR;
+  var totalEl = document.getElementById('smTotal');
+  if (hasNeg && total === 0) totalEl.innerHTML = '<span style="color:#7c3aed">💬 يحدّد بالتفاوض</span>';
+  else if (hasNeg) totalEl.innerHTML = total.toFixed(2) + ' ' + CUR + ' <span style="font-size:11px;color:#7c3aed">+ تفاوض</span>';
+  else totalEl.textContent = total.toFixed(2) + ' ' + CUR;
   document.getElementById('summaryModal').style.display = 'flex';
 }
 function closeSummary() {
@@ -6163,7 +6180,7 @@ document.getElementById('confirmFinal').addEventListener('click', async function
   var items = [];
   Object.keys(cart).forEach(function(id) {
     var q = cart[id];
-    if (q > 0 && PRODS[id]) items.push({ id: id, name: PRODS[id].name, price: PRODS[id].price, qty: q });
+    if (q > 0 && PRODS[id]) items.push({ id: id, name: PRODS[id].name, price: PRODS[id].price, qty: q, priceOnRequest: !!PRODS[id].priceOnRequest });
   });
   if (!items.length) return;
 
@@ -6225,16 +6242,19 @@ app.post(["/api/order/:token", "/api/o/:token"], async (req, res) => {
   const store = resolveStore(storeId);
   if (!store) return res.status(404).json({ ok: false, error: "store not found" });
 
-  // Build cart with imageUrl from store products
+  // Build cart with imageUrl + priceOnRequest from store products (source of truth)
+  // ⚠️ السعر يُؤخذ من المنتج لا من الـ client (لمنع التزوير)
   const cartItems = items
     .map(item => {
       const prod = (store.products || []).find(p => String(p.id) === String(item.id));
+      const isNegotiable = !!prod?.priceOnRequest;
       return {
         id:       item.id,
         name:     String(item.name || prod?.name || ""),
-        price:    Number(item.price ?? prod?.price ?? 0),
+        price:    isNegotiable ? 0 : Number(prod?.price ?? item.price ?? 0),
         qty:      Math.max(1, Number(item.qty) || 1),
         imageUrl: prod?.imageUrl || null,
+        priceOnRequest: isNegotiable,
       };
     })
     .filter(i => i.qty > 0 && i.name);
