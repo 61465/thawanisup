@@ -468,8 +468,104 @@
         <li><b>جاهز</b> — يُعلن الطلب كجاهز للاستلام</li>
         <li><b>خرج</b> أو <b>في الطريق</b> — يُعلِم العميل أن المندوب في الطريق</li>
         <li><b>طلبات</b> — لعرض الطلبات المعلّقة</li>
+        <li><b>منتظرين</b> — قائمة العملاء الذين طلبوا مسؤول</li>
+        <li><b>استئناف 9665XXX</b> — استئناف البوت لعميل محدد</li>
+        <li><b>استئناف الكل</b> — استئناف البوت لكل العملاء المتوقّفين</li>
         <li><b>مساعدة</b> — لقائمة الأوامر كاملة</li>
       </ul>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#faf5ff,#fff);border:2px solid #d8b4fe">
+      <h3>🪡 استيراد المنيو من صورة بالذكاء الاصطناعي ✨</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9;margin-bottom:8px">
+        صوّر المنيو (أو ارفع صورة الـ menu المطبوع) → الـ AI يستخرج كل شيء تلقائياً.
+      </p>
+      <ul style="padding-right:18px;font-size:.88rem;line-height:2.1;color:var(--gray)">
+        <li><b>3 عقول AI متوازية</b>: قراءة + تنظيف + مقارنة بالموجود</li>
+        <li><b>تحديث ذكي</b>: لو رفعت صورة محدّثة لاحقاً، الـ AI يكتشف فقط الجديد والأسعار المتغيرة</li>
+        <li><b>كل شيء قابل للتعديل</b> قبل الإضافة (اسم، سعر، قسم)</li>
+        <li><b>checkbox</b> لكل عنصر — تختار ما تريد تطبيقه</li>
+        <li><b>مؤشر ثقة</b> ✅/🟡/⚠️ لمراجعة الأسعار غير الواضحة</li>
+      </ul>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#eff6ff,#fff);border:2px solid #93c5fd">
+      <h3>🤖 أسئلة البوت قابلة للتخصيص ✨</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        كل بيزنس له أسئلته بعد المنيو: كافيه يطلب موقع + وقت توصيل، برمجة تطلب وصف المشروع + ميزانية، صالون يطلب موعد.<br>
+        زر <b>🪡 توليد بـ AI</b> يكتبها لك حسب نشاطك. تستطيع التفعيل/الإغلاق + إعادة الترتيب بالسحب + الإضافة اليدوية.
+      </p>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#fdf2f8,#fff);border:2px solid #f9a8d4">
+      <h3>💬 خدمات بسعر للتفاوض ✨</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        مثالي لـ كيك المناسبات، باقة العروس، تطوير مشروع: عند إضافة المنتج علّم ✅ <b>"💬 السعر عند الطلب"</b>.
+        العميل يطلبه → يصل الأدمن بـ badge <span style="background:#f3e8ff;color:#6b21a8;padding:2px 8px;border-radius:6px;font-weight:700">💬 تفاوض</span> → اضغط 👁️ تفاصيل → 💰 إدخال السعر المتفق عليه → يصل العميل واتساب.
+      </p>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#fff);border:2px solid #86efac">
+      <h3>⏱️ مدة التجهيز للعميل</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        عند الضغط على <b>"✅ قبول"</b> في طلب pending، يفتح Modal يطلب المدة (15/30/45/60/90/120 دقيقة بـ chips سريعة).<br>
+        تصل للعميل: <i>"⏱️ الوقت المتوقع: 30 دقيقة تقريباً"</i> + تظهر في صفحة تتبعه.
+      </p>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#fefce8,#fff);border:2px solid #fde047">
+      <h3>⭐ تقييمات بتعليقات + رسالة شكر مخصصة</h3>
+      <ul style="padding-right:18px;font-size:.9rem;line-height:2.1;color:var(--text)">
+        <li><b>التقييم</b>: العميل يكتب 1-5 → البوت يطلب تعليقاً اختيارياً</li>
+        <li><b>إشعار فوري</b>: تستلم واتساب بالتعليق فور كتابته</li>
+        <li><b>الرد</b>: من صفحة الأدمن أو واتساب — يصل العميل</li>
+        <li><b>رسالة شكر مخصصة</b> لتقييم 4-5⭐: حرّرها من tab "🤖 أسئلة البوت" → بطاقة وردية بـ ✏️ تعديل. استخدم <code>{{store_name}}</code> + <code>{{stars}}</code></li>
+        <li><b>كوبون اعتذار تلقائي</b> لتقييم 1-2⭐ (RECOVERY-XXXXX، خصم 20%)</li>
+      </ul>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#1e293b,#334155);color:#fff;border:2px solid #475569">
+      <h3 style="color:#fff">🌙 إنهاء اليوم يدوياً (للمتاجر التي تقفل قبل منتصف الليل)</h3>
+      <p style="font-size:.9rem;color:#cbd5e1;line-height:1.9">
+        شريط أسود في لوحة التحكم بزر برتقالي <b>"🌙 إنهاء اليوم الآن"</b>.<br>
+        snapshot للوردية يُحفظ في الأرشيف، الداشبورد يبدأ من الصفر للوردية الجديدة فوراً، الطلبات نفسها تبقى في tab الطلبات.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>📦 نقل سريع للمنتج لقسم آخر</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        لو ظهر منتج في القسم الخاطئ (مثلاً مشروب في الشوربة): اضغط زر 📦 الأرجواني بجانب اسم المنتج، اختر القسم الصحيح، انقل بضغطة واحدة.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>🎯 تتبع ذكي بلا رقم طلب</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        العميل يكتب <b>"تتبع"</b> فقط (بدون ORD-XXXX) → البوت يجلب آخر طلب نشط له، يعرض الحالة + الوقت المتوقع + المنتجات.
+      </p>
+    </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px solid #fcd34d">
+      <h3>💰 صفحة الماستر: وضع مالي لكل متجر ✨</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        المالك يرى جدولاً بكل المتاجر:
+      </p>
+      <ul style="padding-right:18px;font-size:.88rem;line-height:2.1;color:var(--gray)">
+        <li>الباقة + حالة الاشتراك (✅ نشط / 🟡 ينتهي قريباً / ⚠️ حرج / ⛔ منتهي)</li>
+        <li>الاشتراك الشهري + أيام للاستحقاق</li>
+        <li>إيرادات الشهر + عدد الطلبات + متوسط الطلب</li>
+        <li>مقارنة بالشهر السابق (سهم ↑/↓ + نسبة %)</li>
+        <li>MRR إجمالي + عدد المعلّق + الحرج</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>📊 إحصائيات يومية + أرشيف ذكي</h3>
+      <p style="font-size:.9rem;color:var(--text);line-height:1.9">
+        الداشبورد ينظّف تلقائياً منتصف الليل (توقيت الرياض). snapshot لكل يوم: إيرادات/طلبات/مكتمل/ملغي/عملاء فريدون.
+        في tab الأرشيف: إجمالي الشهر + رسم بياني للأيام (bars خضراء) + مقارنة بالشهر السابق.
+      </p>
     </div>
   </div>
 
