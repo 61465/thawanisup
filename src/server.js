@@ -2178,11 +2178,9 @@ async function sendWelcome(from) {
             // وجدنا عميل سابق
             const items = (o.items || []).map(it => `${it.name} ×${it.qty}`).join("، ");
             const itemsShort = items.length > 80 ? items.slice(0, 77) + "..." : items;
-            welcomeBackLine = `👋 *مرحباً ${o.customerName}!*\n` +
-                              `🛒 آخر طلب لك: ${itemsShort}\n` +
-                              `💡 اكتب: *كرر* لإعادة نفس الطلب\n\n`;
-            // احفظ في session للاستخدام لاحقاً
-            sessionManager.update(from, { lastOrderItems: o.items, lastCustomerName: o.customerName, lastCustomerLocation: o.customerLocation });
+            welcomeBackLine = `👋 *مرحباً ${o.customerName}!*\n\n`;
+            // احفظ بيانات العميل في session (للاستخدام التلقائي في الـ checkout)
+            sessionManager.update(from, { lastCustomerName: o.customerName, lastCustomerLocation: o.customerLocation });
             break;
           }
         } catch {}
@@ -3274,9 +3272,25 @@ async function handleDynamicQuestion(from, msg, session) {
     if (!isValidLocation(trimmed) && !trimmed.startsWith("📍|")) {
       return sendText(from, `❌ لم أفهم الموقع. أرسل موقعاً من واتساب أو اكتب اسم الحي/العنوان.\n\n${f.prompt}`);
     }
-    // إذا كان رسالة موقع من واتساب، أعد توجيه لمعالجها (يستخرج الإحداثيات)
+    // 🗺️ شارك موقع → استخرج الإحداثيات + reverse geocoding + رابط maps
     if (trimmed.startsWith("📍|")) {
-      sessionManager.update(from, { customerLocation: trimmed });
+      const resolved = await resolveSharedLocation(trimmed);
+      if (resolved) {
+        const { lat, lng, name } = resolved;
+        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+        sessionManager.update(from, {
+          customerLocation:         `${name} (📍 ${mapsUrl})`,
+          customerLocationName:     name,
+          customerLocationLat:      lat,
+          customerLocationLng:      lng,
+          customerLocationMapsUrl:  mapsUrl,
+        });
+        // نحفظ اسم الموقع المقروء في customAnswers (لا الـ payload الخام)
+        return _saveAnswerAndNext(from, fields, idx, name);
+      }
+    } else {
+      // عنوان نصي
+      sessionManager.update(from, { customerLocation: trimmed, customerLocationName: trimmed });
     }
   } else if (f.type === "schedule") {
     let parsed = orderScheduler.parseArabicTime(trimmed);
@@ -3313,10 +3327,15 @@ async function handleDynamicQuestion(from, msg, session) {
 function _saveAnswerAndNext(from, fields, idx, answer) {
   const session = sessionManager.get(from);
   const answers = { ...(session.customAnswers || {}) };
-  answers[fields[idx].id] = answer;
-  // sync للحقول الخاصة المعروفة في الـ summary القديم
-  if (fields[idx].type === "location" && answer) {
-    sessionManager.update(from, { customerLocation: answer });
+  // لا تكتب الـ payload الخام للموقع في customAnswers — استخدم الاسم المقروء فقط
+  let storedAnswer = answer;
+  if (fields[idx].type === "location" && typeof answer === "string" && answer.startsWith("📍|")) {
+    storedAnswer = session.customerLocationName || "موقع مشترك";
+  }
+  answers[fields[idx].id] = storedAnswer;
+  // sync للحقول القديمة (سيتم تجاوزها لو resolveSharedLocation سبقت)
+  if (fields[idx].type === "location" && storedAnswer && !session.customerLocationMapsUrl) {
+    sessionManager.update(from, { customerLocation: storedAnswer });
   }
   sessionManager.update(from, {
     customAnswers: answers,
