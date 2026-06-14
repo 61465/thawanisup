@@ -3713,7 +3713,118 @@ function refreshSubCategoryOptions(selectedSubId = "") {
     subs.map(s => `<option value="${esc(s.id)}" ${s.id===selectedSubId?'selected':''}>${esc(s.emoji||"")} ${esc(s.name)}</option>`).join("");
 }
 
+// ═════════════ 🗂️ Bulk select للمنتجات ═════════════
+let _bulkSelectedProducts = new Set();
+function bulkToggleProduct(id) {
+  if (_bulkSelectedProducts.has(id)) _bulkSelectedProducts.delete(id);
+  else _bulkSelectedProducts.add(id);
+  renderBulkToolbar();
+  renderProducts();
+}
+function bulkClearAll() {
+  _bulkSelectedProducts.clear();
+  renderBulkToolbar();
+  renderProducts();
+}
+function bulkSelectAllVisible() {
+  const visible = activeCat === "all"
+    ? allProducts
+    : activeCat === "orphan"
+      ? allProducts.filter(p => !p.category || !allCategories.find(c => c.id === p.category))
+      : allProducts.filter(p => p.category === activeCat);
+  visible.forEach(p => _bulkSelectedProducts.add(p.id));
+  renderBulkToolbar();
+  renderProducts();
+}
+function renderBulkToolbar() {
+  let bar = document.getElementById("bulkBar");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "bulkBar";
+    bar.style.cssText = "position:sticky;top:60px;z-index:8;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;padding:12px 18px;border-radius:12px;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(124,58,237,.3)";
+    const grid = document.getElementById("productsGrid");
+    if (grid && grid.parentNode) grid.parentNode.insertBefore(bar, grid);
+  }
+  const n = _bulkSelectedProducts.size;
+  if (n === 0) { bar.style.display = "none"; return; }
+  bar.style.display = "flex";
+  bar.innerHTML = `
+    <span style="font-weight:900;font-size:15px">✓ ${n} منتج مختار</span>
+    <button onclick="bulkSelectAllVisible()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;font-size:12px">+ اختر كل الظاهر</button>
+    <button onclick="bulkMoveSelected()" style="background:#fff;color:#7c3aed;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:800;font-family:inherit;font-size:13px">📦 نقل للقسم</button>
+    <button onclick="bulkToggleAvailability()" style="background:rgba(255,255,255,.18);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:800;font-family:inherit;font-size:13px">🔄 تفعيل/إيقاف</button>
+    <button onclick="bulkDeleteSelected()" style="background:#dc2626;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:800;font-family:inherit;font-size:13px">🗑️ حذف الكل</button>
+    <button onclick="bulkClearAll()" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;font-size:12px;margin-right:auto">✕ إلغاء</button>
+  `;
+}
+
+async function bulkDeleteSelected() {
+  const n = _bulkSelectedProducts.size;
+  if (!n) return;
+  if (!confirm(`حذف ${n} منتج؟ لا يمكن التراجع!`)) return;
+  const ids = Array.from(_bulkSelectedProducts);
+  let ok = 0, fail = 0;
+  for (const id of ids) {
+    try { await api("DELETE", `/store/products/${id}`); ok++; }
+    catch { fail++; }
+  }
+  _bulkSelectedProducts.clear();
+  showToast(`✅ حُذف ${ok}${fail?` · فشل ${fail}`:""}`, ok>0?"success":"error");
+  loadProducts();
+}
+
+async function bulkMoveSelected() {
+  const n = _bulkSelectedProducts.size;
+  if (!n) return;
+  // ابن dropdown HTML للأقسام
+  const options = (allCategories||[]).map(c => `<option value="${c.id}">${c.emoji||"📋"} ${esc(c.name)}</option>`).join("");
+  if (!options) { showToast("لا توجد أقسام", "error"); return; }
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px";
+  modal.innerHTML = `<div style="background:#fff;padding:24px;border-radius:14px;max-width:420px;width:100%">
+    <h3 style="margin:0 0 14px;color:#6b21a8">📦 نقل ${n} منتج لقسم...</h3>
+    <select id="_bulkMoveSel" style="width:100%;padding:11px;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-size:14px;font-weight:700">${options}</select>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button id="_bulkCancel" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:11px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+      <button id="_bulkGo" style="flex:2;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;padding:11px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit">✅ نقل</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector("#_bulkCancel").onclick = () => modal.remove();
+  modal.querySelector("#_bulkGo").onclick = async () => {
+    const newCat = modal.querySelector("#_bulkMoveSel").value;
+    modal.remove();
+    const ids = Array.from(_bulkSelectedProducts);
+    let ok = 0, fail = 0;
+    for (const id of ids) {
+      try { await api("PUT", `/store/products/${id}`, { category: newCat }); ok++; }
+      catch { fail++; }
+    }
+    _bulkSelectedProducts.clear();
+    showToast(`✅ نقل ${ok}${fail?` · فشل ${fail}`:""}`, ok>0?"success":"error");
+    loadProducts();
+  };
+}
+
+async function bulkToggleAvailability() {
+  const ids = Array.from(_bulkSelectedProducts);
+  if (!ids.length) return;
+  // اقرأ الحالة الحالية للأول لنقلبها
+  const first = allProducts.find(p => p.id === ids[0]);
+  const newAvail = !(first?.available !== false);
+  if (!confirm(`${newAvail?"تفعيل":"إيقاف"} ${ids.length} منتج؟`)) return;
+  let ok = 0, fail = 0;
+  for (const id of ids) {
+    try { await api("PUT", `/store/products/${id}`, { available: newAvail }); ok++; }
+    catch { fail++; }
+  }
+  _bulkSelectedProducts.clear();
+  showToast(`✅ تم تحديث ${ok}`, "success");
+  loadProducts();
+}
+
 function renderProducts() {
+  renderBulkToolbar();
   const filtered = (activeCat === "all"
     ? allProducts
     : activeCat === "orphan"
@@ -3762,7 +3873,11 @@ function renderProducts() {
       stockBadge = `<span style="background:#eff6ff;color:#1e40af;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700">📦 ${p.stock}</span>`;
     }
 
-    return `<div class="product-card" data-unavailable="${p.available === false ? 'true' : 'false'}">
+    const isSel = _bulkSelectedProducts.has(p.id);
+    return `<div class="product-card" data-unavailable="${p.available === false ? 'true' : 'false'}" data-selected="${isSel}" style="${isSel?'outline:3px solid #7c3aed;outline-offset:-3px':''}">
+      <label class="bulk-check" style="position:absolute;top:8px;left:8px;z-index:5;background:rgba(255,255,255,.95);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid ${isSel?'#7c3aed':'#d1d5db'};box-shadow:0 2px 4px rgba(0,0,0,.1);transition:all .15s">
+        <input type="checkbox" ${isSel?'checked':''} onclick="event.stopPropagation();bulkToggleProduct('${p.id}')" style="width:18px;height:18px;cursor:pointer;accent-color:#7c3aed">
+      </label>
       <div class="product-img">${imgHtml}</div>
       <div class="product-body">
         <div class="product-name">${esc(p.name)}</div>
@@ -4618,9 +4733,22 @@ function _aiRenderTab(tab) {
       const checked = _aiSelectedNew.has(i) ? "checked" : "";
       const confColor = it.confidence === "low" ? "#dc2626" : it.confidence === "medium" ? "#f59e0b" : "#16a34a";
       const confLabel = it.confidence === "low" ? "⚠️ سعر غير واضح" : it.confidence === "medium" ? "🟡 يحتاج مراجعة" : "✅ مؤكد";
-      const cropThumb = it._croppedImageUrl
-        ? `<img src="${esc(it._croppedImageUrl)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb" title="صورة مقتطعة من المنيو">`
-        : `<div style="width:54px;height:54px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #e5e7eb">🍽️</div>`;
+      // 🛡️ صورة مقتطعة مع تحقق AI
+      let cropThumb;
+      const verification = it._cropVerification;
+      if (it._croppedImageUrl) {
+        const borderColor = verification?.match === false ? "#dc2626" : verification?.match === true ? "#16a34a" : "#e5e7eb";
+        const flagBadge = verification?.match === false
+          ? `<div style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:help" title="⚠️ AI يشك أنها صورة خاطئة: ${esc(verification?.reason||'')}">⚠️</div>`
+          : (verification?.match === true ? `<div style="position:absolute;top:-4px;right:-4px;background:#16a34a;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px" title="✅ AI تحقق من التطابق">✓</div>` : "");
+        const removeBtn = `<button onclick="_aiDropImage(${i})" title="إزالة الصورة" style="position:absolute;bottom:-4px;left:-4px;background:#fff;border:1px solid #d1d5db;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;color:#dc2626;display:flex;align-items:center;justify-content:center;padding:0">✕</button>`;
+        cropThumb = `<div style="position:relative;width:54px;height:54px;flex-shrink:0">
+          <img src="${esc(it._croppedImageUrl)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover;border:2px solid ${borderColor}" title="${verification?.match === false ? '⚠️ يحتاج مراجعة يدوية' : 'صورة مقتطعة من المنيو'}">
+          ${flagBadge}${removeBtn}
+        </div>`;
+      } else {
+        cropThumb = `<div style="width:54px;height:54px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #e5e7eb;flex-shrink:0">🍽️</div>`;
+      }
       return `
         <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;background:#fff">
           <input type="checkbox" ${checked} onchange="_aiToggleNew(${i})" style="width:20px;height:20px;cursor:pointer">
@@ -4635,6 +4763,7 @@ function _aiRenderTab(tab) {
               <span>📂 ${esc(it.categoryName||"")}${it.isNewCat?' <span style="color:#7c3aed">(قسم جديد)</span>':''}</span>
               <span style="color:${confColor}">${confLabel}</span>
             </div>
+            ${Array.isArray(it.sizes) && it.sizes.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"><span style="font-size:10px;color:#7c3aed;font-weight:700;padding:2px 0">📐 الأحجام:</span>${it.sizes.map(s => `<span style="background:#faf5ff;color:#6b21a8;border:1px solid #e9d5ff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">${esc(s.label)}: ${s.price}</span>`).join("")}</div>` : ""}
             ${it.description?`<div style="font-size:12px;color:#9ca3af;margin-top:4px">${esc(it.description)}</div>`:""}
           </div>
         </div>`;
@@ -4663,6 +4792,12 @@ function _aiRenderTab(tab) {
 }
 
 function _aiToggleNew(i) { if(_aiSelectedNew.has(i))_aiSelectedNew.delete(i); else _aiSelectedNew.add(i); }
+function _aiDropImage(i) {
+  if (!_aiResult?.diff?.newItems?.[i]) return;
+  _aiResult.diff.newItems[i]._croppedImageUrl = null;
+  _aiResult.diff.newItems[i]._cropVerification = null;
+  _aiRenderTab("new");
+}
 function _aiToggleUpd(i) { if(_aiSelectedUpd.has(i))_aiSelectedUpd.delete(i); else _aiSelectedUpd.add(i); }
 
 async function aiApplySelected() {

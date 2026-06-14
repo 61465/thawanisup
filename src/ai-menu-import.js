@@ -78,6 +78,21 @@ ${ctx.imageWidth ? `📏 *أبعاد الصورة:* ${ctx.imageWidth} × ${ctx.i
   ]
 }
 
+📐 *دمج الأحجام والأنواع — مهم جداً:*
+لو المنتج له أحجام/أنواع متعددة (مثل: لاتيه صغير 12 / لاتيه وسط 15 / لاتيه كبير 18)
+*لا تنشئها كـ 3 منتجات منفصلة!* بل منتج واحد بـ "sizes":
+{
+  "name": "لاتيه",
+  "price": 12,  ← أصغر سعر
+  "sizes": [
+    {"label": "صغير", "price": 12},
+    {"label": "وسط", "price": 15},
+    {"label": "كبير", "price": 18}
+  ]
+}
+نفس الشيء لـ: small/medium/large، نص/كامل، بالدجاج/باللحم، حار/عادي...
+الإشارات: نفس اسم المنتج مع scale أو modifier فقط، أو أعمدة أسعار جنب بعض.
+
 قواعد صارمة:
 1. استخرج كل صنف وفئة موجود — لا تتخطى شيئاً
 2. إذا السعر غير واضح، ضع 0 و confidence: "low"
@@ -88,7 +103,8 @@ ${ctx.imageWidth ? `📏 *أبعاد الصورة:* ${ctx.imageWidth} × ${ctx.i
 7. لا تخترع منتجات ولا أسعار غير موجودة
 8. أرقام عربية أو إنجليزية → ارجع رقم إنجليزي
 9. النص بنفس لغته (لا تترجم)
-10. حاول استخدام نفس أسماء الأقسام الموجودة لو ظهر منتج مطابق`,
+10. حاول استخدام نفس أسماء الأقسام الموجودة لو ظهر منتج مطابق
+11. **ادمج الأحجام/الأنواع كـ sizes داخل منتج واحد** (انظر القاعدة أعلاه)`,
           },
           {
             role: "user",
@@ -288,10 +304,18 @@ async function brain3_diff(newMenu, existingProducts, existingCategories) {
       const existing = existingMap.get(key);
       if (!existing) {
         // 🆕 جديد بالكامل
+        // 📐 تنظيف الأحجام/الأنواع
+        const cleanSizes = Array.isArray(item.sizes)
+          ? item.sizes
+              .map(s => ({ label: String(s?.label || "").trim().slice(0, 40), price: Number(s?.price) || 0 }))
+              .filter(s => s.label && s.price > 0)
+              .slice(0, 8)
+          : [];
         result.newItems.push({
           name:        String(item.name || "").trim(),
-          price:       Number(item.price) || 0,
+          price:       Number(item.price) || (cleanSizes[0]?.price || 0),
           description: String(item.description || "").trim(),
+          sizes:       cleanSizes,
           categoryId:  existingCatId,
           categoryName: cat.name,
           confidence:  item.confidence || "medium",
@@ -409,7 +433,7 @@ async function importMenuFromImage({ imageBase64, mimeType, existingProducts, ex
   };
 }
 
-// 🪡 اقتطاع الصور المضمّنة من صورة المنيو
+// 🪡 اقتطاع الصور المضمّنة من صورة المنيو مع 4 طبقات حماية
 async function _cropImagesForNewItems(refined, diff, imgMeta) {
   const path = require("path");
   const fs   = require("fs");
@@ -417,38 +441,142 @@ async function _cropImagesForNewItems(refined, diff, imgMeta) {
   if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
   // ابنِ خريطة: normName → bbox من النتيجة المُحسّنة
-  const bboxMap = new Map();
+  const bboxList = []; // {key, name, bbox}
   for (const cat of refined.categories || []) {
     for (const it of cat.items || []) {
       if (it.image_bbox && typeof it.image_bbox === "object") {
-        bboxMap.set(_normKey(it.name), it.image_bbox);
+        bboxList.push({ key: _normKey(it.name), name: it.name, bbox: it.image_bbox });
       }
     }
   }
 
-  // اقتطع لكل منتج جديد
-  let cropped = 0;
+  // 🛡️ طبقة 1: منع التداخل — لو bbox متداخل مع آخر > 30%، نرفض الأصغر
+  const accepted = [];
+  for (const b of bboxList) {
+    const conflict = accepted.find(a => _bboxIntersectionRatio(a.bbox, b.bbox) > 0.3);
+    if (conflict) {
+      console.warn(`[crop:overlap] rejected "${b.name}" (overlaps with "${conflict.name}")`);
+      continue;
+    }
+    accepted.push(b);
+  }
+
+  // ابنِ خريطة accepted
+  const acceptedMap = new Map(accepted.map(a => [a.key, a.bbox]));
+  let cropped = 0, verified = 0, rejected = 0;
+  const cropTasks = [];
+
   for (const item of diff.newItems || []) {
-    const bbox = bboxMap.get(_normKey(item.name));
+    const bbox = acceptedMap.get(_normKey(item.name));
     if (!bbox) continue;
     const x = Math.max(0, Math.round(bbox.x));
     const y = Math.max(0, Math.round(bbox.y));
     const w = Math.max(20, Math.min(imgMeta.imageWidth - x, Math.round(bbox.w)));
     const h = Math.max(20, Math.min(imgMeta.imageHeight - y, Math.round(bbox.h)));
-    if (w < 50 || h < 50) continue; // صغير جداً، تخطّ
-    try {
-      const filename = `menu-crop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.jpg`;
-      const filepath = path.join(IMAGES_DIR, filename);
-      await sharp(imgMeta._buffer)
-        .extract({ left: x, top: y, width: w, height: h })
-        .resize({ width: 600, withoutEnlargement: true })
-        .jpeg({ quality: 82 })
-        .toFile(filepath);
-      item._croppedImageUrl = `/store-images/${filename}`;
-      cropped++;
-    } catch (e) { console.warn(`[crop] failed for "${item.name}":`, e.message); }
+    // 🛡️ طبقة 2: قيود الحجم — لا صغير جداً ولا طويل جداً
+    if (w < 80 || h < 80) { console.warn(`[crop:too-small] "${item.name}"`); continue; }
+    const aspect = w / h;
+    if (aspect > 4 || aspect < 0.25) { console.warn(`[crop:bad-aspect] "${item.name}" ratio=${aspect.toFixed(2)}`); continue; }
+    // 🛡️ طبقة 3: نسبة من الصورة — لا تأخذ > 40% من المنيو كله (تكون نصاً غالباً)
+    const areaPct = (w * h) / (imgMeta.imageWidth * imgMeta.imageHeight);
+    if (areaPct > 0.4) { console.warn(`[crop:too-big] "${item.name}" pct=${(areaPct*100).toFixed(0)}%`); continue; }
+
+    cropTasks.push((async () => {
+      try {
+        const filename = `menu-crop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+        const filepath = path.join(IMAGES_DIR, filename);
+        const cropBuf = await sharp(imgMeta._buffer)
+          .extract({ left: x, top: y, width: w, height: h })
+          .resize({ width: 600, withoutEnlargement: true })
+          .jpeg({ quality: 82 })
+          .toBuffer();
+        // 🛡️ طبقة 4: AI verification — هل الصورة فعلاً للمنتج؟ (عقل رابع)
+        const verifiedResult = await _verifyCropMatchesProduct(cropBuf, item.name).catch(() => ({ match: "unknown", confidence: "low" }));
+        await fs.promises.writeFile(filepath, cropBuf);
+        if (verifiedResult.match === "no") {
+          console.warn(`[crop:ai-reject] "${item.name}" — AI says: ${verifiedResult.reason || "doesn't match"}`);
+          // احفظ الصورة لكن علّم item بـ rejected لنريها للمستخدم برسالة تنبيه
+          item._croppedImageUrl = `/store-images/${filename}`;
+          item._cropVerification = { match: false, reason: verifiedResult.reason, confidence: verifiedResult.confidence };
+          rejected++;
+        } else {
+          item._croppedImageUrl = `/store-images/${filename}`;
+          item._cropVerification = { match: true, confidence: verifiedResult.confidence };
+          if (verifiedResult.match === "yes") verified++;
+          cropped++;
+        }
+      } catch (e) { console.warn(`[crop] failed for "${item.name}":`, e.message); }
+    })());
   }
-  if (cropped > 0) console.log(`[ai-menu-import] cropped ${cropped} product images`);
+
+  // شغّل كل الـ verifications بالتوازي
+  await Promise.allSettled(cropTasks);
+  if (cropped + rejected > 0) {
+    console.log(`[ai-menu-import] crop summary: ${cropped} accepted (${verified} AI-verified), ${rejected} flagged for manual review`);
+  }
+}
+
+// نسبة تداخل bboxes (intersection over smaller area)
+function _bboxIntersectionRatio(a, b) {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w);
+  const y2 = Math.min(a.y + a.h, b.y + b.h);
+  if (x2 <= x1 || y2 <= y1) return 0;
+  const inter = (x2 - x1) * (y2 - y1);
+  const smaller = Math.min(a.w * a.h, b.w * b.h);
+  return smaller > 0 ? inter / smaller : 0;
+}
+
+// 🧠 عقل #4: AI verification — هل الصورة تطابق المنتج المتوقع؟
+async function _verifyCropMatchesProduct(cropBuf, productName) {
+  if (!GROQ_KEY || !cropBuf) return { match: "unknown" };
+  const dataUrl = `data:image/jpeg;base64,${cropBuf.toString("base64")}`;
+  try {
+    const res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: VISION_MODELS[1], // أسرع وأخف للتحقق
+        temperature: 0.1,
+        max_tokens: 200,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+`أنت مدقق صور. تحدد لو صورة فعلاً تمثّل اسم منتج معين.
+ارجع JSON فقط:
+{
+  "match": "yes" | "no" | "unknown",
+  "confidence": "high" | "medium" | "low",
+  "reason": "وصف قصير لما رأيته في الصورة وسبب القبول/الرفض"
+}
+
+قواعد:
+- "yes": إذا كانت الصورة فعلاً للمنتج (مثلاً صورة قهوة لمنتج اسمه "قهوة")
+- "no": إذا الصورة نص فقط، أو خلفية فارغة، أو منتج مختلف تماماً
+- "unknown": إذا الصورة غير واضحة لكن لا يمكن نفي التطابق
+- كن متساهلاً في "yes": صورة عامة لمشروب مع منتج اسمه قهوة → yes`,
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `هل هذه الصورة تطابق منتج اسمه: "${productName}"؟` },
+              { type: "image_url", image_url: { url: dataUrl } },
+            ],
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) return { match: "unknown" };
+    const data = await res.json();
+    return JSON.parse(data.choices?.[0]?.message?.content || '{"match":"unknown"}');
+  } catch (e) {
+    console.warn("[verify-crop] failed:", e.message);
+    return { match: "unknown" };
+  }
 }
 
 module.exports = {

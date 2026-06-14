@@ -523,15 +523,23 @@ router.post("/store/menu/ai-apply", auth, (req, res) => {
     // 🪡 صورة مقتطعة من المنيو (لو AI استخرجها)
     const croppedImg = String(item._croppedImageUrl || "").trim();
     const isValidCrop = croppedImg.startsWith("/store-images/");
+    // 📐 sizes/variants: قبول وتنظيف
+    const cleanSizes = Array.isArray(item.sizes)
+      ? item.sizes
+          .map(s => ({ label: String(s?.label || "").trim().slice(0, 40), price: Number(s?.price) || 0 }))
+          .filter(s => s.label && s.price > 0)
+          .slice(0, 8)
+      : [];
     products.push({
       id:           "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
       name:         String(item.name).trim().slice(0, 120),
-      price:        Number(item.price) || 0,
+      price:        Number(item.price) || (cleanSizes[0]?.price || 0),
       description:  String(item.description || "").trim().slice(0, 500),
       category:     catId,
       available:    true,
       images:       isValidCrop ? [croppedImg] : [],
       imageUrl:     isValidCrop ? croppedImg : null,
+      sizes:        cleanSizes,
       stock:        null,
       priceOnRequest: !!item.priceOnRequest,
     });
