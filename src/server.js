@@ -4065,7 +4065,15 @@ async function _finalizeRating(from, comment) {
         });
       } catch (ce) { console.warn("[recovery-coupon] save failed:", ce.message); }
       await new Promise(r => setTimeout(r, 1500));
-      await waMgr.sendMessage(pending.storeId, from, ratingsMod.serviceRecoveryMessage(pending.storeName, couponCode));
+      // 💔 رسالة الاعتذار — مخصصة من المتجر لو معرّفة، وإلا الافتراضية
+      const customApology = String(pending.store?.apologyMessage || "").trim();
+      const apologyMsg = customApology
+        ? customApology
+            .replace(/\{\{store_name\}\}/g, pending.storeName)
+            .replace(/\{\{coupon\}\}/g, couponCode)
+            .replace(/\{\{stars\}\}/g, stars)
+        : ratingsMod.serviceRecoveryMessage(pending.storeName, couponCode);
+      await waMgr.sendMessage(pending.storeId, from, apologyMsg);
       // أبلغ المالك بتقييم سلبي
       const store = pending.store;
       if (store?.ownerPhone) {

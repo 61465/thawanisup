@@ -1627,6 +1627,38 @@ tr:hover td{background:#fafcfa}
       </div>
     </div>
 
+    <!-- 🙏 Apology Message Modal -->
+    <div id="apologyModal" onclick="if(event.target===this)closeApologyEdit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+      <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.3);overflow:hidden;margin-top:30px">
+        <div style="background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:900">🙏 رسالة الاعتذار + الكوبون</div>
+            <div style="font-size:12px;opacity:.9;margin-top:3px">تُرسَل بعد التقييم السيء (1-2 ⭐) — لاستعادة ثقة العميل</div>
+          </div>
+          <button onclick="closeApologyEdit()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+        </div>
+        <div style="padding:20px 22px">
+          <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:8px">نص الرسالة:</label>
+          <textarea id="apologyText" rows="10" placeholder="اكتب اعتذاراً صادقاً..."
+                    style="width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:14px;line-height:1.7;resize:vertical;direction:rtl"></textarea>
+          <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:12px;color:#78350f;line-height:1.7">
+            💡 <b>متغيّرات يمكن استخدامها:</b><br>
+            • <code>{{store_name}}</code> — يُستبدل باسم متجرك<br>
+            • <code>{{coupon}}</code> — كود الكوبون الذي يُنشأ تلقائياً (خصم 20%، صالح 14 يوم)<br>
+            • <code>{{stars}}</code> — نجوم تقييم العميل<br>
+            • استخدم <code>*نص*</code> للخط الغامق، <code>_نص_</code> للمائل<br>
+            <br>
+            🎁 <b>الكوبون يُنشَأ تلقائياً</b> ويُحفَظ في نظام الكوبونات لرقم العميل فقط.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button onclick="closeApologyEdit()" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:11px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+            <button onclick="apoResetDefault()" style="flex:1;background:#fff;border:1px solid #fcd34d;color:#92400e;padding:11px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">↺ افتراضي</button>
+            <button onclick="saveApology()" style="flex:2;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;border:none;padding:11px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit;box-shadow:0 3px 10px rgba(220,38,38,.3)">💾 حفظ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 💝 Thank-You Message Modal -->
     <div id="tyModal" onclick="if(event.target===this)closeThankYouEdit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
       <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.3);overflow:hidden;margin-top:30px">
@@ -4691,6 +4723,7 @@ async function botqLoad() {
     _botqFields = Array.isArray(r.fields) ? r.fields : [];
     _botqWelcome = String(storeData.welcomeMessage || "").trim();
     _botqThankYou = String(storeData.thankYouMessage || "").trim();
+    _botqApology = String(storeData.apologyMessage || "").trim();
     document.getElementById("botqSource").textContent =
       r.source === "custom" ? "(مخصصة)" : "(افتراضية — لم تُحفظ بعد)";
     _botqRender();
@@ -4701,6 +4734,27 @@ async function botqLoad() {
 
 let _botqWelcome = "";
 let _botqThankYou = "";
+let _botqApology = "";
+
+function openApologyEdit() {
+  document.getElementById("apologyText").value = _botqApology || `🙏 *نعتذر بشدة*\n\nتجربتك مع *{{store_name}}* ما كانت بالمستوى الذي نطمح إليه.\n\n🎁 *كوبون اعتذار:* {{coupon}}\n_خصم 20% على طلبك القادم_\n\nلو حابب تكتب لنا تفاصيل أكثر، نحن نقرأ كل رسالة باهتمام. اكتب *مسؤول* للتواصل المباشر.`;
+  document.getElementById("apologyModal").style.display = "flex";
+  setTimeout(() => document.getElementById("apologyText").focus(), 100);
+}
+function closeApologyEdit() { document.getElementById("apologyModal").style.display = "none"; }
+async function saveApology() {
+  const text = document.getElementById("apologyText").value.trim();
+  try {
+    await api("PUT", "/store/settings", { apologyMessage: text });
+    _botqApology = text;
+    showToast("✅ تم حفظ رسالة الاعتذار", "success");
+    closeApologyEdit();
+    _botqRender();
+  } catch (e) { showToast("فشل: " + (e.message||""), "error"); }
+}
+function apoResetDefault() {
+  document.getElementById("apologyText").value = `🙏 *نعتذر بشدة*\n\nتجربتك مع *{{store_name}}* ما كانت بالمستوى الذي نطمح إليه، وهذا غير مقبول من جهتنا.\n\n🎁 *كوبون اعتذار:* {{coupon}}\n_خصم 20% على طلبك القادم_\n\nلو حابب تكتب لنا تفاصيل أكثر، نحن نقرأ كل رسالة باهتمام. اكتب *مسؤول* للتواصل المباشر معنا.`;
+}
 
 // ═════════════ 🎫 Support Tickets (store) ═════════════
 const TK_STATUS = {
@@ -5266,6 +5320,19 @@ function _botqRender() {
         <div style="font-size:12px;color:#9d174d;margin-top:3px;line-height:1.6">${thankYouPreview}</div>
       </div>
       <button onclick="openThankYouEdit()" title="تعديل رسالة الشكر" style="background:#fff;border:1px solid #f9a8d4;color:#9d174d;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">✏️ تعديل</button>
+    </div>
+    <div style="text-align:center;color:#9ca3af;font-size:11px;margin:10px 0 6px;font-weight:600">⬇️ بعد التقييم السيء (1-2⭐) ⬇️</div>
+    <div style="background:linear-gradient(135deg,#fef2f2 0%,#fff 100%);border:1px solid #fecaca;border-right:5px solid #dc2626;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">🙏</span>
+      <span style="background:#fee2e2;color:#7f1d1d;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap">بعد التقييم 1-2⭐</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:#7f1d1d;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          رسالة الاعتذار + كوبون
+          <span style="color:#9ca3af;font-size:11px">(لاستعادة ثقة العميل)</span>
+        </div>
+        <div style="font-size:12px;color:#991b1b;margin-top:3px;line-height:1.6">${_botqApology ? esc(_botqApology.length > 140 ? _botqApology.slice(0,140) + "…" : _botqApology) : '<span style="color:#9ca3af;font-style:italic">القالب الافتراضي — اضغط ✏️ لتخصيصه</span>'}</div>
+      </div>
+      <button onclick="openApologyEdit()" title="تعديل رسالة الاعتذار" style="background:#fff;border:1px solid #fecaca;color:#7f1d1d;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap">✏️ تعديل</button>
     </div>`;
 
   box.innerHTML = welcomeCard + _botqFields.map((f, i) => {
