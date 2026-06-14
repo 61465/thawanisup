@@ -1147,31 +1147,39 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
 
     </section>
 
-    <!-- ─────────── 🎫 Support Tickets View ─────────── -->
+    <!-- ─────────── 🎫 Support Tickets View (v2 — rebuilt) ─────────── -->
     <section id="ticketsView" style="display:none">
-      <div class="page-header">
-        <h1>🎫 تذاكر الدعم</h1>
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div>
+          <h1 style="margin:0">🎫 تذاكر الدعم</h1>
+          <div id="supTkConn" style="font-size:12px;color:#6b7280;margin-top:4px">جاري الاتصال بالخادم...</div>
+        </div>
+        <button onclick="supTkRefresh()" class="btn btn-primary">🔄 تحديث الآن</button>
       </div>
-      <div id="tkStatsRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px"></div>
+      <div id="supTkStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <button class="btn btn-outline btn-sm" onclick="loadMasterTickets()">🔄 تحديث</button>
-        <select id="tkFilterStatus" onchange="loadMasterTickets()" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit">
-          <option value="">كل الحالات</option>
-          <option value="open">🔴 مفتوحة</option>
+        <select id="supTkFilterStatus" onchange="supTkLoad()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-weight:700">
+          <option value="">📋 كل الحالات</option>
+          <option value="open" selected>🔴 مفتوحة</option>
           <option value="in_progress">🟡 قيد المعالجة</option>
           <option value="resolved">✅ محلولة</option>
           <option value="closed">⚫ مغلقة</option>
         </select>
-        <select id="tkFilterPriority" onchange="loadMasterTickets()" style="padding:7px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit">
-          <option value="">كل الأولويات</option>
+        <select id="supTkFilterPriority" onchange="supTkLoad()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:9px;font-family:inherit;font-weight:700">
+          <option value="">⚡ كل الأولويات</option>
           <option value="urgent">🚨 حرجة</option>
-          <option value="high">عاجلة</option>
-          <option value="medium">عادية</option>
-          <option value="low">منخفضة</option>
+          <option value="high">⚡ عاجلة</option>
+          <option value="medium">📋 عادية</option>
+          <option value="low">📎 منخفضة</option>
         </select>
       </div>
-      <div id="masterTicketsList"><div style="text-align:center;padding:40px;color:#9ca3af">⏳</div></div>
+      <div id="supTkList"><div style="text-align:center;padding:40px;color:#9ca3af">⏳ جاري التحميل...</div></div>
     </section>
+
+    <!-- 💬 Ticket Thread Modal (v2) -->
+    <div id="supTkModal" onclick="if(event.target===this)supTkCloseModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto">
+      <div id="supTkModalBody" style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.4);margin-top:30px;overflow:hidden"></div>
+    </div>
 
     <!-- ─────────── 📈 Growth Analytics View ─────────── -->
     <section id="growthView" style="display:none">
@@ -1189,11 +1197,6 @@ input:checked + .toggle-slider:before{transform:translateX(22px)}
         <div id="growthMrrChart" style="display:flex;align-items:flex-end;gap:6px;height:160px;padding:14px 4px;border-bottom:1px solid #e5e7eb"></div>
       </div>
     </section>
-
-    <!-- 💬 Master Ticket Thread Modal -->
-    <div id="masterTkModal" onclick="if(event.target===this)closeMasterTk()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1250;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto">
-      <div id="masterTkBody" style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.3);margin-top:30px;overflow:hidden"></div>
-    </div>
 
     <!-- ─────────── Welcome Message View (مبسطة) ─────────── -->
     <section id="welcomeView" style="display:none">
@@ -2071,7 +2074,7 @@ function showView(view) {
   if (view === "guide")      { loadBankSettings().then(buildGuideMsg); }
   if (view === "leads")      loadPlatformLeads();
   if (view === "pending")    loadPending();
-  if (view === "tickets")    loadMasterTickets();
+  if (view === "tickets")    supTkLoad();
   if (view === "growth")     loadGrowth();
   if (view === "platformBot"){ loadPlatformBot(); startPlatformBotPolling(); } else { stopPlatformBotPolling(); }
 }
@@ -2087,11 +2090,10 @@ async function refreshAll() {
 async function pollTicketsBadge() {
   try {
     const s = await api("GET", "/master/support/tickets/stats");
-    const badge = document.getElementById("ticketsBadge");
-    if (!badge) return;
-    if (s.open > 0) { badge.style.display = "inline-block"; badge.textContent = s.open; }
-    else badge.style.display = "none";
-  } catch (e) { console.warn("[tickets-badge]", e?.message || e); }
+    if (typeof supTkUpdateSidebarBadge === "function") {
+      supTkUpdateSidebarBadge(s?.open || 0);
+    }
+  } catch (e) { console.warn("[tickets-badge]", e?.error || e?.message || e); }
 }
 
 async function pollPendingBadge() {
@@ -3009,112 +3011,188 @@ function setPendingFilter(f) {
   renderPending();
 }
 
-// ═════════════ 🎫 Master Tickets ═════════════
-const M_TK_STATUS = {
-  open:        { label: "مفتوحة", color: "#dc2626", icon: "🔴" },
-  in_progress: { label: "قيد المعالجة", color: "#f59e0b", icon: "🟡" },
-  resolved:    { label: "محلولة", color: "#16a34a", icon: "✅" },
-  closed:      { label: "مغلقة", color: "#6b7280", icon: "⚫" },
+// ═════════════ 🎫 Support Tickets — Master side (v2 rebuild) ═════════════
+const SUP_TK_S = {
+  open:        { label: "مفتوحة",       color: "#dc2626", bg: "#fef2f2", icon: "🔴" },
+  in_progress: { label: "قيد المعالجة", color: "#f59e0b", bg: "#fffbeb", icon: "🟡" },
+  resolved:    { label: "محلولة",        color: "#16a34a", bg: "#f0fdf4", icon: "✅" },
+  closed:      { label: "مغلقة",         color: "#6b7280", bg: "#f9fafb", icon: "⚫" },
 };
-const M_TK_PRIO = {
-  urgent: "🚨", high: "⚡", medium: "📋", low: "📎"
+const SUP_TK_P = {
+  urgent: { emoji: "🚨", label: "حرجة",  color: "#dc2626" },
+  high:   { emoji: "⚡", label: "عاجلة", color: "#f59e0b" },
+  medium: { emoji: "📋", label: "عادية", color: "#3b82f6" },
+  low:    { emoji: "📎", label: "منخفضة", color: "#6b7280" },
 };
 
-async function loadMasterTickets() {
+// 🔄 المحمّل الرئيسي — يستدعى عند فتح tab أو تغيير filter
+async function supTkLoad() {
+  const connEl = document.getElementById("supTkConn");
+  if (connEl) connEl.textContent = "📡 جاري الاتصال...";
   try {
-    const [statsR, listR] = await Promise.all([
+    const statusFilter = document.getElementById("supTkFilterStatus")?.value || "";
+    const priorityFilter = document.getElementById("supTkFilterPriority")?.value || "";
+    const qs = new URLSearchParams();
+    if (statusFilter) qs.set("status", statusFilter);
+    if (priorityFilter) qs.set("priority", priorityFilter);
+
+    const [stats, payload] = await Promise.all([
       api("GET", "/master/support/tickets/stats"),
-      api("GET", `/master/support/tickets?status=${document.getElementById("tkFilterStatus")?.value||""}&priority=${document.getElementById("tkFilterPriority")?.value||""}`),
+      api("GET", "/master/support/tickets?" + qs.toString()),
     ]);
-    // Badge في الـ sidebar
-    const badge = document.getElementById("ticketsBadge");
-    if (badge) {
-      if (statsR.open > 0) { badge.style.display = "inline-block"; badge.textContent = statsR.open; }
-      else badge.style.display = "none";
-    }
-    document.getElementById("tkStatsRow").innerHTML = `
-      <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid #fecaca;border-radius:10px;padding:12px"><div style="color:#7f1d1d;font-size:11px;font-weight:700">🔴 مفتوحة</div><div style="font-size:24px;font-weight:900;color:#7f1d1d">${statsR.open||0}</div></div>
-      <div style="background:linear-gradient(135deg,#fffbeb,#fff);border:1px solid #fcd34d;border-radius:10px;padding:12px"><div style="color:#78350f;font-size:11px;font-weight:700">🟡 قيد المعالجة</div><div style="font-size:24px;font-weight:900;color:#78350f">${statsR.inProgress||0}</div></div>
-      <div style="background:linear-gradient(135deg,#f0fdf4,#fff);border:1px solid #86efac;border-radius:10px;padding:12px"><div style="color:#166534;font-size:11px;font-weight:700">✅ حُلّت اليوم</div><div style="font-size:24px;font-weight:900;color:#166534">${statsR.resolvedToday||0}</div></div>
-      <div style="background:linear-gradient(135deg,#f3f4f6,#fff);border:1px solid #d1d5db;border-radius:10px;padding:12px"><div style="color:#374151;font-size:11px;font-weight:700">📊 الإجمالي</div><div style="font-size:24px;font-weight:900;color:#374151">${statsR.total||0}</div></div>
-    `;
-    const list = listR.items || [];
-    const box = document.getElementById("masterTicketsList");
-    if (!list.length) { box.innerHTML = `<div style="background:#f9fafb;border-radius:14px;padding:50px;text-align:center;color:#9ca3af">✨ لا تذاكر مطابقة</div>`; return; }
-    box.innerHTML = list.map(t => {
-      const s = M_TK_STATUS[t.status] || M_TK_STATUS.open;
-      return `<div onclick="openMasterTk('${escapeHtml(t.id)}')" style="background:#fff;border:1px solid #e5e7eb;border-right:5px solid ${s.color};border-radius:11px;padding:14px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px">
-        <span style="font-size:22px">${M_TK_PRIO[t.priority]||"📋"}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:14.5px">${escapeHtml(t.subject)}</div>
-          <div style="font-size:11.5px;color:#6b7280;margin-top:3px"><span style="color:${s.color};font-weight:700">${s.icon} ${s.label}</span> · المتجر: <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px">${escapeHtml(t.storeId)}</code> · ${_mTkAgo(t.updatedAt)}</div>
-        </div>
-      </div>`;
-    }).join("");
-  } catch (e) { console.warn("[tickets]", e.message); }
+
+    if (connEl) connEl.innerHTML = `✅ متصل — آخر تحديث: ${new Date().toLocaleTimeString("ar-EG")}`;
+    supTkRenderStats(stats);
+    supTkRenderList(payload?.items || []);
+    supTkUpdateSidebarBadge(stats?.open || 0);
+  } catch (e) {
+    console.error("[supTk] load failed:", e);
+    if (connEl) connEl.innerHTML = `<span style="color:#dc2626">⚠️ فشل: ${escapeHtml(e?.error || e?.message || "خطأ غير معروف")} — تحقق من تسجيل الدخول</span>`;
+    const listBox = document.getElementById("supTkList");
+    if (listBox) listBox.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:36px;text-align:center;color:#7f1d1d"><div style="font-size:42px;margin-bottom:10px">⚠️</div><div style="font-weight:800">لم نتمكن من جلب التذاكر</div><div style="font-size:12px;margin-top:6px">${escapeHtml(e?.error || e?.message || "")}</div></div>`;
+  }
 }
 
-function _mTkAgo(iso) {
+function supTkRefresh() { supTkLoad(); }
+
+function supTkRenderStats(s) {
+  const box = document.getElementById("supTkStats");
+  if (!box) return;
+  s = s || {};
+  box.innerHTML = `
+    <div style="background:linear-gradient(135deg,#fef2f2,#fff);border:1px solid #fecaca;border-radius:11px;padding:14px"><div style="color:#7f1d1d;font-size:11px;font-weight:700">🔴 مفتوحة</div><div style="font-size:26px;font-weight:900;color:#7f1d1d">${s.open||0}</div></div>
+    <div style="background:linear-gradient(135deg,#fffbeb,#fff);border:1px solid #fcd34d;border-radius:11px;padding:14px"><div style="color:#78350f;font-size:11px;font-weight:700">🟡 قيد المعالجة</div><div style="font-size:26px;font-weight:900;color:#78350f">${s.inProgress||0}</div></div>
+    <div style="background:linear-gradient(135deg,#f0fdf4,#fff);border:1px solid #86efac;border-radius:11px;padding:14px"><div style="color:#166534;font-size:11px;font-weight:700">✅ حُلّت اليوم</div><div style="font-size:26px;font-weight:900;color:#166534">${s.resolvedToday||0}</div></div>
+    <div style="background:linear-gradient(135deg,#f3f4f6,#fff);border:1px solid #d1d5db;border-radius:11px;padding:14px"><div style="color:#374151;font-size:11px;font-weight:700">📊 الإجمالي</div><div style="font-size:26px;font-weight:900;color:#374151">${s.total||0}</div></div>
+  `;
+}
+
+function supTkRenderList(items) {
+  const box = document.getElementById("supTkList");
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = `<div style="background:#f9fafb;border:1px dashed #d1d5db;border-radius:14px;padding:50px;text-align:center;color:#6b7280"><div style="font-size:48px;margin-bottom:10px">📭</div><div style="font-weight:800;font-size:15px">لا توجد تذاكر</div><div style="font-size:12px;margin-top:5px">لا تذاكر مطابقة للفلتر الحالي</div></div>`;
+    return;
+  }
+  box.innerHTML = items.map(t => {
+    const s = SUP_TK_S[t.status] || SUP_TK_S.open;
+    const p = SUP_TK_P[t.priority] || SUP_TK_P.medium;
+    return `<div onclick="supTkOpen('${escapeHtml(t.id)}')" style="background:#fff;border:1px solid #e5e7eb;border-right:5px solid ${s.color};border-radius:12px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,.07)';this.style.transform='translateX(-2px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <span style="font-size:24px">${p.emoji}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:#111827;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span>${escapeHtml(t.subject)}</span>
+          <span style="background:${p.color}1a;color:${p.color};padding:1px 8px;border-radius:6px;font-size:10px;font-weight:800">${p.label}</span>
+        </div>
+        <div style="font-size:11.5px;color:#6b7280;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">
+          <span style="color:${s.color};font-weight:800">${s.icon} ${s.label}</span>
+          <span>·</span>
+          <span>📁 ${supTkCatName(t.category)}</span>
+          <span>·</span>
+          <span>🏪 <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:10px">${escapeHtml(t.storeId || "—")}</code></span>
+          <span>·</span>
+          <span>🕐 ${supTkAgo(t.updatedAt)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function supTkCatName(cat) {
+  return ({
+    technical: "تقني", billing: "فواتير", general: "عام",
+    feature_request: "طلب ميزة", bug: "خلل",
+  })[cat] || cat || "عام";
+}
+
+function supTkAgo(iso) {
   if (!iso) return "—";
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 60) return `${m} د`;
+  if (m < 1)   return "الآن";
+  if (m < 60)  return `${m} د`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} س`;
+  if (h < 24)  return `${h} س`;
   return `${Math.floor(h / 24)} يوم`;
 }
 
-async function openMasterTk(id) {
+function supTkUpdateSidebarBadge(openCount) {
+  const badge = document.getElementById("ticketsBadge");
+  if (!badge) return;
+  if (openCount > 0) { badge.style.display = "inline-block"; badge.textContent = openCount; }
+  else badge.style.display = "none";
+}
+
+// فتح تذكرة محددة في modal
+async function supTkOpen(id) {
   try {
     const r = await api("GET", `/master/support/tickets/${id}`);
-    const t = r.ticket;
-    const s = M_TK_STATUS[t.status] || M_TK_STATUS.open;
-    document.getElementById("masterTkBody").innerHTML = `
-      <div style="background:linear-gradient(135deg,${s.color}1a,#fff);padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    const t = r?.ticket;
+    if (!t) throw new Error("التذكرة غير موجودة");
+    const s = SUP_TK_S[t.status] || SUP_TK_S.open;
+    const p = SUP_TK_P[t.priority] || SUP_TK_P.medium;
+    const body = document.getElementById("supTkModalBody");
+    body.innerHTML = `
+      <div style="background:linear-gradient(135deg,${s.color}1a,#fff);padding:18px 22px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;gap:12px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:11px;color:${s.color};font-weight:800">${s.icon} ${s.label} · ${M_TK_PRIO[t.priority]} ${t.priority}</div>
-          <div style="font-size:16px;font-weight:900;margin-top:3px">${escapeHtml(t.subject)}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:3px">المتجر: <code>${escapeHtml(t.storeId)}</code> · فُتحت: ${new Date(t.createdAt).toLocaleString("ar-EG")}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:11px;color:${s.color};font-weight:800">${s.icon} ${s.label}</span>
+            <span style="font-size:11px;color:${p.color};font-weight:800">· ${p.emoji} ${p.label}</span>
+            <span style="font-size:11px;color:#6b7280">· ${supTkCatName(t.category)}</span>
+          </div>
+          <div style="font-size:17px;font-weight:900;color:#111827">${escapeHtml(t.subject)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px">المتجر: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">${escapeHtml(t.storeId)}</code> · فُتحت: ${new Date(t.createdAt).toLocaleString("ar-EG")}</div>
         </div>
-        <button onclick="closeMasterTk()" style="background:#f3f4f6;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+        <button onclick="supTkCloseModal()" style="background:#fff;border:1px solid #e5e7eb;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
       </div>
-      <div style="padding:14px 20px;max-height:50vh;overflow-y:auto">
-        ${(t.messages||[]).map(m => `<div style="background:${m.from==='master'?'#eff6ff':'#f9fafb'};border-right:3px solid ${m.from==='master'?'#3b82f6':'#9ca3af'};border-radius:10px;padding:10px 14px;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:800;color:${m.from==='master'?'#1e40af':'#374151'};margin-bottom:5px">${m.from==='master'?'🛠️ الدعم':'👤 المتجر'} · ${_mTkAgo(m.ts)}</div>
-          <div style="font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word">${escapeHtml(m.body)}</div>
+      <div style="padding:14px 22px;max-height:50vh;overflow-y:auto">
+        ${(t.messages || []).map(m => `<div style="background:${m.from==='master'?'#eff6ff':'#f9fafb'};border-right:3px solid ${m.from==='master'?'#3b82f6':'#9ca3af'};border-radius:10px;padding:11px 14px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:800;color:${m.from==='master'?'#1e40af':'#374151'};margin-bottom:6px">${m.from==='master'?'🛠️ الدعم':'👤 المتجر'} · ${supTkAgo(m.ts)}</div>
+          <div style="font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word">${escapeHtml(m.body)}</div>
         </div>`).join("")}
       </div>
-      <div style="padding:14px 20px;border-top:1px solid #e5e7eb;background:#fafbfc;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="mtkStatusSel" onchange="changeMasterTkStatus('${escapeHtml(t.id)}',this.value)" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-weight:700">
+      <div style="padding:12px 22px;border-top:1px solid #e5e7eb;background:#fafbfc;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;font-weight:700;color:#374151">الحالة:</span>
+        <select id="supTkStatusSel" onchange="supTkChangeStatus('${escapeHtml(t.id)}',this.value)" style="padding:7px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-weight:700;font-size:13px">
           <option value="open" ${t.status==='open'?'selected':''}>🔴 مفتوحة</option>
           <option value="in_progress" ${t.status==='in_progress'?'selected':''}>🟡 قيد المعالجة</option>
           <option value="resolved" ${t.status==='resolved'?'selected':''}>✅ محلولة</option>
           <option value="closed" ${t.status==='closed'?'selected':''}>⚫ مغلقة</option>
         </select>
       </div>
-      <div style="padding:14px 20px;border-top:1px solid #e5e7eb">
-        <textarea id="mtkReply" rows="3" placeholder="اكتب الرد للمتجر..." style="width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;resize:vertical"></textarea>
-        <button onclick="sendMasterTkReply('${escapeHtml(t.id)}')" style="width:100%;background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:11px;border-radius:9px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px">📤 إرسال الرد + إشعار العميل عبر واتساب</button>
+      <div style="padding:14px 22px;border-top:1px solid #e5e7eb">
+        <textarea id="supTkReplyBox" rows="3" placeholder="اكتب الرد للمتجر... (سيصله إشعار واتساب فوراً)" style="width:100%;padding:11px;border:1.5px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:14px;resize:vertical"></textarea>
+        <button onclick="supTkSendReply('${escapeHtml(t.id)}')" style="width:100%;background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px">📤 إرسال الرد + إشعار واتساب للمتجر</button>
       </div>`;
-    document.getElementById("masterTkModal").style.display = "flex";
-  } catch (e) { alert("فشل: " + e.message); }
+    document.getElementById("supTkModal").style.display = "flex";
+  } catch (e) {
+    console.error("[supTk] open failed:", e);
+    alert("فشل فتح التذكرة: " + (e?.error || e?.message || "خطأ غير معروف"));
+  }
 }
-function closeMasterTk() { document.getElementById("masterTkModal").style.display = "none"; }
 
-async function sendMasterTkReply(id) {
-  const msg = document.getElementById("mtkReply")?.value?.trim();
-  if (!msg) { alert("اكتب رداً"); return; }
+function supTkCloseModal() {
+  document.getElementById("supTkModal").style.display = "none";
+}
+
+async function supTkSendReply(id) {
+  const msg = document.getElementById("supTkReplyBox")?.value?.trim();
+  if (!msg) { alert("اكتب رداً قبل الإرسال"); return; }
   try {
     await api("POST", `/master/support/tickets/${id}/reply`, { message: msg });
-    openMasterTk(id);
-    loadMasterTickets();
-  } catch (e) { alert("فشل: " + e.message); }
+    supTkOpen(id);       // أعد فتح الـ thread لرؤية الرد
+    supTkLoad();         // حدّث القائمة
+  } catch (e) {
+    alert("فشل الإرسال: " + (e?.error || e?.message || ""));
+  }
 }
 
-async function changeMasterTkStatus(id, status) {
+async function supTkChangeStatus(id, status) {
   try {
     await api("POST", `/master/support/tickets/${id}/status`, { status });
-    loadMasterTickets();
-  } catch (e) { alert("فشل: " + e.message); }
+    supTkLoad();
+  } catch (e) {
+    alert("فشل تغيير الحالة: " + (e?.error || e?.message || ""));
+  }
 }
 
 // ═════════════ 📈 Growth Analytics ═════════════
