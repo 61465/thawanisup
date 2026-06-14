@@ -28,6 +28,19 @@ const KW_PATH_BTN = /^(1|اختيار|ازرار|buttons|تقليدي)$/i;
 const KW_PATH_WEB = /^(2|رابط|لينك|link|webview|تفاعليه)$/i;
 const KW_PATH_AI  = /^(3|كلام|كتابه|اكتب|ai|chat)$/i;
 
+// 🔄 KW_RESTART — يفهم "طلب جديد" بكل اللهجات + إشارات التيه/الخطأ
+// (تُطبَّق بعد normalizeAr فالكلمات هنا بدون همزات)
+const KW_RESTART = new RegExp([
+  "^(ابدا|ابدء|ابدا\\s*من\\s*جديد|من\\s*البدايه|البدايه|بدايه)",
+  "^(طلب\\s*جديد|اطلب\\s*جديد|اعمل\\s*طلب\\s*جديد|اريد\\s*طلب\\s*جديد|عايز\\s*طلب\\s*جديد|بدي\\s*طلب\\s*جديد|ابغي\\s*طلب\\s*جديد)",
+  "^(ابدا\\s*ثاني|ابدا\\s*تاني|من\\s*الاول|كرر\\s*البدايه)",
+  "^(restart|reset|start\\s*over|new\\s*order|fresh\\s*start)$",
+  "^(الغي\\s*و?ابدا|كانسل\\s*و?ابدا|انسي\\s*الطلب)",
+  "^(الرءيسيه|الرءيسيه|الرءيسي|home|main)",
+  // إشارات التيه/الخطأ — يفهم العميل الذي ضاع
+  "(ضيعت|تهت|تايه|في\\s*مشكله|البوت\\s*معلق|ما\\s*رد|ما\\s*فهمت|مش\\s*فاهم|اعد\\s*من\\s*الاول|خلني\\s*ابدا)",
+].join("|"), "i");
+
 /**
  * يُرجع `{type, value}`. الأنواع المتوقعة:
  *   - "number"    → value = int
@@ -117,6 +130,7 @@ async function parseIntent(text, session = {}, menuCtx = null) {
   if (KW_PATH_AI.test(norm))  return { type: "path", value: "ai" };
 
   // ── Fast path 3: كلمات صريحة ──────────────────────────────────────────────
+  if (KW_RESTART.test(norm)) return { type: "restart" };  // 🔄 إعادة البدء — أولوية
   if (KW_MENU.test(norm))    return { type: "menu" };
   if (KW_CART.test(norm))    return { type: "cart" };
   if (KW_CONFIRM.test(norm)) return { type: "confirm" };
@@ -215,6 +229,11 @@ async function _aiClassify(text, session, menuCtx) {
 طلب مسؤول:
 "اريد مسؤول" "عايز انسان" "human help" → {"type":"handoff","value":null}
 
+إعادة البدء (مهم جداً — العميل تايه أو ضاعت سلته):
+"اريد طلب جديد" "ابدأ من جديد" "كانسل وابدأ" → {"type":"restart","value":null}
+"ضيعت" "تهت" "ما فهمت" "البوت معلق" → {"type":"restart","value":null}
+"ابدأ ثاني" "من الأول" "fresh start" "reset" → {"type":"restart","value":null}
+
 قواعد صارمة:
 1. استخدم اسم المنتج من المنيو حرفياً
 2. لا تخترع منتجات
@@ -299,6 +318,10 @@ function _heuristicFallback(text) {
   if (/(شيل|الغ|بطل|احذف|امسح)/.test(t)) {
     const name = t.replace(/^(شيل|الغ|بطل|احذف|امسح)\s*/, "").trim();
     if (name) return { type: "remove", value: { name } };
+  }
+  // 🔄 restart heuristic (للـ AI fallback)
+  if (/(طلب\s*جديد|ابدا\s*من\s*جديد|من\s*البدايه|كانسل\s*و?ابدا|ضيعت|تهت|في\s*مشكله|البوت\s*معلق|اعد\s*من\s*الاول|restart|reset|new\s*order|fresh\s*start)/.test(t)) {
+    return { type: "restart" };
   }
   if (/(تأكيد|تاكيد|اوكي|اوك|تمام|اكد|خلص|انتهيت)/.test(t)) return { type: "confirm" };
   if (/(الغ|بطل|ايقاف|stop|cancel)/.test(t)) return { type: "cancel" };

@@ -1934,7 +1934,14 @@ async function handleMessage(from, incoming) {
   }
 
   // أوامر الـ reset الصريحة (تعمل دائماً)
-  const isHardReset = msg === "MAIN_MENU" || /^(start|ابدأ|البدايه|البداية|الرئيسية)$/i.test(msg);
+  // 🔄 isHardReset: يفهم كل صياغات "ابدأ من جديد" / "طلب جديد" / "ضيعت" (بـ AI parser)
+  // يُطبَّق على كل step حتى لو العميل في وسط الـ flow — لينقذه من الضياع
+  let _restartIntent = null;
+  try { _restartIntent = aiParser.parseIntent ? null : null; } catch {}
+  // Fast path: لو الكلمة واضحة، ادخل _restart
+  const _normMsg = aiParser.normalizeAr(String(msg || ""));
+  const _restartFastMatch = /^(ابدا|ابدء|طلب\s*جديد|اطلب\s*جديد|اريد\s*طلب\s*جديد|عايز\s*طلب\s*جديد|بدي\s*طلب\s*جديد|ابغي\s*طلب\s*جديد|من\s*البدايه|البدايه|من\s*الاول|ابدا\s*من\s*جديد|ابدا\s*ثاني|ابدا\s*تاني|كانسل\s*و?ابدا|الغي\s*و?ابدا|انسي\s*الطلب|restart|reset|start\s*over|new\s*order|fresh\s*start|ضيعت|تهت|تايه|البوت\s*معلق|في\s*مشكله|اعد\s*من\s*الاول|خلني\s*ابدا|الرءيسيه|home|main)\b/i;
+  const isHardReset = msg === "MAIN_MENU" || _restartFastMatch.test(_normMsg) || /^(start|ابدأ|البدايه|البداية|الرئيسية)$/i.test(msg);
   // التحيات (تعمل reset فقط لو خارج mid-flow — لا نُربك العميل وسط إكمال طلبه)
   const isGreeting  = /^(مرحبا|مرحباً|السلام عليكم|وعليكم السلام|هلا|هلو|أهلا|اهلا|hi|hello|hey|رجوع)$/i.test(msg);
   // ⚠️ CATEGORY/PRODUCT/PATH_SELECT/MAIN_MENU جزء من الـ flow الفعّال — التحية لا تعيد welcome
@@ -2631,6 +2638,12 @@ async function handleAIMode(from, text, session) {
   if (intent.type === "cancel") {
     sessionManager.reset(from);
     return sendText(from, "تم إلغاء الطلب. اكتب أي رسالة لبداية جديدة 🌸");
+  }
+
+  // 🔄 إعادة البدء (العميل تايه أو طلب جديد)
+  if (intent.type === "restart") {
+    sessionManager.reset(from);
+    return sendWelcome(from);
   }
 
   // 8️⃣ سؤال عام — رد ذكي بـ AI أو رد عام
@@ -3623,11 +3636,23 @@ async function showOrderSummary(from, session) {
     if (dynamicLines) dynamicLines += "\n";
   }
 
-  // legacy: لو لا توجد customAnswers، استخدم الحقول القديمة
-  const legacyDetails = !dynamicLines
-    ? (session.customerLocation ? `العنوان: ${session.customerLocation}\n` : "") +
-      (session.scheduledTime ? `⏰ ${labels.timeLabel}: *${session.scheduledTime}*\n` : "")
-    : "";
+  // 📍 العنوان: اعرضه دائماً لو موجود (الاسم المقروء + رابط maps)
+  let locationLine = "";
+  if (session.customerLocationName) {
+    locationLine = `📍 *العنوان:* ${session.customerLocationName}\n`;
+    if (session.customerLocationMapsUrl) {
+      locationLine += `🗺️ ${session.customerLocationMapsUrl}\n`;
+    }
+  } else if (session.customerLocation && !String(session.customerLocation).startsWith("📍|")) {
+    locationLine = `📍 *العنوان:* ${session.customerLocation}\n`;
+  }
+  // ⏰ الوقت
+  const timeLine = session.scheduledTime ? `⏰ *${labels.timeLabel}:* ${session.scheduledTime}\n` : "";
+  // 📝 الملاحظات
+  const notesLine = session.orderNotes ? `\n📝 *ملاحظات:* ${session.orderNotes}\n` : "";
+
+  // legacy fallback (لو لم تأتِ customAnswers ولا locationName ولا time)
+  const legacyDetails = locationLine + timeLine + notesLine;
 
   // 💬 totals لمنتجات السعر-عند-الطلب
   const totalSection = (hasNegotiable && rawSubtotal === 0)
@@ -3746,6 +3771,7 @@ async function handleConfirmOrder(from, msg, session) {
       scheduledTime:    session.scheduledTime || null,
       // 🤖 إجابات الأسئلة المخصصة (لو وُجدت) — تظهر في صفحة الطلبات بالأدمن
       customAnswers:    session.customAnswers && Object.keys(session.customAnswers).length ? session.customAnswers : null,
+      notes:            session.orderNotes || null,
       date:   new Date().toISOString().slice(0, 10),
       status: "pending_confirmation",
     });
