@@ -3693,14 +3693,14 @@ async function showOrderSummary(from, session) {
     console.error("Summary image error:", err.message);
   }
 
-  // AI/Numeric: نص حر بدل buttons
+  // AI/Numeric: نص حر بدل buttons — يقبل أرقام أو كلمات بكل اللهجات
   if (session.path === "ai" || session.path === "numeric") {
     return sendText(from,
       invoice +
       `\n\n━━━━━━━━━━\n` +
-      `اكتب *"تأكيد"* لإتمام الطلب ✅\n` +
-      `أو *"تعديل"* لتعديل الطلب ✏️\n` +
-      `أو *"إلغاء"* لإلغاء الطلب ❌`
+      `*1* — ✅ تأكيد الطلب  (أو: نعم/تمام/اوكي/خلاص)\n` +
+      `*2* — ✏️ تعديل الطلب  (أو: عدل/رجوع/غير)\n` +
+      `*3* — ❌ إلغاء الطلب  (أو: لا/الغاء/بطل)`
     );
   }
 
@@ -3715,17 +3715,21 @@ async function showOrderSummary(from, session) {
 }
 
 async function handleConfirmOrder(from, msg, session) {
-  // قبول الكلمات النصية في AI/Numeric mode
+  // 🎯 تقبل: الأرقام (1/2/3) + كل لهجات العربية والإنجليزية
+  // بعد normalizeAr: ؤ→و، أإآ→ا، ى→ي، ة→ه + إزالة التشكيل
   const trimmed = String(msg || "").trim();
-  if (session.path === "ai" || session.path === "numeric") {
-    if (/^(تأكيد|اكد|أكد|نعم|تمام|اوكي|اوك|confirm|yes|ok)$/i.test(trimmed)) {
-      msg = "CONFIRM_YES";
-    } else if (/^(تعديل|عدل|رجوع|edit|back)$/i.test(trimmed)) {
-      msg = "BACK_CART";
-    } else if (/^(إلغاء|الغاء|الغ|لا|cancel|no)$/i.test(trimmed)) {
-      msg = "CONFIRM_NO";
-    }
-  }
+  const norm    = aiParser.normalizeAr(trimmed);
+
+  // 1️⃣ تأكيد — الأرقام والكلمات الإيجابية بكل اللهجات
+  const RX_YES = /^(1|١|تاكيد|اكد|اكدلي|تاكيدي|نعم|ايوه|ايوة|ايوا|اي|ها|هاي|تمام|تم|تمم|اوكي|اوك|اوك?ي?|خلاص|خلص|يلا|طيب|زين|كويس|كويسه|ممتاز|ماشي|متفق|اتفقنا|موافق|موافقه|قبلت|اقبل|ابعتها|ابعتلي|ارسلها|ارسل|سرها|سيرها|sure|confirm|done|ok|okay|yes|yep|yeah|y|👍|✅|✔)$/i;
+  // 2️⃣ تعديل — أرقام وكلمات تعني العودة للسلة
+  const RX_EDIT = /^(2|٢|تعديل|عدل|عدلي|عدلوا|غير|غيره|غيرها|تغيير|عدل\s*ع?لي|عدل\s*في|رجوع|ارجع|راجع|اقدر\s*اعدل|عاوز\s*اعدل|بدي\s*اعدل|edit|back|change|modify)$/i;
+  // 3️⃣ إلغاء — أرقام و"لا" بكل اللهجات
+  const RX_NO = /^(3|٣|الغاء|الغ|الغي|الغيها|بطل|بطلها|انسي|انسى|لا|لاء|لاه|لاع|لاه|كنسل|cancel|stop|no|nope|n|مش\s*عاوز|مش\s*عايز|ما\s*ابي|ما\s*ابغى|ما\s*اريد|❌|🚫)$/i;
+
+  if (RX_YES.test(norm))      msg = "CONFIRM_YES";
+  else if (RX_EDIT.test(norm)) msg = "BACK_CART";
+  else if (RX_NO.test(norm))   msg = "CONFIRM_NO";
 
   if (msg === "CONFIRM_YES") {
     const { store, storeId } = storeCtx.getStore() || {};

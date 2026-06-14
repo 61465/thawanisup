@@ -2085,6 +2085,10 @@ async function refreshAll() {
   loadWaStatuses();
   pollPendingBadge();
   pollTicketsBadge();
+  // 🔄 preload التذاكر لو الـ tab ظاهر حالياً (لمنع الصفحة الفارغة)
+  if (document.getElementById("ticketsView")?.style?.display !== "none") {
+    setTimeout(() => { try { supTkLoad(); } catch(e){ console.warn(e); } }, 200);
+  }
 }
 
 async function pollTicketsBadge() {
@@ -3027,8 +3031,12 @@ const SUP_TK_P = {
 
 // 🔄 المحمّل الرئيسي — يستدعى عند فتح tab أو تغيير filter
 async function supTkLoad() {
+  console.log("[supTk] 🔄 supTkLoad called at", new Date().toISOString());
   const connEl = document.getElementById("supTkConn");
+  const listBox = document.getElementById("supTkList");
   if (connEl) connEl.textContent = "📡 جاري الاتصال...";
+  if (listBox) listBox.innerHTML = `<div style="text-align:center;padding:40px;color:#9ca3af">⏳ جاري التحميل...</div>`;
+
   try {
     const statusFilter = document.getElementById("supTkFilterStatus")?.value || "";
     const priorityFilter = document.getElementById("supTkFilterPriority")?.value || "";
@@ -3036,20 +3044,27 @@ async function supTkLoad() {
     if (statusFilter) qs.set("status", statusFilter);
     if (priorityFilter) qs.set("priority", priorityFilter);
 
+    console.log("[supTk] 📤 fetching /master/support/tickets?" + qs.toString());
     const [stats, payload] = await Promise.all([
       api("GET", "/master/support/tickets/stats"),
       api("GET", "/master/support/tickets?" + qs.toString()),
     ]);
+    console.log("[supTk] ✅ stats:", stats, "items count:", (payload?.items || []).length);
 
-    if (connEl) connEl.innerHTML = `✅ متصل — آخر تحديث: ${new Date().toLocaleTimeString("ar-EG")}`;
+    if (connEl) connEl.innerHTML = `✅ متصل — تم جلب ${(payload?.items||[]).length} تذكرة — ${new Date().toLocaleTimeString("ar-EG")}`;
     supTkRenderStats(stats);
     supTkRenderList(payload?.items || []);
     supTkUpdateSidebarBadge(stats?.open || 0);
   } catch (e) {
-    console.error("[supTk] load failed:", e);
-    if (connEl) connEl.innerHTML = `<span style="color:#dc2626">⚠️ فشل: ${escapeHtml(e?.error || e?.message || "خطأ غير معروف")} — تحقق من تسجيل الدخول</span>`;
-    const listBox = document.getElementById("supTkList");
-    if (listBox) listBox.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:36px;text-align:center;color:#7f1d1d"><div style="font-size:42px;margin-bottom:10px">⚠️</div><div style="font-weight:800">لم نتمكن من جلب التذاكر</div><div style="font-size:12px;margin-top:6px">${escapeHtml(e?.error || e?.message || "")}</div></div>`;
+    console.error("[supTk] ❌ load failed:", e);
+    const errMsg = e?.error || e?.message || (e?.status === 401 ? "جلسة منتهية — أعد تسجيل الدخول" : "خطأ غير معروف");
+    if (connEl) connEl.innerHTML = `<span style="color:#dc2626;font-weight:800">⚠️ فشل: ${escapeHtml(errMsg)}</span>`;
+    if (listBox) listBox.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:36px;text-align:center;color:#7f1d1d">
+      <div style="font-size:42px;margin-bottom:10px">⚠️</div>
+      <div style="font-weight:800;font-size:15px">لم نتمكن من جلب التذاكر</div>
+      <div style="font-size:13px;margin-top:8px">${escapeHtml(errMsg)}</div>
+      <div style="font-size:11px;margin-top:12px;color:#991b1b">افتح Console (F12) ← تبويب Console لرؤية تفاصيل الخطأ</div>
+    </div>`;
   }
 }
 
