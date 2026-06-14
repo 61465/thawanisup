@@ -306,6 +306,134 @@ function _normKey(name) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// 🧠 العقل 4 (المتخصص): Image-Only Locator — يحدد bboxes فقط
+// لا يستخرج نصاً ولا أسعاراً — مهمته الوحيدة: تحديد مواقع صور المنتجات
+// بدقة pixel-level. يأخذ قائمة الأسماء من brain1 ويسأل: أين صورة كل واحد؟
+// ════════════════════════════════════════════════════════════════════
+async function brain4_imageSpecialist(imageDataUrl, productNames, imgMeta) {
+  if (!productNames.length || !imgMeta?.imageWidth) return null;
+
+  const systemPrompt =
+`أنت متخصص واحد فقط: تحديد مواقع صور المنتجات في صورة المنيو بدقة pixel-level.
+*لا تستخرج أسماء جديدة، لا أسعار، لا أقسام، لا أوصاف*.
+أنت كاميرا فقط — تشير لأين الصور.
+
+أبعاد الصورة: ${imgMeta.imageWidth} × ${imgMeta.imageHeight} pixel
+
+ستحصل على قائمة أسماء منتجات. مهمتك:
+لكل اسم، حدد إن كان له صورة في المنيو، وأين بالضبط.
+
+اقتراحات للدقة:
+✓ افحص الصورة بعناية كاميرا
+✓ ضع bbox حول الصورة فقط — استبعد النص والسعر بجوارها
+✓ لا تضع bbox لو المنتج نص فقط (لا صورة) — اتركه null
+✓ كن دقيقاً بـ ±5 pixel
+✓ لو منتج مكرر في الصورة، اختر الأوضح
+
+ناتج JSON فقط:
+{
+  "items": [
+    { "name": "اسم المنتج كما أعطيتك", "bbox": {"x": 100, "y": 250, "w": 180, "h": 180} },
+    { "name": "منتج آخر بدون صورة", "bbox": null }
+  ]
+}`;
+
+  // 3 محاولات بـ models مختلفة + Gemini إن متوفر
+  const attempts = [];
+  for (const model of VISION_MODELS) {
+    attempts.push((async () => {
+      const res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          temperature: 0.0, // صارم للدقة
+          max_tokens: 3000,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "حدد bbox لكل منتج في القائمة (null لو بدون صورة):\n" + productNames.map((n, i) => `${i+1}. ${n}`).join("\n") },
+                { type: "image_url", image_url: { url: imageDataUrl } },
+              ],
+            },
+          ],
+        }),
+        signal: AbortSignal.timeout(45000),
+      });
+      if (!res.ok) throw new Error(`brain4 ${model} HTTP ${res.status}`);
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content || "{}";
+      return JSON.parse(content);
+    })());
+  }
+  // أضف Gemini كخامس attempt لو المفتاح متوفر (الأدق في object detection)
+  if (GEMINI_KEY) {
+    const imageBase64 = imageDataUrl.split(",")[1];
+    const mimeType = (imageDataUrl.match(/data:([^;]+);/) || [])[1] || "image/jpeg";
+    attempts.push((async () => {
+      const geminiPrompt = systemPrompt + "\n\nالمنتجات:\n" + productNames.map((n, i) => `${i+1}. ${n}`).join("\n");
+      const res = await fetch(GEMINI_URL + "?key=" + GEMINI_KEY, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { text: geminiPrompt },
+            { inline_data: { mime_type: mimeType, data: imageBase64 } },
+          ]}],
+          generationConfig: { temperature: 0.0, maxOutputTokens: 4000, responseMimeType: "application/json" },
+        }),
+        signal: AbortSignal.timeout(45000),
+      });
+      if (!res.ok) throw new Error("gemini HTTP " + res.status);
+      const data = await res.json();
+      const content = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      return JSON.parse(content);
+    })());
+  }
+
+  const results = await Promise.allSettled(attempts);
+  const ok = results.filter(r => r.status === "fulfilled" && r.value?.items).map(r => r.value);
+  const errors = results.filter(r => r.status === "rejected").map(r => r.reason?.message || "?");
+  console.log(`[brain4] specialist: ${ok.length}/${results.length} succeeded${errors.length ? ", errors: " + errors.slice(0,2).join("; ") : ""}`);
+
+  if (!ok.length) return null;
+
+  // دمج النتائج: لكل منتج، نأخذ متوسط bboxes إن اتفقت، أو أوضح واحد
+  const merged = new Map();
+  for (const result of ok) {
+    for (const item of result.items || []) {
+      if (!item?.name || !item?.bbox) continue;
+      const key = _normKey(item.name);
+      if (!merged.has(key)) merged.set(key, { name: item.name, bboxes: [] });
+      merged.get(key).bboxes.push(item.bbox);
+    }
+  }
+
+  // لكل منتج: نأخذ median bbox (أقل تأثراً بـ outliers)
+  const finalItems = [];
+  for (const [_, entry] of merged) {
+    if (!entry.bboxes.length) continue;
+    const median = (arr) => {
+      const s = arr.slice().sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+    };
+    const bbox = {
+      x: Math.round(median(entry.bboxes.map(b => Number(b.x) || 0))),
+      y: Math.round(median(entry.bboxes.map(b => Number(b.y) || 0))),
+      w: Math.round(median(entry.bboxes.map(b => Number(b.w) || 0))),
+      h: Math.round(median(entry.bboxes.map(b => Number(b.h) || 0))),
+    };
+    if (bbox.w > 30 && bbox.h > 30) finalItems.push({ name: entry.name, bbox });
+  }
+  console.log(`[brain4] specialist: ${finalItems.length} bboxes finalized (median of ${ok.length} attempts)`);
+  return { items: finalItems };
+}
+
+// ════════════════════════════════════════════════════════════════════
 // 🧠 العقل 2: Schema Refiner — ينظف ويحقق الـ JSON
 // ════════════════════════════════════════════════════════════════════
 async function brain2_refineSchema(extracted) {
@@ -507,6 +635,16 @@ async function importMenuFromImage({ imageBase64, mimeType, existingProducts, ex
   const t1 = Date.now();
   console.log(`[ai-menu-import] brain1 done in ${t1 - t0}ms — items: ${_countItems(extracted)}`);
 
+  // 🧠 العقل الرابع المتخصص (Image-only) — يعمل بالتوازي مع brain2
+  // مهمته الوحيدة: تحديد bbox لكل منتج بدقة عالية (بدون استخراج نص أو أسعار)
+  const productNames = [];
+  for (const cat of extracted.categories || []) {
+    for (const it of cat.items || []) if (it.name) productNames.push(it.name);
+  }
+  const imgSpecialistPromise = imgMeta._buffer
+    ? brain4_imageSpecialist(imageDataUrl, productNames, imgMeta).catch(() => null)
+    : Promise.resolve(null);
+
   // 🛡️ احفظ image_bboxes من extracted قبل refine (brain2 الصغير قد يحذفها)
   const bboxBackup = new Map();
   for (const cat of extracted.categories || []) {
@@ -518,21 +656,37 @@ async function importMenuFromImage({ imageBase64, mimeType, existingProducts, ex
   }
   console.log(`[ai-menu-import] bboxes detected in extracted: ${bboxBackup.size}/${_countItems(extracted)}`);
 
-  // مرحلة 2 + 3: parallel — تنظيف + استعداد للـ diff
-  const [refined, _] = await Promise.all([
+  // مرحلة 2 + العقل الرابع: parallel — تنظيف + تحديد bboxes متخصص
+  const [refined, specialistBboxes] = await Promise.all([
     brain2_refineSchema(extracted),
-    Promise.resolve(null),
+    imgSpecialistPromise,
   ]);
   const t2 = Date.now();
 
-  // 🔄 أعد الـ bboxes للـ refined (لأن brain2 قد حذفها)
-  for (const cat of refined.categories || []) {
-    for (const it of cat.items || []) {
-      const bbox = bboxBackup.get(_normKey(it.name));
-      if (bbox && !it.image_bbox) it.image_bbox = bbox;
+  // 🔄 ادمج الـ bboxes — أولوية للعقل الرابع المتخصص، ثم backup من brain1
+  const specialistMap = new Map();
+  if (specialistBboxes && Array.isArray(specialistBboxes.items)) {
+    for (const it of specialistBboxes.items) {
+      if (it.bbox && typeof it.bbox === "object") {
+        specialistMap.set(_normKey(it.name), it.bbox);
+      }
     }
   }
-  console.log(`[ai-menu-import] brain2 done in ${t2 - t1}ms — items: ${_countItems(refined)}, bboxes restored`);
+  let fromSpecialist = 0, fromBackup = 0;
+  for (const cat of refined.categories || []) {
+    for (const it of cat.items || []) {
+      const key = _normKey(it.name);
+      // الأفضل: عقل #4 المتخصص (أدق)
+      const specBbox = specialistMap.get(key);
+      if (specBbox) { it.image_bbox = specBbox; fromSpecialist++; continue; }
+      // التالي: backup من brain1
+      if (!it.image_bbox) {
+        const bk = bboxBackup.get(key);
+        if (bk) { it.image_bbox = bk; fromBackup++; }
+      }
+    }
+  }
+  console.log(`[ai-menu-import] brain2 done in ${t2 - t1}ms — items: ${_countItems(refined)}, bboxes: ${fromSpecialist} from specialist + ${fromBackup} from backup`);
 
   // مرحلة 3: مقارنة (بعد التنظيف)
   const diff = await brain3_diff(refined, existingProducts, existingCategories);
@@ -658,7 +812,7 @@ function _bboxIntersectionRatio(a, b) {
   return smaller > 0 ? inter / smaller : 0;
 }
 
-// 🧠 عقل #4: AI verification — هل الصورة تطابق المنتج المتوقع؟
+// 🧠 عقل #5: AI verification — هل الصورة المقطوعة تطابق المنتج؟
 async function _verifyCropMatchesProduct(cropBuf, productName) {
   if (!GROQ_KEY || !cropBuf) return { match: "unknown" };
   const dataUrl = `data:image/jpeg;base64,${cropBuf.toString("base64")}`;
