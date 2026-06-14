@@ -3058,11 +3058,11 @@ async function supTkLoad() {
   } catch (e) {
     console.error("[supTk] ❌ load failed:", e);
     const errMsg = e?.error || e?.message || (e?.status === 401 ? "جلسة منتهية — أعد تسجيل الدخول" : "خطأ غير معروف");
-    if (connEl) connEl.innerHTML = `<span style="color:#dc2626;font-weight:800">⚠️ فشل: ${escapeHtml(errMsg)}</span>`;
+    if (connEl) connEl.innerHTML = `<span style="color:#dc2626;font-weight:800">⚠️ فشل: ${esc(errMsg)}</span>`;
     if (listBox) listBox.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:36px;text-align:center;color:#7f1d1d">
       <div style="font-size:42px;margin-bottom:10px">⚠️</div>
       <div style="font-weight:800;font-size:15px">لم نتمكن من جلب التذاكر</div>
-      <div style="font-size:13px;margin-top:8px">${escapeHtml(errMsg)}</div>
+      <div style="font-size:13px;margin-top:8px">${esc(errMsg)}</div>
       <div style="font-size:11px;margin-top:12px;color:#991b1b">افتح Console (F12) ← تبويب Console لرؤية تفاصيل الخطأ</div>
     </div>`;
   }
@@ -3092,11 +3092,11 @@ function supTkRenderList(items) {
   box.innerHTML = items.map(t => {
     const s = SUP_TK_S[t.status] || SUP_TK_S.open;
     const p = SUP_TK_P[t.priority] || SUP_TK_P.medium;
-    return `<div onclick="supTkOpen('${escapeHtml(t.id)}')" style="background:#fff;border:1px solid #e5e7eb;border-right:5px solid ${s.color};border-radius:12px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,.07)';this.style.transform='translateX(-2px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+    return `<div onclick="supTkOpen('${esc(t.id)}')" style="background:#fff;border:1px solid #e5e7eb;border-right:5px solid ${s.color};border-radius:12px;padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px" onmouseover="this.style.boxShadow='0 6px 20px rgba(0,0,0,.07)';this.style.transform='translateX(-2px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
       <span style="font-size:24px">${p.emoji}</span>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;color:#111827;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>${escapeHtml(t.subject)}</span>
+          <span>${esc(t.subject)}</span>
           <span style="background:${p.color}1a;color:${p.color};padding:1px 8px;border-radius:6px;font-size:10px;font-weight:800">${p.label}</span>
         </div>
         <div style="font-size:11.5px;color:#6b7280;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap">
@@ -3104,7 +3104,7 @@ function supTkRenderList(items) {
           <span>·</span>
           <span>📁 ${supTkCatName(t.category)}</span>
           <span>·</span>
-          <span>🏪 <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:10px">${escapeHtml(t.storeId || "—")}</code></span>
+          <span>🏪 <code style="background:#f3f4f6;padding:1px 5px;border-radius:4px;font-size:10px">${esc(t.storeId || "—")}</code></span>
           <span>·</span>
           <span>🕐 ${supTkAgo(t.updatedAt)}</span>
         </div>
@@ -3154,20 +3154,20 @@ async function supTkOpen(id) {
             <span style="font-size:11px;color:${p.color};font-weight:800">· ${p.emoji} ${p.label}</span>
             <span style="font-size:11px;color:#6b7280">· ${supTkCatName(t.category)}</span>
           </div>
-          <div style="font-size:17px;font-weight:900;color:#111827">${escapeHtml(t.subject)}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:3px">المتجر: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">${escapeHtml(t.storeId)}</code> · فُتحت: ${new Date(t.createdAt).toLocaleString("ar-EG")}</div>
+          <div style="font-size:17px;font-weight:900;color:#111827">${esc(t.subject)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px">المتجر: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px">${esc(t.storeId)}</code> · فُتحت: ${new Date(t.createdAt).toLocaleString("ar-EG")}</div>
         </div>
         <button onclick="supTkCloseModal()" style="background:#fff;border:1px solid #e5e7eb;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
       </div>
       <div style="padding:14px 22px;max-height:50vh;overflow-y:auto">
         ${(t.messages || []).map(m => `<div style="background:${m.from==='master'?'#eff6ff':'#f9fafb'};border-right:3px solid ${m.from==='master'?'#3b82f6':'#9ca3af'};border-radius:10px;padding:11px 14px;margin-bottom:10px">
           <div style="font-size:11px;font-weight:800;color:${m.from==='master'?'#1e40af':'#374151'};margin-bottom:6px">${m.from==='master'?'🛠️ الدعم':'👤 المتجر'} · ${supTkAgo(m.ts)}</div>
-          <div style="font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word">${escapeHtml(m.body)}</div>
+          <div style="font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word">${esc(m.body)}</div>
         </div>`).join("")}
       </div>
       <div style="padding:12px 22px;border-top:1px solid #e5e7eb;background:#fafbfc;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span style="font-size:12px;font-weight:700;color:#374151">الحالة:</span>
-        <select id="supTkStatusSel" onchange="supTkChangeStatus('${escapeHtml(t.id)}',this.value)" style="padding:7px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-weight:700;font-size:13px">
+        <select id="supTkStatusSel" onchange="supTkChangeStatus('${esc(t.id)}',this.value)" style="padding:7px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-weight:700;font-size:13px">
           <option value="open" ${t.status==='open'?'selected':''}>🔴 مفتوحة</option>
           <option value="in_progress" ${t.status==='in_progress'?'selected':''}>🟡 قيد المعالجة</option>
           <option value="resolved" ${t.status==='resolved'?'selected':''}>✅ محلولة</option>
@@ -3176,7 +3176,7 @@ async function supTkOpen(id) {
       </div>
       <div style="padding:14px 22px;border-top:1px solid #e5e7eb">
         <textarea id="supTkReplyBox" rows="3" placeholder="اكتب الرد للمتجر... (سيصله إشعار واتساب فوراً)" style="width:100%;padding:11px;border:1.5px solid #d1d5db;border-radius:10px;font-family:inherit;font-size:14px;resize:vertical"></textarea>
-        <button onclick="supTkSendReply('${escapeHtml(t.id)}')" style="width:100%;background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px">📤 إرسال الرد + إشعار واتساب للمتجر</button>
+        <button onclick="supTkSendReply('${esc(t.id)}')" style="width:100%;background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:8px">📤 إرسال الرد + إشعار واتساب للمتجر</button>
       </div>`;
     document.getElementById("supTkModal").style.display = "flex";
   } catch (e) {
@@ -3251,7 +3251,7 @@ async function loadGrowth() {
       </div>`;
     }).join("");
   } catch (e) {
-    document.getElementById("growthKpis").innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#dc2626;padding:20px">فشل: ${escapeHtml(e.message)}</div>`;
+    document.getElementById("growthKpis").innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#dc2626;padding:20px">فشل: ${esc(e.message)}</div>`;
   }
 }
 
