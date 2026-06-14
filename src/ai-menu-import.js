@@ -569,10 +569,14 @@ async function _cropImagesForNewItems(refined, diff, imgMeta) {
     }
   }
 
-  // 🛡️ طبقة 1: منع التداخل — لو bbox متداخل مع آخر > 30%، نرفض الأصغر
+  // 🛡️ طبقة 1: منع التداخل — > 50% فقط (كان 30% صارم جداً)
+  // + نتجاهل تكرار نفس الاسم (يعني الـ AI كرّر، لا تداخل حقيقي)
   const accepted = [];
+  const seenNames = new Set();
   for (const b of bboxList) {
-    const conflict = accepted.find(a => _bboxIntersectionRatio(a.bbox, b.bbox) > 0.3);
+    if (seenNames.has(b.key)) continue; // تكرار اسم → خذ أول واحد فقط
+    seenNames.add(b.key);
+    const conflict = accepted.find(a => _bboxIntersectionRatio(a.bbox, b.bbox) > 0.5);
     if (conflict) {
       console.warn(`[crop:overlap] rejected "${b.name}" (overlaps with "${conflict.name}")`);
       continue;
@@ -600,13 +604,13 @@ async function _cropImagesForNewItems(refined, diff, imgMeta) {
     const y = Math.max(0, rawY + dy);
     const w = Math.max(20, Math.min(imgMeta.imageWidth - x, rawW - 2 * dx));
     const h = Math.max(20, Math.min(imgMeta.imageHeight - y, rawH - 2 * dy));
-    // 🛡️ طبقة 2: قيود الحجم — لا صغير جداً ولا طويل جداً
-    if (w < 80 || h < 80) { console.warn(`[crop:too-small] "${item.name}"`); continue; }
+    // 🛡️ طبقة 2: قيود الحجم — مخفّفة قليلاً (50 بدل 80)
+    if (w < 50 || h < 50) { console.warn(`[crop:too-small] "${item.name}" ${w}x${h}`); continue; }
     const aspect = w / h;
-    if (aspect > 4 || aspect < 0.25) { console.warn(`[crop:bad-aspect] "${item.name}" ratio=${aspect.toFixed(2)}`); continue; }
-    // 🛡️ طبقة 3: نسبة من الصورة — لا تأخذ > 40% من المنيو كله (تكون نصاً غالباً)
+    if (aspect > 5 || aspect < 0.2) { console.warn(`[crop:bad-aspect] "${item.name}" ratio=${aspect.toFixed(2)}`); continue; }
+    // 🛡️ طبقة 3: نسبة من الصورة — < 50%
     const areaPct = (w * h) / (imgMeta.imageWidth * imgMeta.imageHeight);
-    if (areaPct > 0.4) { console.warn(`[crop:too-big] "${item.name}" pct=${(areaPct*100).toFixed(0)}%`); continue; }
+    if (areaPct > 0.5) { console.warn(`[crop:too-big] "${item.name}" pct=${(areaPct*100).toFixed(0)}%`); continue; }
 
     cropTasks.push((async () => {
       try {
@@ -617,18 +621,17 @@ async function _cropImagesForNewItems(refined, diff, imgMeta) {
           .resize({ width: 600, withoutEnlargement: true })
           .jpeg({ quality: 82 })
           .toBuffer();
-        // 🛡️ طبقة 4: AI verification — هل الصورة فعلاً للمنتج؟ (عقل رابع)
-        const verifiedResult = await _verifyCropMatchesProduct(cropBuf, item.name).catch(() => ({ match: "unknown", confidence: "low" }));
+        // 🛡️ طبقة 4: AI verification — احفظ الصورة مباشرة (متفائلون)
+        // نُجري verification لكن لا نرفض إلا لو AI واثق "no" مع confidence high
         await fs.promises.writeFile(filepath, cropBuf);
-        if (verifiedResult.match === "no") {
-          console.warn(`[crop:ai-reject] "${item.name}" — AI says: ${verifiedResult.reason || "doesn't match"}`);
-          // احفظ الصورة لكن علّم item بـ rejected لنريها للمستخدم برسالة تنبيه
-          item._croppedImageUrl = `/store-images/${filename}`;
+        item._croppedImageUrl = `/store-images/${filename}`;
+        const verifiedResult = await _verifyCropMatchesProduct(cropBuf, item.name).catch(() => ({ match: "unknown", confidence: "low" }));
+        if (verifiedResult.match === "no" && verifiedResult.confidence === "high") {
+          console.warn(`[crop:ai-reject] "${item.name}" — high-confidence no: ${verifiedResult.reason || ""}`);
           item._cropVerification = { match: false, reason: verifiedResult.reason, confidence: verifiedResult.confidence };
           rejected++;
         } else {
-          item._croppedImageUrl = `/store-images/${filename}`;
-          item._cropVerification = { match: true, confidence: verifiedResult.confidence };
+          item._cropVerification = { match: verifiedResult.match === "yes", confidence: verifiedResult.confidence };
           if (verifiedResult.match === "yes") verified++;
           cropped++;
         }
