@@ -832,6 +832,7 @@ tr:hover td{background:#fafcfa}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openCatModal()">➕ صنف</button>
           <button class="btn btn-primary btn-sm" onclick="openProductModal()"><span data-biz="itemAdd">➕ منتج</span></button>
+          <button onclick="openAiImport()" title="استيراد المنيو من صورة بـ AI" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;padding:7px 14px;border-radius:8px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px;box-shadow:0 3px 10px rgba(124,58,237,.3)">🪡 استيراد من صورة</button>
           <button class="btn btn-outline btn-sm" onclick="generateMenuImage()" title="توليد صورة قائمة شاملة">🖼️ صورة القائمة</button>
         </div>
       </div>
@@ -1386,6 +1387,80 @@ tr:hover td{background:#fafcfa}
         <div id="botqPreview" style="padding:14px;background:#f0f9ff;border-radius:8px;margin:8px 14px 16px;font-family:'Segoe UI';font-size:14px;color:#0c4a6e;line-height:1.9;white-space:pre-wrap"></div>
       </div>
     </section>
+
+    <!-- 🪡 AI Menu Import Modal -->
+    <div id="aiImportModal" onclick="if(event.target===this)closeAiImport()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1300;align-items:flex-start;justify-content:center;padding:14px;overflow-y:auto">
+      <div style="background:#fff;border-radius:16px;max-width:760px;width:100%;box-shadow:0 25px 70px rgba(0,0,0,.4);overflow:hidden;margin-top:20px">
+        <div style="background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:900">🪡 استيراد المنيو بالذكاء الاصطناعي</div>
+            <div style="font-size:12px;opacity:.9;margin-top:3px">3 عقول AI تعمل بالتوازي — قراءة + تنظيم + مقارنة بالموجود</div>
+          </div>
+          <button onclick="closeAiImport()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+        </div>
+
+        <!-- Step 1: Upload -->
+        <div id="aiImportStep1" style="padding:22px">
+          <div style="background:#faf5ff;border:2px dashed #d8b4fe;border-radius:14px;padding:30px;text-align:center;cursor:pointer" onclick="document.getElementById('aiImgFile').click()">
+            <div style="font-size:60px;margin-bottom:12px">📷</div>
+            <div style="font-weight:800;color:#6b21a8;font-size:16px;margin-bottom:6px">اضغط لرفع صورة المنيو</div>
+            <div style="font-size:12px;color:#9333ea">PNG / JPG / WebP — حتى 4 MB</div>
+          </div>
+          <input id="aiImgFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="aiImportPreview(this.files[0])">
+
+          <div id="aiImportPreview" style="display:none;margin-top:14px"></div>
+
+          <div style="background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-top:14px;font-size:12px;color:#1e40af;line-height:1.8">
+            💡 <b>كيف يعمل:</b><br>
+            • <b>العقل 1:</b> يقرأ الصورة ويستخرج كل الأصناف والأسعار (3 محاولات بالتوازي للدقة)<br>
+            • <b>العقل 2:</b> ينظّف ويرتّب البيانات منطقياً<br>
+            • <b>العقل 3:</b> يقارن بالموجود → يحدد 🆕 جديد / 🔄 تغيير سعر / ✅ كما هو<br>
+            • التطبيق اختياري — راجع كل عنصر قبل الموافقة
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button onclick="closeAiImport()" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:12px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+            <button id="aiImportStartBtn" onclick="startAiImport()" disabled style="flex:2;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;padding:12px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit;opacity:.5">🧠 ابدأ التحليل</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Loading (3 brains) -->
+        <div id="aiImportStep2" style="display:none;padding:36px 22px;text-align:center">
+          <div style="font-size:56px;margin-bottom:14px;animation:pulse 1.5s ease-in-out infinite">🧠</div>
+          <div style="font-weight:900;color:#6b21a8;font-size:18px;margin-bottom:24px">العقول تعمل الآن...</div>
+          <div id="brainStatus" style="max-width:380px;margin:0 auto;text-align:right">
+            <div id="brain1Row" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f3f4f6;border-radius:8px;margin-bottom:6px">
+              <span class="brainIcon">⏳</span>
+              <div style="flex:1"><b>العقل 1:</b> قراءة الصورة...</div>
+            </div>
+            <div id="brain2Row" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f3f4f6;border-radius:8px;margin-bottom:6px;opacity:.5">
+              <span class="brainIcon">⏸️</span>
+              <div style="flex:1"><b>العقل 2:</b> تنظيف وترتيب</div>
+            </div>
+            <div id="brain3Row" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f3f4f6;border-radius:8px;opacity:.5">
+              <span class="brainIcon">⏸️</span>
+              <div style="flex:1"><b>العقل 3:</b> مقارنة بالمنيو الحالي</div>
+            </div>
+          </div>
+          <div style="margin-top:18px;font-size:11px;color:#9ca3af">قد يستغرق 15-45 ثانية حسب تعقيد الصورة</div>
+        </div>
+
+        <!-- Step 3: Review -->
+        <div id="aiImportStep3" style="display:none;padding:18px 22px;max-height:75vh;overflow-y:auto">
+          <div id="aiImportSummary" style="margin-bottom:14px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid #e5e7eb">
+            <button class="aiTabBtn" data-tab="new" onclick="aiSwitchTab('new')" style="padding:9px 16px;border:none;background:none;cursor:pointer;font-weight:800;color:#16a34a;border-bottom:3px solid #16a34a">🆕 جديد <span id="aiCountNew">0</span></button>
+            <button class="aiTabBtn" data-tab="updated" onclick="aiSwitchTab('updated')" style="padding:9px 16px;border:none;background:none;cursor:pointer;font-weight:800;color:#9ca3af">🔄 تغييرات <span id="aiCountUpd">0</span></button>
+            <button class="aiTabBtn" data-tab="unchanged" onclick="aiSwitchTab('unchanged')" style="padding:9px 16px;border:none;background:none;cursor:pointer;font-weight:800;color:#9ca3af">✅ كما هو <span id="aiCountSame">0</span></button>
+          </div>
+          <div id="aiTabContent"></div>
+          <div style="display:flex;gap:8px;margin-top:18px;border-top:1px solid #e5e7eb;padding-top:14px">
+            <button onclick="closeAiImport()" style="flex:1;background:#fff;border:1px solid #d1d5db;color:#374151;padding:13px;border-radius:9px;cursor:pointer;font-weight:700;font-family:inherit">إلغاء</button>
+            <button onclick="aiApplySelected()" style="flex:2;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;padding:13px;border-radius:9px;cursor:pointer;font-weight:800;font-family:inherit;box-shadow:0 3px 10px rgba(22,163,74,.3)">✅ تطبيق المختار على المنيو</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 💝 Thank-You Message Modal -->
     <div id="tyModal" onclick="if(event.target===this)closeThankYouEdit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1200;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
@@ -4123,6 +4198,185 @@ async function botqLoad() {
 
 let _botqWelcome = "";
 let _botqThankYou = "";
+
+// ═════════════ 🪡 AI Menu Import ═════════════
+let _aiImg = null;
+let _aiResult = null;
+let _aiSelectedNew = new Set();
+let _aiSelectedUpd = new Set();
+let _aiCurrentTab = "new";
+
+function openAiImport() {
+  _aiImg = null; _aiResult = null;
+  _aiSelectedNew.clear(); _aiSelectedUpd.clear();
+  document.getElementById("aiImportPreview").style.display = "none";
+  document.getElementById("aiImportPreview").innerHTML = "";
+  document.getElementById("aiImgFile").value = "";
+  document.getElementById("aiImportStartBtn").disabled = true;
+  document.getElementById("aiImportStartBtn").style.opacity = ".5";
+  document.getElementById("aiImportStep1").style.display = "";
+  document.getElementById("aiImportStep2").style.display = "none";
+  document.getElementById("aiImportStep3").style.display = "none";
+  document.getElementById("aiImportModal").style.display = "flex";
+}
+function closeAiImport() {
+  document.getElementById("aiImportModal").style.display = "none";
+}
+
+async function aiImportPreview(file) {
+  if (!file) return;
+  if (file.size > 5_000_000) { showToast("⚠️ الصورة كبيرة (الحد 4MB)", "error"); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    const base64 = dataUrl.split(",")[1];
+    _aiImg = { base64, mimeType: file.type, dataUrl };
+    document.getElementById("aiImportPreview").innerHTML = `
+      <div style="text-align:center">
+        <img src="${dataUrl}" style="max-height:200px;max-width:100%;border-radius:10px;border:1px solid #e5e7eb">
+        <div style="font-size:12px;color:#6b7280;margin-top:6px">${file.name} · ${Math.round(file.size/1024)} KB</div>
+      </div>`;
+    document.getElementById("aiImportPreview").style.display = "";
+    const btn = document.getElementById("aiImportStartBtn");
+    btn.disabled = false; btn.style.opacity = "1";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function startAiImport() {
+  if (!_aiImg) return;
+  document.getElementById("aiImportStep1").style.display = "none";
+  document.getElementById("aiImportStep2").style.display = "";
+  // simulate progress visualization
+  setTimeout(() => _aiSetBrain(2, "running"), 8000);
+  setTimeout(() => _aiSetBrain(3, "running"), 16000);
+  try {
+    const r = await api("POST", "/store/menu/ai-import", { imageBase64: _aiImg.base64, mimeType: _aiImg.mimeType });
+    _aiSetBrain(1, "done"); _aiSetBrain(2, "done"); _aiSetBrain(3, "done");
+    _aiResult = r;
+    // pre-select all new + updated
+    (r.diff.newItems || []).forEach((_, i) => _aiSelectedNew.add(i));
+    (r.diff.updatedItems || []).forEach((_, i) => _aiSelectedUpd.add(i));
+    setTimeout(() => _aiShowReview(r), 600);
+  } catch (e) {
+    showToast("فشل التحليل: " + (e.message || ""), "error");
+    closeAiImport();
+  }
+}
+
+function _aiSetBrain(n, state) {
+  const row = document.getElementById("brain" + n + "Row");
+  if (!row) return;
+  const icon = row.querySelector(".brainIcon");
+  if (state === "running") { row.style.opacity = "1"; row.style.background = "#fef3c7"; icon.textContent = "⏳"; }
+  if (state === "done")    { row.style.opacity = "1"; row.style.background = "#dcfce7"; icon.textContent = "✅"; }
+}
+
+function _aiShowReview(r) {
+  document.getElementById("aiImportStep2").style.display = "none";
+  document.getElementById("aiImportStep3").style.display = "";
+  const s = r.diff.summary || {};
+  const t = r.timings || {};
+  document.getElementById("aiImportSummary").innerHTML = `
+    <div style="background:linear-gradient(135deg,#faf5ff,#fff);border:1px solid #d8b4fe;border-radius:10px;padding:12px 14px">
+      <div style="font-weight:800;color:#6b21a8;font-size:14px">📊 نتيجة التحليل (${Math.round((t.total||0)/1000)}ث)</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px">
+        <span><b style="color:#16a34a">🆕 ${s.new||0}</b> جديد</span>
+        <span><b style="color:#f59e0b">🔄 ${s.updated||0}</b> تغيير</span>
+        <span><b style="color:#6b7280">✅ ${s.unchanged||0}</b> كما هو</span>
+        ${s.newCats ? `<span><b style="color:#7c3aed">📂 ${s.newCats}</b> قسم جديد</span>` : ""}
+      </div>
+    </div>`;
+  document.getElementById("aiCountNew").textContent  = s.new || 0;
+  document.getElementById("aiCountUpd").textContent  = s.updated || 0;
+  document.getElementById("aiCountSame").textContent = s.unchanged || 0;
+  aiSwitchTab("new");
+}
+
+function aiSwitchTab(tab) {
+  _aiCurrentTab = tab;
+  document.querySelectorAll(".aiTabBtn").forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.style.color = active ? (tab==="new"?"#16a34a":tab==="updated"?"#f59e0b":"#6b7280") : "#9ca3af";
+    b.style.borderBottom = active ? `3px solid ${tab==="new"?"#16a34a":tab==="updated"?"#f59e0b":"#6b7280"}` : "3px solid transparent";
+  });
+  _aiRenderTab(tab);
+}
+
+function _aiRenderTab(tab) {
+  const box = document.getElementById("aiTabContent");
+  if (!_aiResult) { box.innerHTML = ""; return; }
+  const cur = localStorage.getItem("store_currency") || "ر.س";
+  if (tab === "new") {
+    const items = _aiResult.diff.newItems || [];
+    if (!items.length) { box.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af">لا منتجات جديدة</div>`; return; }
+    box.innerHTML = items.map((it, i) => {
+      const checked = _aiSelectedNew.has(i) ? "checked" : "";
+      const confColor = it.confidence === "low" ? "#dc2626" : it.confidence === "medium" ? "#f59e0b" : "#16a34a";
+      const confLabel = it.confidence === "low" ? "⚠️ سعر غير واضح" : it.confidence === "medium" ? "🟡 يحتاج مراجعة" : "✅ مؤكد";
+      return `
+        <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;background:#fff">
+          <input type="checkbox" ${checked} onchange="_aiToggleNew(${i})" style="width:20px;height:20px;cursor:pointer">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <input type="text" value="${esc(it.name)}" onchange="_aiResult.diff.newItems[${i}].name=this.value" style="flex:1;min-width:140px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-family:inherit;font-weight:700">
+              <input type="number" value="${it.price||0}" step="0.5" onchange="_aiResult.diff.newItems[${i}].price=parseFloat(this.value)||0" style="width:90px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-family:inherit;font-weight:700;text-align:center">
+              <span style="font-size:12px;color:#6b7280">${cur}</span>
+            </div>
+            <div style="font-size:11px;color:#6b7280;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">
+              <span>📂 ${esc(it.categoryName||"")}${it.isNewCat?' <span style="color:#7c3aed">(قسم جديد)</span>':''}</span>
+              <span style="color:${confColor}">${confLabel}</span>
+            </div>
+            ${it.description?`<div style="font-size:12px;color:#9ca3af;margin-top:4px">${esc(it.description)}</div>`:""}
+          </div>
+        </div>`;
+    }).join("");
+  } else if (tab === "updated") {
+    const items = _aiResult.diff.updatedItems || [];
+    if (!items.length) { box.innerHTML = `<div style="text-align:center;padding:30px;color:#9ca3af">لا تغييرات</div>`; return; }
+    box.innerHTML = items.map((it, i) => {
+      const checked = _aiSelectedUpd.has(i) ? "checked" : "";
+      return `
+        <div style="border:1px solid #fde68a;background:#fffbeb;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+          <input type="checkbox" ${checked} onchange="_aiToggleUpd(${i})" style="width:20px;height:20px;cursor:pointer">
+          <div style="flex:1">
+            <div style="font-weight:800;color:#78350f">${esc(it.oldName)}</div>
+            ${it.priceChanged?`<div style="font-size:13px;color:#9a3412;margin-top:4px">💰 السعر: <s style="opacity:.6">${it.oldPrice} ${cur}</s> → <b style="color:#16a34a">${it.newPrice} ${cur}</b></div>`:""}
+            ${it.nameChanged?`<div style="font-size:13px;color:#9a3412;margin-top:4px">📝 الاسم: <s style="opacity:.6">${esc(it.oldName)}</s> → <b>${esc(it.newName)}</b></div>`:""}
+          </div>
+        </div>`;
+    }).join("");
+  } else {
+    const items = _aiResult.diff.unchanged || [];
+    box.innerHTML = items.length
+      ? items.map(it => `<div style="padding:8px 12px;background:#f9fafb;border-radius:8px;margin-bottom:5px;font-size:13px;display:flex;justify-content:space-between"><span>${esc(it.name)}</span><span style="color:#6b7280">${it.price} ${cur}</span></div>`).join("")
+      : `<div style="text-align:center;padding:30px;color:#9ca3af">لا منتجات مطابقة</div>`;
+  }
+}
+
+function _aiToggleNew(i) { if(_aiSelectedNew.has(i))_aiSelectedNew.delete(i); else _aiSelectedNew.add(i); }
+function _aiToggleUpd(i) { if(_aiSelectedUpd.has(i))_aiSelectedUpd.delete(i); else _aiSelectedUpd.add(i); }
+
+async function aiApplySelected() {
+  if (!_aiResult) return;
+  const newItems = (_aiResult.diff.newItems||[]).filter((_, i) => _aiSelectedNew.has(i));
+  const updatedItems = (_aiResult.diff.updatedItems||[]).filter((_, i) => _aiSelectedUpd.has(i));
+  // أقسام جديدة: فقط لو في منتجات جديدة مرتبطة بها
+  const usedCatIds = new Set(newItems.map(n => n.categoryId));
+  const newCategories = (_aiResult.diff.newCategories||[]).filter(c => usedCatIds.has(c._tempId));
+  if (!newItems.length && !updatedItems.length) {
+    showToast("لم تختر أي شيء للتطبيق", "error"); return;
+  }
+  if (!confirm(`تطبيق التغييرات؟\n• ${newItems.length} منتج جديد\n• ${updatedItems.length} تحديث\n• ${newCategories.length} قسم جديد`)) return;
+  try {
+    const r = await api("POST", "/store/menu/ai-apply", { newItems, updatedItems, newCategories });
+    showToast(`✅ تم: ${r.added} جديد، ${r.updated} محدّث، ${r.newCats} قسم`, "success");
+    closeAiImport();
+    if (typeof loadProducts === "function") loadProducts();
+  } catch (e) {
+    showToast("فشل التطبيق: " + (e.message || ""), "error");
+  }
+}
 
 function openThankYouEdit() {
   document.getElementById("tyText").value = _botqThankYou || `🔥 *شكراً من القلب!*\n\nتقييمك الرائع لـ *{{store_name}}* يعني لنا الكثير 🌟\n\nخصم 10% على طلبك القادم 💚`;

@@ -456,6 +456,102 @@ router.get("/store/archive/daily", auth, (req, res) => {
   });
 });
 
+// ═════════ 🪡 AI Menu Import — استيراد منيو من صورة ═════════════════════
+// POST /store/menu/ai-import — يحلل الصورة بـ 3 عقول AI ويرجع منيو + diff
+// Limit: 4 MB image
+router.post("/store/menu/ai-import", auth, async (req, res) => {
+  const { imageBase64, mimeType } = req.body || {};
+  if (!imageBase64 || typeof imageBase64 !== "string") {
+    return res.status(400).json({ error: "صورة مطلوبة (base64)" });
+  }
+  // حد ~4 MB (base64 size > raw size بحوالي 33%)
+  if (imageBase64.length > 5_500_000) {
+    return res.status(413).json({ error: "حجم الصورة كبير جداً (الحد الأقصى 4MB)" });
+  }
+  const allowedMime = /^image\/(png|jpeg|jpg|webp)$/i;
+  if (mimeType && !allowedMime.test(mimeType)) {
+    return res.status(415).json({ error: "نوع غير مدعوم — استخدم PNG/JPG/WebP" });
+  }
+  const store = getStore(req.storeId);
+  if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
+
+  try {
+    const aiMenu = require("./ai-menu-import");
+    const result = await aiMenu.importMenuFromImage({
+      imageBase64,
+      mimeType:        mimeType || "image/jpeg",
+      existingProducts: store.products || [],
+      existingCategories: store.categories || [],
+    });
+    audit({
+      actor: { type: "store", id: req.storeId },
+      action: "menu.ai-import",
+      meta:   { new: result.diff.summary.new, updated: result.diff.summary.updated, unchanged: result.diff.summary.unchanged },
+    }, req);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error("[ai-import] failed:", e.message);
+    res.status(500).json({ error: e.message || "فشل تحليل الصورة" });
+  }
+});
+
+// POST /store/menu/ai-apply — يطبق النتائج المختارة (يضيف/يحدّث المنيو)
+router.post("/store/menu/ai-apply", auth, (req, res) => {
+  const { newItems = [], updatedItems = [], newCategories = [] } = req.body || {};
+  const store = getStore(req.storeId);
+  if (!store) return res.status(404).json({ error: "المتجر غير موجود" });
+
+  const products   = [...(store.products || [])];
+  const categories = [...(store.categories || [])];
+
+  // أضف الأقسام الجديدة (mapping tempId → realId)
+  const catIdMap = new Map();
+  for (const nc of newCategories) {
+    if (!nc?.name) continue;
+    const realId = "c_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+    categories.push({ id: realId, name: String(nc.name).trim().slice(0, 80), emoji: String(nc.emoji || "🍽️").slice(0, 8) });
+    if (nc._tempId) catIdMap.set(nc._tempId, realId);
+  }
+
+  // أضف المنتجات الجديدة
+  let added = 0;
+  for (const item of newItems) {
+    if (!item?.name) continue;
+    const catId = catIdMap.get(item.categoryId) || item.categoryId || (categories[0]?.id || "");
+    products.push({
+      id:           "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+      name:         String(item.name).trim().slice(0, 120),
+      price:        Number(item.price) || 0,
+      description:  String(item.description || "").trim().slice(0, 500),
+      category:     catId,
+      available:    true,
+      images:       [],
+      imageUrl:     null,
+      stock:        null,
+      priceOnRequest: !!item.priceOnRequest,
+    });
+    added++;
+  }
+
+  // طبّق التحديثات (السعر/الاسم)
+  let updated = 0;
+  for (const up of updatedItems) {
+    const idx = products.findIndex(p => p.id === up.id);
+    if (idx < 0) continue;
+    if (up.newPrice !== undefined && Number(up.newPrice) > 0) products[idx].price = Number(up.newPrice);
+    if (up.newName) products[idx].name = String(up.newName).trim().slice(0, 120);
+    updated++;
+  }
+
+  updateStore(req.storeId, { products, categories });
+  audit({
+    actor: { type: "store", id: req.storeId },
+    action: "menu.ai-apply",
+    meta:   { added, updated, newCats: newCategories.length },
+  }, req);
+  res.json({ ok: true, added, updated, newCats: newCategories.length });
+});
+
 // ═════════ 🤖 Bot Questions — الأسئلة الديناميكية لكل بيزنس ═════════════
 const DEFAULT_QUESTIONS_BY_TYPE = {
   delivery: [
