@@ -482,6 +482,8 @@ router.post("/store/menu/ai-import", auth, async (req, res) => {
       mimeType:        mimeType || "image/jpeg",
       existingProducts: store.products || [],
       existingCategories: store.categories || [],
+      businessType:    store.businessType || store.adminConfig?.label || "متجر",
+      storeName:       store.storeName,
     });
     audit({
       actor: { type: "store", id: req.storeId },
@@ -518,6 +520,9 @@ router.post("/store/menu/ai-apply", auth, (req, res) => {
   for (const item of newItems) {
     if (!item?.name) continue;
     const catId = catIdMap.get(item.categoryId) || item.categoryId || (categories[0]?.id || "");
+    // 🪡 صورة مقتطعة من المنيو (لو AI استخرجها)
+    const croppedImg = String(item._croppedImageUrl || "").trim();
+    const isValidCrop = croppedImg.startsWith("/store-images/");
     products.push({
       id:           "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
       name:         String(item.name).trim().slice(0, 120),
@@ -525,8 +530,8 @@ router.post("/store/menu/ai-apply", auth, (req, res) => {
       description:  String(item.description || "").trim().slice(0, 500),
       category:     catId,
       available:    true,
-      images:       [],
-      imageUrl:     null,
+      images:       isValidCrop ? [croppedImg] : [],
+      imageUrl:     isValidCrop ? croppedImg : null,
       stock:        null,
       priceOnRequest: !!item.priceOnRequest,
     });

@@ -13,6 +13,8 @@
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
+let sharp; try { sharp = require("sharp"); } catch {}
+
 const VISION_MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "meta-llama/llama-4-maverick-17b-128e-instruct",
@@ -25,7 +27,7 @@ const AI_TIMEOUT_MS = 45_000;
 // ════════════════════════════════════════════════════════════════════
 // 🧠 العقل 1: Vision Extractor — يقرأ الصورة
 // ════════════════════════════════════════════════════════════════════
-async function _callVision(imageDataUrl, model, temperature = 0.1) {
+async function _callVision(imageDataUrl, model, temperature = 0.1, ctx = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
   try {
@@ -46,6 +48,16 @@ async function _callVision(imageDataUrl, model, temperature = 0.1) {
             content:
 `أنت محلّل صور خبير في قراءة منيو المطاعم والكافيهات بالعربية والإنجليزية.
 استخرج كل العناصر بدقة فائقة من الصورة.
+
+${ctx.businessType ? `🎯 *نوع النشاط:* ${ctx.businessType}${ctx.storeName ? " — " + ctx.storeName : ""}` : ""}
+${ctx.existingCategories?.length ? `📂 *الأقسام الموجودة في المتجر:*\n${ctx.existingCategories.map(c => `  - ${c.name}`).join("\n")}\n⚠️ استخدم نفس هذه الأسماء بدقة لو ظهر منتج مطابق` : ""}
+
+${ctx.imageWidth ? `📏 *أبعاد الصورة:* ${ctx.imageWidth} × ${ctx.imageHeight} pixel
+🖼️ *مهم:* لكل منتج له صورة مرئية في المنيو، أضف "image_bbox": {"x": رقم, "y": رقم, "w": رقم, "h": رقم}
+   - الإحداثيات بالـ pixel، يبدأ (0,0) أعلى يسار الصورة
+   - x = الحافة اليسرى، y = الحافة العلوية، w = العرض، h = الارتفاع
+   - **مهم:** ضع image_bbox فقط لو فعلاً ترى صورة للمنتج. لو نص فقط → اتركها null
+   - دقيقاً قدر الإمكان — لا توسّع الـ bbox على نص بجانبها` : ""}
 
 الناتج JSON فقط بالشكل:
 {
@@ -70,10 +82,13 @@ async function _callVision(imageDataUrl, model, temperature = 0.1) {
 1. استخرج كل صنف وفئة موجود — لا تتخطى شيئاً
 2. إذا السعر غير واضح، ضع 0 و confidence: "low"
 3. حافظ على ترتيب المنيو من الأعلى للأسفل
-4. اسم القسم: إن لم يوجد فاسم منطقي ("المشروبات الباردة"، "الحلويات"...)
-5. لا تخترع منتجات ولا أسعار غير موجودة
-6. أرقام عربية أو إنجليزية → ارجع رقم إنجليزي
-7. النص بنفس لغته (لا تترجم)`,
+4. **القسم يجب أن يكون موجوداً فعلاً في الصورة كعنوان واضح** — لا تخترع أقسام (لا "متنوع"، لا "إضافات" إن لم تظهر)
+5. **لا تنشئ قسم لا يخص النشاط** — لو نشاطك "كافيه" لا تنشئ "فطائر/مخبوزات" إلا لو ظاهر صراحة كقسم في الصورة
+6. لو القسم غير مكتوب لكن المنتجات متشابهة (3+ مشروبات متتالية)، أنشئ قسم منطقياً بسيطاً
+7. لا تخترع منتجات ولا أسعار غير موجودة
+8. أرقام عربية أو إنجليزية → ارجع رقم إنجليزي
+9. النص بنفس لغته (لا تترجم)
+10. حاول استخدام نفس أسماء الأقسام الموجودة لو ظهر منتج مطابق`,
           },
           {
             role: "user",
@@ -101,11 +116,11 @@ async function _callVision(imageDataUrl, model, temperature = 0.1) {
 }
 
 // 3 محاولات بنماذج/temperatures مختلفة → نأخذ الأفضل (majority + ثقة)
-async function brain1_extractFromImage(imageDataUrl) {
+async function brain1_extractFromImage(imageDataUrl, ctx = {}) {
   const attempts = await Promise.allSettled([
-    _callVision(imageDataUrl, VISION_MODELS[0], 0.0),
-    _callVision(imageDataUrl, VISION_MODELS[0], 0.2),
-    _callVision(imageDataUrl, VISION_MODELS[1], 0.1),
+    _callVision(imageDataUrl, VISION_MODELS[0], 0.0, ctx),
+    _callVision(imageDataUrl, VISION_MODELS[0], 0.2, ctx),
+    _callVision(imageDataUrl, VISION_MODELS[1], 0.1, ctx),
   ]);
 
   const ok = attempts.filter(a => a.status === "fulfilled").map(a => a.value);
@@ -341,13 +356,30 @@ function _suggestEmoji(catName) {
 // ════════════════════════════════════════════════════════════════════
 // 🚀 الـ Orchestrator — يشغّل العقول الثلاثة
 // ════════════════════════════════════════════════════════════════════
-async function importMenuFromImage({ imageBase64, mimeType, existingProducts, existingCategories }) {
+async function importMenuFromImage({ imageBase64, mimeType, existingProducts, existingCategories, businessType, storeName }) {
   if (!GROQ_KEY) throw new Error("لا يوجد مفتاح AI مُعرّف (GROQ_API_KEY)");
   const imageDataUrl = `data:${mimeType || "image/jpeg"};base64,${imageBase64}`;
 
-  // مرحلة 1: استخراج من الصورة (parallel attempts)
+  // 🖼️ استخرج أبعاد الصورة لإرسالها للـ AI (لكي يحدد bounding boxes صحيحة)
+  let imgMeta = {};
+  if (sharp) {
+    try {
+      const buf = Buffer.from(imageBase64, "base64");
+      const meta = await sharp(buf).metadata();
+      imgMeta = { imageWidth: meta.width, imageHeight: meta.height, _buffer: buf };
+    } catch (e) { console.warn("[ai-menu] metadata failed:", e.message); }
+  }
+
+  // مرحلة 1: استخراج من الصورة (parallel attempts) مع سياق المتجر
+  const ctx = {
+    businessType,
+    storeName,
+    existingCategories: (existingCategories || []).slice(0, 30).map(c => ({ name: c.name })),
+    imageWidth:  imgMeta.imageWidth,
+    imageHeight: imgMeta.imageHeight,
+  };
   const t0 = Date.now();
-  const extracted = await brain1_extractFromImage(imageDataUrl);
+  const extracted = await brain1_extractFromImage(imageDataUrl, ctx);
   const t1 = Date.now();
   console.log(`[ai-menu-import] brain1 done in ${t1 - t0}ms — items: ${_countItems(extracted)}`);
 
@@ -364,11 +396,59 @@ async function importMenuFromImage({ imageBase64, mimeType, existingProducts, ex
   const t3 = Date.now();
   console.log(`[ai-menu-import] brain3 done in ${t3 - t2}ms — new:${diff.summary.new} upd:${diff.summary.updated} same:${diff.summary.unchanged}`);
 
+  // مرحلة 4: 🪡 اقتطاع الصور — للمنتجات الجديدة التي حصلت على image_bbox
+  if (sharp && imgMeta._buffer) {
+    await _cropImagesForNewItems(refined, diff, imgMeta);
+  }
+  const t4 = Date.now();
+
   return {
     extracted: refined,
     diff,
-    timings: { vision: t1 - t0, refine: t2 - t1, diff: t3 - t2, total: t3 - t0 },
+    timings: { vision: t1 - t0, refine: t2 - t1, diff: t3 - t2, crop: t4 - t3, total: t4 - t0 },
   };
+}
+
+// 🪡 اقتطاع الصور المضمّنة من صورة المنيو
+async function _cropImagesForNewItems(refined, diff, imgMeta) {
+  const path = require("path");
+  const fs   = require("fs");
+  const IMAGES_DIR = path.join(__dirname, "..", "data", "images");
+  if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+
+  // ابنِ خريطة: normName → bbox من النتيجة المُحسّنة
+  const bboxMap = new Map();
+  for (const cat of refined.categories || []) {
+    for (const it of cat.items || []) {
+      if (it.image_bbox && typeof it.image_bbox === "object") {
+        bboxMap.set(_normKey(it.name), it.image_bbox);
+      }
+    }
+  }
+
+  // اقتطع لكل منتج جديد
+  let cropped = 0;
+  for (const item of diff.newItems || []) {
+    const bbox = bboxMap.get(_normKey(item.name));
+    if (!bbox) continue;
+    const x = Math.max(0, Math.round(bbox.x));
+    const y = Math.max(0, Math.round(bbox.y));
+    const w = Math.max(20, Math.min(imgMeta.imageWidth - x, Math.round(bbox.w)));
+    const h = Math.max(20, Math.min(imgMeta.imageHeight - y, Math.round(bbox.h)));
+    if (w < 50 || h < 50) continue; // صغير جداً، تخطّ
+    try {
+      const filename = `menu-crop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+      const filepath = path.join(IMAGES_DIR, filename);
+      await sharp(imgMeta._buffer)
+        .extract({ left: x, top: y, width: w, height: h })
+        .resize({ width: 600, withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toFile(filepath);
+      item._croppedImageUrl = `/store-images/${filename}`;
+      cropped++;
+    } catch (e) { console.warn(`[crop] failed for "${item.name}":`, e.message); }
+  }
+  if (cropped > 0) console.log(`[ai-menu-import] cropped ${cropped} product images`);
 }
 
 module.exports = {

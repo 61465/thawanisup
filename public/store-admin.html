@@ -132,29 +132,54 @@ input,select,textarea{font-family:inherit}
 .cat-btn:hover{border-color:var(--primary);color:var(--primary)}
 .cat-btn.active{background:var(--primary);border-color:var(--primary);color:#fff}
 
-.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
 .product-card{
-  background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
-  overflow:hidden;transition:transform 0.18s,box-shadow 0.18s;
-  display:flex;flex-direction:column;
+  background:#fff;border-radius:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  border:1px solid #f1f5f9;
+  overflow:hidden;transition:all 0.22s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;position:relative;
 }
-.product-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+.product-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 12px 28px rgba(0,0,0,.1),0 4px 12px rgba(0,0,0,.06);
+  border-color:var(--primary-lt);
+}
+.product-card[data-unavailable="true"]{opacity:.62;background:#fafafa}
+.product-card[data-unavailable="true"] .product-img::after{
+  content:"غير متاح";position:absolute;inset:0;background:rgba(0,0,0,.55);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:14px;z-index:3;backdrop-filter:blur(2px);
+}
 .product-img{
-  height:150px;background:var(--primary-lt);display:flex;align-items:center;justify-content:center;
-  font-size:52px;position:relative;overflow:hidden;
+  height:170px;background:linear-gradient(135deg,var(--primary-lt),#fafafa);
+  display:flex;align-items:center;justify-content:center;
+  font-size:56px;position:relative;overflow:hidden;
 }
-.product-img img{width:100%;height:100%;object-fit:cover;position:absolute}
-.product-img .no-img{font-size:52px;opacity:0.5}
-.product-body{padding:14px;flex:1;display:flex;flex-direction:column;gap:6px}
-.product-name{font-size:15px;font-weight:700;color:var(--text)}
-.product-desc{font-size:12px;color:var(--gray);line-height:1.5;flex:1}
-.product-cat{font-size:11px;background:var(--primary-lt);color:var(--primary);padding:2px 8px;border-radius:999px;display:inline-block;font-weight:600}
+.product-img img{width:100%;height:100%;object-fit:cover;position:absolute;transition:transform .4s}
+.product-card:hover .product-img img{transform:scale(1.06)}
+.product-img .no-img{font-size:56px;opacity:0.4;filter:grayscale(20%)}
+.product-body{padding:14px 16px 10px;flex:1;display:flex;flex-direction:column;gap:6px;min-height:0}
+.product-name{font-size:15.5px;font-weight:800;color:#111827;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.product-desc{font-size:12.5px;color:#6b7280;line-height:1.55;flex:1;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.product-cat{font-size:11px;background:var(--primary-lt);color:var(--primary);
+  padding:3px 10px;border-radius:999px;display:inline-block;font-weight:700}
 .product-footer{
-  padding:10px 14px;border-top:1px solid var(--border);
-  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 16px;border-top:1px solid #f1f5f9;background:#fafbfc;
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
 }
-.product-price{font-size:17px;font-weight:800;color:var(--primary)}
-.product-actions{display:flex;gap:6px;align-items:center}
+.product-price{font-size:18px;font-weight:900;color:var(--primary);letter-spacing:-.5px}
+.product-price small{color:#9ca3af;font-weight:600}
+.product-actions{display:flex;gap:4px;align-items:center}
+.product-actions .btn-icon{
+  background:transparent;border:none;width:32px;height:32px;border-radius:8px;
+  cursor:pointer;font-size:14px;transition:background .15s;color:#6b7280;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.product-actions .btn-icon:hover{background:#f3f4f6;color:#111827}
+.product-actions .btn-icon.danger:hover{background:#fef2f2;color:#dc2626}
 
 /* Toggle switch */
 .toggle{position:relative;display:inline-block;width:40px;height:22px}
@@ -3689,11 +3714,21 @@ function refreshSubCategoryOptions(selectedSubId = "") {
 }
 
 function renderProducts() {
-  const filtered = activeCat === "all"
+  const filtered = (activeCat === "all"
     ? allProducts
     : activeCat === "orphan"
       ? allProducts.filter(p => !p.category || !allCategories.find(c => c.id === p.category))
-      : allProducts.filter(p => p.category === activeCat);
+      : allProducts.filter(p => p.category === activeCat))
+    // 🎯 ترتيب ذكي: المتاح أولاً، ثم بالقسم، ثم بالاسم
+    .slice().sort((a, b) => {
+      const availA = a.available !== false ? 0 : 1;
+      const availB = b.available !== false ? 0 : 1;
+      if (availA !== availB) return availA - availB;
+      const catA = (a.category || "z");
+      const catB = (b.category || "z");
+      if (catA !== catB) return catA.localeCompare(catB);
+      return String(a.name || "").localeCompare(String(b.name || ""), "ar");
+    });
   const grid = document.getElementById("productsGrid");
 
   if (!filtered.length) {
@@ -3727,7 +3762,7 @@ function renderProducts() {
       stockBadge = `<span style="background:#eff6ff;color:#1e40af;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700">📦 ${p.stock}</span>`;
     }
 
-    return `<div class="product-card">
+    return `<div class="product-card" data-unavailable="${p.available === false ? 'true' : 'false'}">
       <div class="product-img">${imgHtml}</div>
       <div class="product-body">
         <div class="product-name">${esc(p.name)}</div>
@@ -4583,9 +4618,13 @@ function _aiRenderTab(tab) {
       const checked = _aiSelectedNew.has(i) ? "checked" : "";
       const confColor = it.confidence === "low" ? "#dc2626" : it.confidence === "medium" ? "#f59e0b" : "#16a34a";
       const confLabel = it.confidence === "low" ? "⚠️ سعر غير واضح" : it.confidence === "medium" ? "🟡 يحتاج مراجعة" : "✅ مؤكد";
+      const cropThumb = it._croppedImageUrl
+        ? `<img src="${esc(it._croppedImageUrl)}" alt="" style="width:54px;height:54px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb" title="صورة مقتطعة من المنيو">`
+        : `<div style="width:54px;height:54px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #e5e7eb">🍽️</div>`;
       return `
         <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;background:#fff">
           <input type="checkbox" ${checked} onchange="_aiToggleNew(${i})" style="width:20px;height:20px;cursor:pointer">
+          ${cropThumb}
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <input type="text" value="${esc(it.name)}" onchange="_aiResult.diff.newItems[${i}].name=this.value" style="flex:1;min-width:140px;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-family:inherit;font-weight:700">
