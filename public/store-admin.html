@@ -6528,7 +6528,7 @@ async function saveSettings() {
     applyStoreColor();
   } catch (e) {
     console.error("[settings] save failed:", e, "payload was:", payload);
-    const msg = e?.data?.error || e?.message || "فشل غير معروف";
+    const msg = e?.error || e?.message || e?.data?.error || "فشل غير معروف";
     showToast("❌ فشل الحفظ: " + msg, "error");
   }
 }
