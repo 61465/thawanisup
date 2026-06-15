@@ -1974,8 +1974,8 @@ async function handleMessage(from, incoming) {
       for (const l of lines) {
         try {
           const o = JSON.parse(l);
-          const oPhone = String(o.customerPhone || "").replace(/\D/g, "");
-          if (oPhone === phone) customerOrders.push(o);
+          // مطابقة قوية: isSamePhone يحل اختلافات @s.whatsapp.net + رمز الدولة + :device
+          if (o.customerPhone && isSamePhone(o.customerPhone, phone)) customerOrders.push(o);
         } catch {}
       }
       // ابحث عن آخر طلب قابل للإلغاء (pending_confirmation أو confirmed قبل أن يبدأ التحضير)
@@ -1983,25 +1983,41 @@ async function handleMessage(from, incoming) {
         .filter(o => ["pending_confirmation","confirmed"].includes(o.status))
         .sort((a,b) => (b.timestamp || "").localeCompare(a.timestamp || ""))[0];
       if (!cancellable) {
+        // أعطِ تفاصيل: هل لديه طلبات أصلاً أم لا؟
+        if (customerOrders.length === 0) {
+          return sendText(from, "ليس لديك أي طلب سابق لإلغائه.\nاكتب أي رسالة لبدء طلب جديد 🌸");
+        }
+        const last = customerOrders.sort((a,b)=>(b.timestamp||"").localeCompare(a.timestamp||""))[0];
+        const statusLabels = {
+          preparing: "قيد التحضير",
+          ready_pickup: "جاهز للاستلام",
+          out_for_delivery: "في الطريق إليك",
+          completed: "تم التسليم",
+          cancelled: "ملغي مسبقاً",
+          rejected: "مرفوض",
+        };
+        const lbl = statusLabels[last?.status] || last?.status || "غير معروف";
         return sendText(from,
-          `ليس لديك طلب قابل للإلغاء.\n\nالطلبات المُجهَّزة أو المسلَّمة لا يمكن إلغاؤها — تواصل مع المتجر مباشرة بكتابة *مسؤول*.`);
+          `❌ لا يوجد طلب قابل للإلغاء.\n\nآخر طلب لك: *${last.orderId}* — حالته: *${lbl}*\n\nالطلبات التي بدأ تحضيرها أو سُلِّمت لا يمكن إلغاؤها.\nللتواصل مع المتجر اكتب: *مسؤول*`);
       }
-      // حدّث الـ status
+      // حدّث الـ status — atomic locked
       const stamp = new Date().toISOString();
-      const updated = lines.map(l => {
-        try {
-          const o = JSON.parse(l);
-          if (o.orderId === cancellable.orderId) {
-            o.status = "cancelled";
-            o.cancelledAt = stamp;
-            o.cancelledBy = "customer";
-            o.cancelReason = "ألغى العميل الطلب من واتساب";
-            o.statusUpdatedAt = stamp;
-          }
-          return JSON.stringify(o);
-        } catch { return l; }
+      await require("./atomic-fs").updateJsonlLocked(ordersFile, (fileLines) => {
+        const updated = fileLines.map(l => {
+          try {
+            const o = JSON.parse(l);
+            if (o.orderId === cancellable.orderId) {
+              o.status = "cancelled";
+              o.cancelledAt = stamp;
+              o.cancelledBy = "customer";
+              o.cancelReason = "ألغى العميل الطلب من واتساب";
+              o.statusUpdatedAt = stamp;
+            }
+            return JSON.stringify(o);
+          } catch { return l; }
+        });
+        return { lines: updated };
       });
-      fs.writeFileSync(ordersFile, updated.join("\n") + "\n", "utf8");
       // أبلغ المالك
       try {
         const ownerJid = (store?.ownerPhone || "").replace(/[^\d]/g, "") + "@s.whatsapp.net";
