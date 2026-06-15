@@ -1002,7 +1002,13 @@ async function sendText(to, body) {
     demo.buffer.push({ type: "text", body });
     return;
   }
-  const { storeId } = storeCtx.getStore() || {};
+  const ctx = storeCtx.getStore() || {};
+  // Cross-bot owner reply override: route reply through a different bot session
+  if (ctx.replyVia) {
+    try { await waMgr.sendMessage(ctx.replyVia.storeId, ctx.replyVia.to, body); return; }
+    catch(e) { console.error(`sendText replyVia [${ctx.replyVia.storeId}]:`, e.message); }
+  }
+  const { storeId } = ctx;
   if (!storeId) return;
   try { await waMgr.sendMessage(storeId, to, body); } catch(e) {
     console.error(`sendText [${storeId}]:`, e.message);
@@ -4220,12 +4226,68 @@ function isSamePhone(phone1, phone2) {
   return false;
 }
 
+// ─── Cross-bot Owner Command Routing ──────────────────────────────────────────
+// عندما يكون bot المتجر متصلاً بنفس رقم المالك، Baileys يرمي الرسائل بـ fromMe=true.
+// الحل: المالك يرسل "قبول/رفض/تم ORD-xxxxxxx" لأي بوت آخر (platform/lead/owner_try).
+// نتعرف على رقم المرسل كمالك متجر، ونوجّه الأمر للمتجر الصحيح حسب orderId.
+const OWNER_CMD_RE = /^(قبول|اكد|أكد|confirm|رفض|reject|بدأ|بدا|preparing|جاهز|ready|خرج|delivery|تم|completed|تسليم|إلغاء|الغاء|cancel|طلبات|orders|الطلبات|مساعدة|أوامر|اوامر|help|منتظرين|handoffs|استئناف|استانف|resume)\b/i;
+
+async function tryCrossBotOwnerCommand(from, text) {
+  if (!text || !OWNER_CMD_RE.test(String(text).trim())) return false;
+  const senderPhone = phoneNum(from);
+  if (!senderPhone) return false;
+  const ownerStores = getAllStores().filter(s => s.ownerPhone && isSamePhone(senderPhone, s.ownerPhone));
+  if (!ownerStores.length) return false;
+
+  // إذا فيها orderId → استنتج المتجر منه؛ وإلا لو المالك يملك متجراً واحداً، استخدمه
+  const idMatch = String(text).match(/ORD-?(\d{4,})/i);
+  let targetStore = null;
+  if (idMatch) {
+    const orderSuffix = idMatch[1];
+    for (const s of ownerStores) {
+      const f = s.id === "nakheel_001"
+        ? path.join(DATA_DIR, "orders.jsonl")
+        : path.join(DATA_DIR, `orders_${s.id}.jsonl`);
+      if (!fs.existsSync(f)) continue;
+      const found = fs.readFileSync(f, "utf8").split("\n").some(l => {
+        try { const o = JSON.parse(l); return o.orderId && o.orderId.endsWith(orderSuffix); }
+        catch { return false; }
+      });
+      if (found) { targetStore = s; break; }
+    }
+  }
+  if (!targetStore) {
+    if (ownerStores.length === 1) {
+      targetStore = ownerStores[0];
+    } else {
+      // متعدد المتاجر وبدون orderId واضح → اطلب توضيحاً
+      await waMgr.sendMessage("platform", from,
+        `🏪 *عندك ${ownerStores.length} متاجر*\n\nاكتب الأمر مع رقم الطلب: مثل *قبول ORD-1234567*\n\nمتاجرك:\n` +
+        ownerStores.map((s, i) => `${i+1}. ${s.storeName}`).join("\n")
+      );
+      return true;
+    }
+  }
+
+  // نفّذ الأمر في سياق المتجر الصحيح. الرد يعود عبر بوت platform (لأن المالك راسلنا عليه)
+  const ownerJid = String(targetStore.ownerPhone).replace(/\D/g, "") + "@s.whatsapp.net";
+  await storeCtx.run({ storeId: targetStore.id, store: targetStore, replyVia: { storeId: "platform", to: from } }, async () => {
+    const handled = await handleOwnerCommand(ownerJid, String(text).trim(), targetStore, targetStore.id);
+    if (!handled) {
+      await waMgr.sendMessage("platform", from, `⚠️ لم أفهم الأمر. اكتب *مساعدة* لقائمة الأوامر`);
+    }
+  });
+  return true;
+}
+
 // ─── Baileys Message Router ───────────────────────────────────────────────────
 waMgr.setMessageHandler(async (storeId, from, text, rawMsg) => {
   if (isDuplicate(rawMsg?.key?.id)) return;
 
   // Platform bot
   if (storeId === "platform") {
+    // 🎛️ Cross-bot owner command: إذا الرسالة من مالك متجر وأمر إدارة طلب → نفّذ على متجره
+    if (await tryCrossBotOwnerCommand(from, text)) return;
     await handlePlatformMessage(from, text,
       (to, msg) => waMgr.sendMessage("platform", to, msg),
       PLATFORM_OWNER_PHONE
