@@ -41,6 +41,8 @@ function audit(entry, req) {
   try {
     const line = {
       ts: new Date().toISOString(),
+      // trace_id يربط audit events بنفس الـ HTTP request — مفيد لـ debugging سلسلة الأحداث
+      trace_id: entry.trace_id || req?.traceId || null,
       actor: entry.actor || { type: "system" },
       action: entry.action,
       target: entry.target || null,

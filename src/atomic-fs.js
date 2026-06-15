@@ -83,4 +83,50 @@ function updateJsonl(file, mutator) {
   return out.result !== undefined ? out.result : true;
 }
 
-module.exports = { writeSync, writeJsonSync, readJsonSync, appendJsonlSync, updateJsonl };
+// ─── In-process async lock ────────────────────────────────────────────────
+// يحمي من lost updates عند read-modify-write متزامن على نفس الملف.
+// مناسب لـ single PM2 process (الإعداد الحالي). لو انتقلنا لـ cluster:
+// استبدله بـ proper-lockfile الذي يقفل على نظام الملفات.
+const _locks = new Map(); // file → Promise (آخر عملية تستخدم الملف)
+
+async function withLock(file, fn) {
+  const prev = _locks.get(file) || Promise.resolve();
+  let release;
+  const next = new Promise(r => { release = r; });
+  _locks.set(file, prev.then(() => next));
+  try {
+    await prev;
+    return await fn();
+  } finally {
+    release();
+    // نظّف الـ Map لو لا أحد ينتظر بعد قليل (تجنّب تضخم الذاكرة)
+    setTimeout(() => {
+      if (_locks.get(file) === next.then(() => {})) _locks.delete(file);
+    }, 100);
+  }
+}
+
+// نسخة sync (للتوافق مع الكود القديم): تستخدم busy-wait صغير عبر deasync مرفوض.
+// بدلاً منه: نوفّر helper async ونحدّث callers تدريجياً.
+
+/**
+ * Atomic update لـ JSONL مع lock: يضمن سيريالية الـ read-modify-write.
+ * @param {string} file
+ * @param {(lines:string[]) => {lines:string[], result?:any}} mutator
+ */
+async function updateJsonlLocked(file, mutator) {
+  return withLock(file, () => {
+    if (!fs.existsSync(file)) return false;
+    const raw = fs.readFileSync(file, "utf8");
+    const lines = raw.trim().split("\n").filter(Boolean);
+    const out = mutator(lines) || { lines };
+    const newContent = out.lines.join("\n") + (out.lines.length ? "\n" : "");
+    writeSync(file, newContent, { encoding: "utf8" });
+    return out.result !== undefined ? out.result : true;
+  });
+}
+
+module.exports = {
+  writeSync, writeJsonSync, readJsonSync, appendJsonlSync, updateJsonl,
+  withLock, updateJsonlLocked,
+};

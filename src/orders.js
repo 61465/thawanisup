@@ -6,6 +6,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const af = require("./atomic-fs");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 
@@ -51,7 +52,7 @@ function readOrders(storeId, limit = 100) {
   }
 }
 
-function updateOrderStatus(storeIdOrOrderId, orderIdOrStatus, statusMaybe) {
+async function updateOrderStatus(storeIdOrOrderId, orderIdOrStatus, statusMaybe) {
   // Backward compat: legacy signature (orderId, status) → search across all stores
   let storeId, orderId, status;
   if (statusMaybe === undefined) {
@@ -64,19 +65,18 @@ function updateOrderStatus(storeIdOrOrderId, orderIdOrStatus, statusMaybe) {
     status = statusMaybe;
   }
 
+  const file = _fileFor(storeId);
   try {
-    const file = _fileFor(storeId);
-    if (!fs.existsSync(file)) return false;
-    const lines = fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean);
-    const updated = lines.map(l => {
-      try {
-        const obj = JSON.parse(l);
-        if (obj.orderId === orderId) obj.status = status;
-        return JSON.stringify(obj);
-      } catch { return l; }
+    return await af.updateJsonlLocked(file, (lines) => {
+      const updated = lines.map(l => {
+        try {
+          const obj = JSON.parse(l);
+          if (obj.orderId === orderId) obj.status = status;
+          return JSON.stringify(obj);
+        } catch { return l; }
+      });
+      return { lines: updated, result: true };
     });
-    fs.writeFileSync(file, updated.join("\n") + "\n", "utf8");
-    return true;
   } catch (err) {
     console.error("❌ Failed to update order:", err.message);
     return false;

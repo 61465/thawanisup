@@ -131,6 +131,16 @@ app.use("/order/",        webTokenLimiter);
 app.use("/o/",            webTokenLimiter);
 app.use("/try/",          webTokenLimiter);
 
+// 🔗 Trace ID — UUID لكل request يربط audit entries + logs بنفس الـ HTTP call
+app.use((req, res, next) => {
+  const incoming = req.headers["x-trace-id"];
+  req.traceId = (incoming && /^[a-zA-Z0-9_-]{6,40}$/.test(incoming))
+    ? incoming
+    : require("crypto").randomUUID();
+  res.setHeader("X-Trace-Id", req.traceId);
+  next();
+});
+
 app.use(express.json({ limit: "60mb" })); // raised for video uploads (videos enforce 50MB inside endpoint)
 app.use(express.raw({ type: "video/*", limit: "60mb" }));
 app.use(express.static(path.join(__dirname, "..", "public"), {
@@ -251,6 +261,67 @@ app.get("/health/deep", (_req, res) => {
     const r = require("./health-monitor").deepCheck();
     res.status(r.status === "critical" ? 503 : 200).json(r);
   } catch (e) { res.status(500).json({ status: "error", message: e.message }); }
+});
+
+// ─── Public status page — للعملاء (يعرض حالة البوت دون تفاصيل حساسة) ────────
+app.get("/status", (_req, res) => {
+  const sessions = (() => { try { return waMgr.listSessions() || []; } catch { return []; } })();
+  const stores = getAllStores().filter(s => s.active && s.subscriptionStatus === "active");
+  const online = sessions.filter(s => s.state === "open" || s.connected).length;
+  const total  = stores.length;
+  const overallOk = online > 0 && online >= Math.max(1, Math.floor(total * 0.5));
+  const uptimeSec = Math.floor((Date.now() - _bootTime) / 1000);
+  const dh = Math.floor(uptimeSec / 86400);
+  const hh = Math.floor((uptimeSec % 86400) / 3600);
+  const mm = Math.floor((uptimeSec % 3600) / 60);
+  const upStr = `${dh ? dh + "ي " : ""}${hh}س ${mm}د`;
+  const lastCheck = new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC";
+  const esc = s => String(s || "").replace(/[<>&"']/g, c => ({ "<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&#39;" }[c]));
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حالة منصة ثواني</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b);color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:rgba(15,23,42,.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:32px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+h1{font-size:22px;font-weight:800;margin-bottom:4px}
+.sub{font-size:13px;color:#94a3b8;margin-bottom:24px}
+.status{display:flex;align-items:center;gap:14px;padding:18px;border-radius:12px;background:${overallOk ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)"};border:1px solid ${overallOk ? "rgba(16,185,129,.4)" : "rgba(239,68,68,.4)"};margin-bottom:20px}
+.dot{width:14px;height:14px;border-radius:50%;background:${overallOk ? "#10b981" : "#ef4444"};box-shadow:0 0 14px ${overallOk ? "rgba(16,185,129,.7)" : "rgba(239,68,68,.7)"};animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.6;transform:scale(.92)}}
+.status-text{flex:1}
+.status-title{font-size:16px;font-weight:800}
+.status-desc{font-size:12.5px;color:#cbd5e1;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.stat{background:rgba(255,255,255,.04);padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.06)}
+.stat-label{font-size:11px;color:#94a3b8;margin-bottom:3px}
+.stat-value{font-size:18px;font-weight:800;color:#f1f5f9}
+.foot{margin-top:18px;font-size:11px;color:#64748b;text-align:center}
+.brand{font-weight:900;color:#10b981}
+</style></head><body>
+<div class="card">
+  <h1>🤖 منصة ثواني — حالة الخدمة</h1>
+  <div class="sub">صفحة عامة تعرض حالة بوتات الواتساب لحظياً</div>
+  <div class="status">
+    <div class="dot"></div>
+    <div class="status-text">
+      <div class="status-title">${overallOk ? "✅ الخدمة تعمل" : "⚠️ خلل جزئي"}</div>
+      <div class="status-desc">${overallOk ? "كل البوتات تعمل أو الأغلبية متصلة" : "بعض البوتات غير متصلة الآن — يعمل الفريق على ذلك"}</div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="stat"><div class="stat-label">البوتات المتصلة</div><div class="stat-value">${online} / ${total}</div></div>
+    <div class="stat"><div class="stat-label">مدة التشغيل</div><div class="stat-value">${esc(upStr)}</div></div>
+    <div class="stat"><div class="stat-label">إصدار النظام</div><div class="stat-value">${esc(_pkgVersion)}</div></div>
+    <div class="stat"><div class="stat-label">آخر فحص</div><div class="stat-value" style="font-size:12px;font-weight:600">${esc(lastCheck)}</div></div>
+  </div>
+  <div class="foot">منصة <span class="brand">ثواني</span> — تُحدّث الصفحة كل دقيقة</div>
+</div>
+<script>setTimeout(()=>location.reload(),60000)<\/script>
+</body></html>`);
 });
 
 // ─── Notifications polling — للماستر فقط ──────────────────────────────────────
@@ -778,11 +849,22 @@ app.use(require("./store-router"));
 app.use(require("./payments-router"));
 
 // ─── Store helpers ────────────────────────────────────────────────────────────
+// mtime-based cache: قراءة stores.json قد تحدث آلاف المرات/ساعة (كل WA message)
+// نُعيد الـ parse فقط لو الملف تغيّر، وإلا نرجع آخر نسخة من الذاكرة.
+const _storesCache = { mtimeMs: 0, stores: [], path: null };
 function getAllStores() {
+  const file = path.join(DATA_DIR, "stores.json");
   try {
-    const { stores } = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "stores.json"), "utf8"));
-    return stores || [];
-  } catch { return []; }
+    const stat = fs.statSync(file);
+    if (stat.mtimeMs === _storesCache.mtimeMs && _storesCache.path === file) {
+      return _storesCache.stores;
+    }
+    const { stores } = JSON.parse(fs.readFileSync(file, "utf8"));
+    _storesCache.mtimeMs = stat.mtimeMs;
+    _storesCache.stores = stores || [];
+    _storesCache.path = file;
+    return _storesCache.stores;
+  } catch { return _storesCache.stores || []; }
 }
 
 function getStoreById(storeId) {
@@ -1247,8 +1329,57 @@ function _detectLang(text) {
 
 // 🎛️ Owner commands من واتساب — يحوّل رسالة المالك إلى action على الطلب
 // returns: true لو الأمر تمت معالجته، false لو ليس أمر مالك
+// ─── Two-phase undo window ───────────────────────────────────────────────────
+// Map<orderId, { prevStatus, timer, action }> — 30 ث undo بعد قبول/رفض
+const _orderUndoWindow = new Map();
+const UNDO_WINDOW_MS = 30_000;
+
+function _registerUndo(orderId, prevStatus, action) {
+  const prev = _orderUndoWindow.get(orderId);
+  if (prev?.timer) clearTimeout(prev.timer);
+  const timer = setTimeout(() => _orderUndoWindow.delete(orderId), UNDO_WINDOW_MS);
+  timer.unref?.();
+  _orderUndoWindow.set(orderId, { prevStatus, timer, action });
+}
+
 async function handleOwnerCommand(from, text, store, storeId) {
   if (!text || text.length < 2 || text.length > 200) return false;
+
+  // ── 🔄 تراجع — يستعيد آخر قبول/رفض خلال 30 ث ──────────────────────────
+  const undoMatch = text.match(/^(تراجع|الغ\s*القبول|undo)\s*(?:ORD-?)?(\d+)?\s*$/i);
+  if (undoMatch) {
+    const idPart = undoMatch[2];
+    let target = null;
+    if (idPart) {
+      for (const [oid, info] of _orderUndoWindow.entries()) {
+        if (oid.endsWith(idPart)) { target = { oid, info }; break; }
+      }
+    } else {
+      // آخر تسجيل
+      const entries = [..._orderUndoWindow.entries()];
+      if (entries.length) target = { oid: entries[entries.length - 1][0], info: entries[entries.length - 1][1] };
+    }
+    if (!target) { await sendText(from, "❌ لا توجد عملية يمكن التراجع عنها (نافذة 30 ث انتهت)"); return true; }
+    const ordersFile = storeId === "nakheel_001" ? path.join(DATA_DIR, "orders.jsonl") : path.join(DATA_DIR, `orders_${storeId}.jsonl`);
+    await require("./atomic-fs").updateJsonlLocked(ordersFile, (lines) => {
+      const updated = lines.map(l => {
+        try {
+          const o = JSON.parse(l);
+          if (o.orderId === target.oid) {
+            o.status = target.info.prevStatus;
+            o.undoneAt = new Date().toISOString();
+            delete o.statusUpdatedAt;
+          }
+          return JSON.stringify(o);
+        } catch { return l; }
+      });
+      return { lines: updated };
+    });
+    clearTimeout(target.info.timer);
+    _orderUndoWindow.delete(target.oid);
+    await sendText(from, `↩️ تم التراجع عن *${target.info.action}* للطلب *${target.oid}*`);
+    return true;
+  }
 
   // الأنماط المدعومة:
   //   "قبول"                       → آخر طلب pending
@@ -1457,19 +1588,24 @@ async function handleOwnerCommand(from, text, store, storeId) {
       if (order.customerPhone) {
         try { earned = addPoints(storeId, order.customerPhone, Number(order.total || 0), order.orderId, store); } catch {}
       }
-      // حدّث الـ status
+      // حدّث الـ status — atomic locked read-modify-write
       const stamp = new Date().toISOString();
-      const updated = allOrders.map(o => {
-        if (o.orderId === order.orderId) {
-          o.status = "confirmed";
-          o.statusUpdatedAt = stamp;
-          if (store?.avgDeliveryMin) {
-            o.estimatedMinutes = Number(store.avgDeliveryMin);
-          }
-        }
-        return JSON.stringify(o);
+      const _prevStatus = order.status;
+      await require("./atomic-fs").updateJsonlLocked(ordersFile, (lines) => {
+        const updated = lines.map(l => {
+          try {
+            const o = JSON.parse(l);
+            if (o.orderId === order.orderId && o.status !== "confirmed") {
+              o.status = "confirmed";
+              o.statusUpdatedAt = stamp;
+              if (store?.avgDeliveryMin) o.estimatedMinutes = Number(store.avgDeliveryMin);
+            }
+            return JSON.stringify(o);
+          } catch { return l; }
+        });
+        return { lines: updated };
       });
-      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+      _registerUndo(order.orderId, _prevStatus, "قبول");
 
       // أبلغ العميل
       const pointsLine = (earned && earned.newPoints > 0)
@@ -1493,16 +1629,23 @@ async function handleOwnerCommand(from, text, store, storeId) {
     if (/^(رفض|reject)$/i.test(cmd)) {
       const reason = extra || "غير محدد";
       const stamp = new Date().toISOString();
-      const updated = allOrders.map(o => {
-        if (o.orderId === order.orderId) {
-          o.status = "rejected";
-          o.rejectedAt = stamp;
-          o.rejectReason = reason;
-          o.statusUpdatedAt = stamp;
-        }
-        return JSON.stringify(o);
+      const _prevStatus = order.status;
+      await require("./atomic-fs").updateJsonlLocked(ordersFile, (lines) => {
+        const updated = lines.map(l => {
+          try {
+            const o = JSON.parse(l);
+            if (o.orderId === order.orderId && !["rejected","cancelled","completed"].includes(o.status)) {
+              o.status = "rejected";
+              o.rejectedAt = stamp;
+              o.rejectReason = reason;
+              o.statusUpdatedAt = stamp;
+            }
+            return JSON.stringify(o);
+          } catch { return l; }
+        });
+        return { lines: updated };
       });
-      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
+      _registerUndo(order.orderId, _prevStatus, "رفض");
       // أبلغ العميل
       try {
         await waMgr.sendMessage(storeId, order.customerPhone,
@@ -1529,15 +1672,20 @@ async function handleOwnerCommand(from, text, store, storeId) {
     if (mapEntry) {
       const [newStatus, customerMsg] = mapEntry;
       const stamp = new Date().toISOString();
-      const updated = allOrders.map(o => {
-        if (o.orderId === order.orderId) {
-          o.status = newStatus;
-          o.statusUpdatedAt = stamp;
-          if (newStatus === "completed") o.deliveredAt = stamp;
-        }
-        return JSON.stringify(o);
+      await require("./atomic-fs").updateJsonlLocked(ordersFile, (lines) => {
+        const updated = lines.map(l => {
+          try {
+            const o = JSON.parse(l);
+            if (o.orderId === order.orderId) {
+              o.status = newStatus;
+              o.statusUpdatedAt = stamp;
+              if (newStatus === "completed") o.deliveredAt = stamp;
+            }
+            return JSON.stringify(o);
+          } catch { return l; }
+        });
+        return { lines: updated };
       });
-      fs.writeFileSync(ordersFile, updated.join("\n") + "\n");
 
       if (customerMsg) {
         try { await waMgr.sendMessage(storeId, order.customerPhone, customerMsg); } catch {}
@@ -3930,7 +4078,7 @@ async function handleConfirmOrder(from, msg, session) {
         });
         await sendImage(from, filePath, `🧾 فاتورتك — ${orderId}`);
         // علِّم الطلب لمنع تكرار الفاتورة عند تأكيد المالك
-        try { require("./orders").updateOrderStatus(storeId, orderId, "pending_confirmation"); } catch {}
+        require("./orders").updateOrderStatus(storeId, orderId, "pending_confirmation").catch(e => console.warn("[update-status]", e.message));
         try {
           const ordersFile = storeId === "nakheel_001"
             ? path.join(DATA_DIR, "orders.jsonl")
@@ -4212,18 +4360,28 @@ function phoneNum(jid) {
   return (jid || "").replace(/@s\.whatsapp\.net|@lid/g, "");
 }
 
-// Compare phone numbers robustly (comparing suffixes/last 9 digits to handle country code differences)
+// قائمة رموز دول حقيقية (E.164) — تكفي لأسواقنا المستهدفة
+const _COUNTRY_CODES = ["966","971","973","974","965","968","962","964","963","961","970","20","212","213","216","218","249","252","253","967"];
+
+function _stripCountryCode(digits) {
+  for (const cc of _COUNTRY_CODES) {
+    if (digits.startsWith(cc) && digits.length - cc.length >= 7) return digits.slice(cc.length);
+  }
+  return digits;
+}
+
+// Compare phone numbers strictly: نطابق إما كاملاً أو بعد نزع رمز دولة معروف من أحد الطرفين.
+// لا نطابق "آخر 9 خانات" بشكل أعمى — هذا يسبب false positives بين دول مختلفة.
 function isSamePhone(phone1, phone2) {
   if (!phone1 || !phone2) return false;
   const p1 = String(phone1).replace(/\D/g, "");
   const p2 = String(phone2).replace(/\D/g, "");
   if (!p1 || !p2) return false;
   if (p1 === p2) return true;
-  // If one starts with country code and the other does not, compare last 9 digits (covers Saudi, UAE, etc.)
-  if (p1.length >= 9 && p2.length >= 9) {
-    return p1.slice(-9) === p2.slice(-9);
-  }
-  return false;
+  const n1 = _stripCountryCode(p1);
+  const n2 = _stripCountryCode(p2);
+  // طابق فقط بعد نزع رمز دولة معروف من الطرفين (يمنع 555-XXX سعودي = 555-XXX مصري)
+  return n1 === n2 && n1.length >= 7;
 }
 
 // ─── Cross-bot Owner Command Routing ──────────────────────────────────────────
@@ -6721,6 +6879,9 @@ app.post("/master/test-send", async (req, res) => {
 module.exports = { app, handleMessage };
 
 if (require.main === module) {
+  // 🛡️ تثبيت Error Monitor قبل أي شيء (يلتقط uncaught/unhandled مبكراً)
+  try { require("./error-monitor").install(waMgr); } catch (e) { console.warn("error-monitor install:", e.message); }
+
   const stores = getAllStores();
   // Migrate existing stores to Firestore (skips already-migrated docs)
   firestoreAuth.migrateStores(stores).catch(e => console.warn("Migration error:", e.message));

@@ -695,6 +695,29 @@ router.get("/master/support/tickets/stats", auth, async (_req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// 🛡️ Error monitor — قراءة آخر الأخطاء + إحصاءات
+router.get("/master/errors", auth, (_req, res) => {
+  try {
+    const em = require("./error-monitor");
+    res.json({ items: em.recent(100), stats: em.stats() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 📦 Backup فوري + قائمة النسخ المتاحة
+router.post("/master/backup/snapshot", auth, (req, res) => {
+  try {
+    const label = String(req.body?.label || "manual").slice(0, 32);
+    const result = require("./backup").snapshot(label);
+    if (!result.ok) return res.status(400).json(result);
+    audit({ actor: { type: "master", id: "master" }, action: "backup.snapshot", target: { type: "backup", id: result.name } }, req);
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+router.get("/master/backup/list", auth, (_req, res) => {
+  try { res.json({ items: require("./backup").list() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 router.get("/master/support/tickets/:id", auth, async (req, res) => {
   try {
     const t = await require("./support-tickets").getTicket(req.params.id);
