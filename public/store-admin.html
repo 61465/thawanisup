@@ -986,9 +986,22 @@ tr:hover td{background:#fafcfa}
             <input id="s_deliveryFee" type="number" placeholder="10">
           </div>
           <div class="field" id="s_deliveryTimeRow">
-            <label>⏱️ وقت التوصيل المتوقع (دقيقة)</label>
-            <input id="s_deliveryTime" type="number" min="0" max="300" placeholder="مثال: 30" style="">
-            <span class="hint">يظهر في رأس صفحة الطلب للعملاء 🚴 ~30 دقيقة — اتركه فارغاً لإخفائه</span>
+            <label>⏱️ وقت التوصيل المتوقع</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="s_deliveryTime" type="number" min="0" max="720" placeholder="مثال: 30" inputmode="numeric"
+                     style="flex:1;min-width:120px;padding:11px 14px;font-size:16px;border:2px solid #d1d5db;border-radius:9px;font-family:inherit;text-align:center;font-weight:800">
+              <span style="font-size:13px;color:#6b7280;font-weight:700">دقيقة</span>
+            </div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+              <button type="button" onclick="setDeliveryTime(15)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">15 د</button>
+              <button type="button" onclick="setDeliveryTime(30)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">30 د</button>
+              <button type="button" onclick="setDeliveryTime(45)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">45 د</button>
+              <button type="button" onclick="setDeliveryTime(60)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">1 ساعة</button>
+              <button type="button" onclick="setDeliveryTime(90)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">1.5 ساعة</button>
+              <button type="button" onclick="setDeliveryTime(120)" style="background:#f3f4f6;border:1px solid #d1d5db;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">2 ساعة</button>
+              <button type="button" onclick="setDeliveryTime('')" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:6px 12px;border-radius:7px;font-weight:700;cursor:pointer;font-size:12px;font-family:inherit">🗑️ إخفاء</button>
+            </div>
+            <span class="hint" style="margin-top:8px">💡 يظهر للعميل في رأس صفحة الطلب: "🚴 ~30 دقيقة". اتركه فارغاً لإخفائه.</span>
           </div>
           <div class="field">
             <label>🕒 ساعات العمل</label>
@@ -2768,6 +2781,14 @@ function applyBusinessLabels() {
 // ─── Navigation ─────────────────────────────────────────────────────────────
 function toggleDeliveryFeeS() {
   applyBusinessLabels();
+}
+
+// Quick-set لوقت التوصيل: يضع القيمة + يُطلق input event لـ auto-save
+function setDeliveryTime(min) {
+  const el = document.getElementById("s_deliveryTime");
+  if (!el) return;
+  el.value = min === "" ? "" : String(min);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 // ═════════════ Auto-save: كل حقل يُحفظ منفرداً عند تغيّره ═════════════
