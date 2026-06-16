@@ -141,15 +141,61 @@ app.use((req, res, next) => {
   next();
 });
 
+// 🗜️ gzip compression للـ text responses (HTML/JS/CSS/JSON)
+//    472KB → ~80KB = 5× أسرع على روابط بطيئة (Tailscale Funnel، 3G، إلخ)
+const _zlib = require("zlib");
+app.use((req, res, next) => {
+  const accept = String(req.headers["accept-encoding"] || "");
+  if (!/\bgzip\b/.test(accept)) return next();
+  // اعترض على write/end لتمرير المحتوى عبر gzip
+  const _origWrite = res.write.bind(res);
+  const _origEnd   = res.end.bind(res);
+  const chunks = [];
+  let aborted = false;
+  res.write = function(chunk, encoding, cb) {
+    if (aborted) return _origWrite(chunk, encoding, cb);
+    if (chunk) chunks.push(typeof chunk === "string" ? Buffer.from(chunk, encoding || "utf8") : chunk);
+    if (cb) cb();
+    return true;
+  };
+  res.end = function(chunk, encoding, cb) {
+    if (chunk) chunks.push(typeof chunk === "string" ? Buffer.from(chunk, encoding || "utf8") : chunk);
+    const buf = Buffer.concat(chunks);
+    const ct = String(res.getHeader("Content-Type") || "");
+    const compressible = /text|json|javascript|xml|svg/i.test(ct);
+    // لا تضغط لو صغير (< 1KB) أو غير compressible أو binary
+    if (!compressible || buf.length < 1024 || res.getHeader("Content-Encoding")) {
+      aborted = true;
+      _origWrite(buf);
+      return _origEnd(null, null, cb);
+    }
+    _zlib.gzip(buf, { level: 6 }, (err, gz) => {
+      if (err) { _origWrite(buf); return _origEnd(null, null, cb); }
+      res.setHeader("Content-Encoding", "gzip");
+      res.setHeader("Content-Length", gz.length);
+      res.removeHeader("ETag"); // ETag الأصلي للـ uncompressed، أزله لتفادي 304 خاطئ
+      _origWrite(gz);
+      _origEnd(null, null, cb);
+    });
+    return true;
+  };
+  next();
+});
+
 app.use(express.json({ limit: "60mb" })); // raised for video uploads (videos enforce 50MB inside endpoint)
 app.use(express.raw({ type: "video/*", limit: "60mb" }));
 app.use(express.static(path.join(__dirname, "..", "public"), {
   etag: true,
   lastModified: true,
   setHeaders: (res, filePath) => {
-    // HTML/JS/CSS: لا تكاش (يضمن وصول التحديثات فوراً للمتصفح)
-    if (/\.(html|js|css)$/i.test(filePath)) {
-      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    // HTML الكبيرة (master/store-admin/landing): cache قصير 5 د + revalidate في الخلفية
+    // قبل: no-cache = revalidate كل refresh عبر Tailscale Funnel = latency 1-2s/asset
+    // الآن: max-age=300 + must-revalidate = cache 5 د، ثم 304 لو لم يتغير → toxic أقل
+    if (/\.html$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "private, max-age=300, must-revalidate");
+    } else if (/\.(js|css)$/i.test(filePath)) {
+      // JS/CSS أقل تغيراً — cache أطول
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate");
     }
   }
 }));

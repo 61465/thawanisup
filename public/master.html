@@ -4171,7 +4171,8 @@ let _platformBotTimer = null;
 
 function startPlatformBotPolling() {
   if (_platformBotTimer) return;
-  _platformBotTimer = setInterval(loadPlatformBot, 4000);
+  // كان 4s — مفرط. الـ QR refresh نفسه كل 20s، لا حاجة لأقل من 8s
+  _platformBotTimer = setInterval(loadPlatformBot, 8000);
 }
 function stopPlatformBotPolling() {
   if (_platformBotTimer) { clearInterval(_platformBotTimer); _platformBotTimer = null; }
