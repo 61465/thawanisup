@@ -8,8 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=yes">
 <title>لوحة تحكم المتجر — منصة ثواني</title>
-<link rel="stylesheet" href="/mobile-fixes.css">
-<link rel="stylesheet" href="/mobile-pro.css">
+<!-- mobile-fixes.css و mobile-pro.css أُزيلا — responsive CSS داخل الصفحة. -->
 <link rel="stylesheet" href="/ui-uplift.css">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
@@ -361,26 +360,23 @@ tr:hover td{background:#fafcfa}
   .store-badge{display:none}
   .logout-btn{padding:6px 10px;font-size:12px}
 
-  /* زر ☰ يظهر فقط على الموبايل */
+  /* زر ☰ يظهر فقط على الموبايل + navbar يفسح المكان */
   #mobileTabsToggle{display:flex !important}
-
-  /* navbar: nudge للسماح بـ زر ☰ في الزاوية */
   .navbar{padding-right:64px}
 
-  /* Tabs تتحول لـ drawer جانبي ينزلق من اليمين */
+  /* Tabs → drawer جانبي ينزلق من اليمين */
   .tabs{
-    position:fixed !important;
+    position:fixed;
     top:0; right:0; bottom:0;
     width:min(82vw, 320px);
     background:#fff;
-    border-bottom:none;
+    border:none;
     border-left:1px solid #e5e7eb;
-    padding:64px 0 20px;
+    padding:64px 0 24px;
     display:flex;
     flex-direction:column;
     gap:0;
     overflow-y:auto;
-    overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
     transform:translateX(100%);
     transition:transform .28s ease;
@@ -389,39 +385,44 @@ tr:hover td{background:#fafcfa}
   }
   body.tabs-drawer-open .tabs{transform:translateX(0)}
 
-  /* backdrop خلف الـ drawer */
   body.tabs-drawer-open::after{
     content:"";
     position:fixed;
     inset:0;
-    background:rgba(0,0,0,.5);
+    background:rgba(0,0,0,.55);
     z-index:1400;
     backdrop-filter:blur(2px);
     -webkit-backdrop-filter:blur(2px);
   }
 
-  /* الـ tabs نفسها تظهر كصفوف عمودية */
   .tab{
     width:100%;
-    padding:14px 20px !important;
+    padding:14px 20px;
     font-size:14px;
     font-weight:600;
     white-space:nowrap;
     text-align:right;
-    border-bottom:1px solid #f3f4f6 !important;
-    border-right:4px solid transparent !important;
+    border-bottom:1px solid #f3f4f6;
+    border-right:4px solid transparent;
     margin-bottom:0;
     border-radius:0;
+    color:#374151;
   }
   .tab.active{
-    background:#f0fdf4 !important;
-    border-right-color:var(--primary,#1b5e20) !important;
-    color:var(--primary,#1b5e20) !important;
+    background:#f0fdf4;
+    border-right-color:var(--primary,#1b5e20);
+    color:var(--primary,#1b5e20);
   }
   .tab:active{background:#f9fafb}
 
   /* Main area */
   .main{padding:12px}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .stat-card{padding:14px 12px;border-right-width:3px}
+  .stat-value{font-size:22px}
+  .page-header{flex-wrap:wrap;gap:8px}
+  .page-header h1{font-size:18px}
+  .card{border-radius:12px}
 
   /* Stats grid — 2 columns on mobile */
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
