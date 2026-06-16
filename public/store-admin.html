@@ -361,16 +361,64 @@ tr:hover td{background:#fafcfa}
   .store-badge{display:none}
   .logout-btn{padding:6px 10px;font-size:12px}
 
-  /* Tabs — horizontal scroll, no wrap */
+  /* زر ☰ يظهر فقط على الموبايل */
+  #mobileTabsToggle{display:flex !important}
+
+  /* navbar: nudge للسماح بـ زر ☰ في الزاوية */
+  .navbar{padding-right:64px}
+
+  /* Tabs تتحول لـ drawer جانبي ينزلق من اليمين */
   .tabs{
-    padding:0;overflow-x:auto;overflow-y:hidden;
+    position:fixed !important;
+    top:0; right:0; bottom:0;
+    width:min(82vw, 320px);
+    background:#fff;
+    border-bottom:none;
+    border-left:1px solid #e5e7eb;
+    padding:64px 0 20px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    overflow-y:auto;
+    overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;display:flex;gap:0;
+    transform:translateX(100%);
+    transition:transform .28s ease;
+    z-index:1500;
+    box-shadow:-12px 0 30px rgba(0,0,0,.25);
   }
-  .tabs::-webkit-scrollbar{display:none}
+  body.tabs-drawer-open .tabs{transform:translateX(0)}
+
+  /* backdrop خلف الـ drawer */
+  body.tabs-drawer-open::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    z-index:1400;
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+  }
+
+  /* الـ tabs نفسها تظهر كصفوف عمودية */
   .tab{
-    padding:12px 14px;font-size:13px;white-space:nowrap;flex-shrink:0;
+    width:100%;
+    padding:14px 20px !important;
+    font-size:14px;
+    font-weight:600;
+    white-space:nowrap;
+    text-align:right;
+    border-bottom:1px solid #f3f4f6 !important;
+    border-right:4px solid transparent !important;
+    margin-bottom:0;
+    border-radius:0;
   }
+  .tab.active{
+    background:#f0fdf4 !important;
+    border-right-color:var(--primary,#1b5e20) !important;
+    color:var(--primary,#1b5e20) !important;
+  }
+  .tab:active{background:#f9fafb}
 
   /* Main area */
   .main{padding:12px}
@@ -771,8 +819,12 @@ tr:hover td{background:#fafcfa}
     </div>
   </nav>
 
-  <!-- Tabs -->
-  <div class="tabs">
+  <!-- Mobile tabs toggle (☰) — يظهر فقط على الموبايل -->
+  <button id="mobileTabsToggle" onclick="toggleTabsDrawer()" aria-label="القائمة"
+          style="display:none;position:fixed;top:14px;right:14px;width:42px;height:42px;border-radius:10px;background:var(--primary,#1b5e20);color:#fff;border:none;font-size:20px;cursor:pointer;z-index:1600;box-shadow:0 4px 12px rgba(0,0,0,.25);align-items:center;justify-content:center">☰</button>
+
+  <!-- Tabs (تتحول لـ drawer على الموبايل) -->
+  <div class="tabs" id="tabsBar">
     <button class="tab active" id="tabDash"     onclick="showTab('dash')">📊 لوحة التحكم</button>
     <button class="tab"        id="tabMenu"     onclick="showTab('menu')"><span data-biz="catalog">📋 القائمة</span></button>
     <button class="tab"        id="tabOrders"   onclick="showTab('orders')"><span data-biz="orderInbox">📦 الطلبات</span></button>
@@ -3010,7 +3062,24 @@ function toggleOpen24() {
   }
 }
 
+// ─── Mobile tabs drawer toggle ───────────────────────────────────────────
+function toggleTabsDrawer(force) {
+  const open = (typeof force === "boolean") ? force : !document.body.classList.contains("tabs-drawer-open");
+  document.body.classList.toggle("tabs-drawer-open", open);
+  document.body.style.overflow = open ? "hidden" : "";
+}
+// إغلاق عند الضغط خارج الـ drawer
+document.addEventListener("click", function(e){
+  if (!document.body.classList.contains("tabs-drawer-open")) return;
+  const tabs = document.getElementById("tabsBar");
+  const btn  = document.getElementById("mobileTabsToggle");
+  if (tabs && (tabs.contains(e.target) || btn?.contains(e.target))) return;
+  toggleTabsDrawer(false);
+});
+
 function showTab(tab) {
+  // أغلق الـ drawer على الموبايل بعد اختيار tab
+  if (window.innerWidth <= 768) toggleTabsDrawer(false);
   ["dash","menu","orders","inbox","tickets","support","botq","settings","customers","broadcast","loyalty","whatsapp","archive","accounting","rejections","inventory","ratings"].forEach(t => {
     const sec = document.getElementById(t + "Section");
     const btn = document.getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1));
