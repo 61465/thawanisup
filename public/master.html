@@ -108,9 +108,13 @@ input,select,textarea{font-family:inherit}
 /* عطّل sidebar toggle من ux-enhancements.js — استبدلناه بـ mobile-header الخاص بنا */
 #uxSidebarToggle{display:none !important}
 
-/* 🔧 إصلاح حرج: mobile-fixes.css يطبق display:flex!important على .overlay
-   مما يجعل كل المودالات تظهر تلقائياً متجاوزةً inline display:none.
-   نُلغي الـ !important هنا لإعادة الاحترام للـ inline style. */
+/* 🔧 إصلاح حرج: mobile-fixes.css يطبق display:flex!important على عدة elements
+   (.overlay, #appScreen, #loginScreen) — مما يهزم inline style="display:none".
+   نُعيد الاحترام لـ inline display:none عبر attribute selector + !important. */
+[style*="display:none"][id="loginScreen"],
+[style*="display: none"][id="loginScreen"],
+[style*="display:none"][id="appScreen"],
+[style*="display: none"][id="appScreen"],
 .overlay[style*="display:none"],
 .overlay[style*="display: none"]{display:none !important}
 /* اعتبر الـ media query من ux-enhancements لاغ ـ نستخدم آليتنا */
