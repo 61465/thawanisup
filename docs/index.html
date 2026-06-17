@@ -1302,13 +1302,16 @@ const PLANS={
 };
 function renderPlans(data){
   const g=document.getElementById("plansGrid");
-  // إذا في باقات من السيرفر استخدمها، وإلا fallback للـ PLANS الافتراضية
-  const serverIds = Object.keys(data || {});
-  const ids = serverIds.length ? serverIds : ["starter","pro","premium"];
+  // إذا في باقات من السيرفر → استخدمها مباشرة (بدون merge مع PLANS المحلي)
+  // إذا فارغ → fallback للـ PLANS الافتراضية كاملة
+  const fromServer = data && Object.keys(data).length > 0;
+  const ids = fromServer ? Object.keys(data) : ["starter","pro","premium"];
   g.innerHTML = ids.map(id=>{
-    const p={...(PLANS[id]||{}),...(data[id]||{})};
-    const isFeat=p.featured;
-    const feats=p.feats||p.displayFeatures||[];
+    // مصدر واحد فقط: السيرفر OR المحلي (لا دمج)
+    const p = fromServer ? (data[id] || {}) : (PLANS[id] || {});
+    const isFeat = p.featured;
+    // displayFeatures من السيرفر، feats من المحلي
+    const feats = p.displayFeatures || p.feats || [];
     return`<div class="plan${isFeat?" hot":""}">
       ${isFeat&&p.badge?`<div class="plan-badge">${p.badge}</div>`:""}
       <div class="plan-emoji">${p.emoji||""}</div>
