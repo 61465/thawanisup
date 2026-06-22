@@ -1082,22 +1082,17 @@ footer a:hover{opacity:.8}
         <div class="reg-step" id="rs3">
           <h3 class="reg-h">📦 اختر نظامك</h3>
           <p class="reg-s">حدّد القناة التي تريد البيع من خلالها — يمكنك التبديل لاحقاً</p>
-          <div class="reg-track-grid">
+          <div class="reg-track-grid" style="grid-template-columns:1fr 1fr">
+            <div class="rt-card sel" id="rtc-bot" onclick="pickTrack('bot',this)">
+              <div class="rt-badge">⭐ الأكثر طلباً</div>
+              <div class="rt-emoji">🤖</div>
+              <div class="rt-name">بوت واتساب</div>
+              <div class="rt-desc">بوت ذكي + بث + ولاء + حجوزات<br><small style="opacity:.7">العملاء يطلبون من واتساب مباشرة</small></div>
+            </div>
             <div class="rt-card" id="rtc-cart" onclick="pickTrack('cart',this)">
               <div class="rt-emoji">🛍️</div>
-              <div class="rt-name">سلة فقط</div>
-              <div class="rt-desc">متجر علني + checkout بسيط<br><small style="opacity:.7">بدون بوت واتس</small></div>
-            </div>
-            <div class="rt-card sel" id="rtc-bundle" onclick="pickTrack('bundle',this)">
-              <div class="rt-badge">⭐ الأكثر طلباً</div>
-              <div class="rt-emoji">📦</div>
-              <div class="rt-name">متكامل</div>
-              <div class="rt-desc">السلة + البوت معاً<br><small style="opacity:.7">طلبات من القناتين، إدارة موحّدة</small></div>
-            </div>
-            <div class="rt-card" id="rtc-bot" onclick="pickTrack('bot',this)">
-              <div class="rt-emoji">🤖</div>
-              <div class="rt-name">بوت فقط</div>
-              <div class="rt-desc">بوت واتس + بث + ولاء<br><small style="opacity:.7">بدون متجر علني</small></div>
+              <div class="rt-name">متجر علني (سلة)</div>
+              <div class="rt-desc">صفحة ويب احترافية + checkout<br><small style="opacity:.7">العملاء يطلبون من المتصفح</small></div>
             </div>
           </div>
 
@@ -1364,7 +1359,7 @@ const ro=new IntersectionObserver(es=>es.forEach(e=>{
 document.querySelectorAll(".reveal").forEach(el=>ro.observe(el));
 
 // ══ REGISTRATION ══
-const regD={name:"",phone:"",store:"",type:"",city:"",plan:"pro",track:"bundle"};
+const regD={name:"",phone:"",store:"",type:"",city:"",plan:"pro",track:"bot"};
 
 function goRegister(plan){
   document.getElementById("register").scrollIntoView({behavior:"smooth"});
@@ -1436,7 +1431,7 @@ async function submitReg(){
   }catch(e){
     alert("حدث خطأ: "+e.message+"\nسيتم تحويلك لواتساب كبديل.");
     const pn={starter:"🌱 الأساسية — 80 ر.س/شهر",pro:"⭐ الاحترافية — 150 ر.س/شهر",premium:"👑 المتقدمة — 250 ر.س/شهر"};
-    const tn={cart:"🛍️ سلة فقط",bot:"🤖 بوت فقط",bundle:"📦 متكامل (سلة+بوت)"};
+    const tn={cart:"🛍️ سلة فقط",bot:"🤖 بوت واتساب"};
     const msg=`🤖 طلب اشتراك جديد — منصة ثواني\n\nالاسم: ${regD.name}\nواتساب: ${regD.phone}\nالمتجر: ${regD.store}\nنوع المشروع: ${regD.type}\nالمدينة: ${regD.city||"—"}\nالنظام: ${tn[regD.track]||"—"}\nالباقة: ${pn[regD.plan]}`;
     window.open(`https://wa.me/966508572902?text=${encodeURIComponent(msg)}`,"_blank");
     if(btn){btn.disabled=false;btn.textContent="📱 أرسل طلب الاشتراك";}
