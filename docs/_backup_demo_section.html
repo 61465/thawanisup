@@ -1,0 +1,94 @@
+<!--
+  📦 BACKUP: قسم "جربها الآن" + قسم demo تجربة البوت — حُذف من index.html بناءً على طلب المستخدم
+  التاريخ: 2026-06-22
+  للعودة: انسخ المحتوى أدناه إلى المكان المناسب في index.html
+  - قسم demo: يأتي بعد </section> لـ #how، قبل <section id="systems">
+  - قسم trial: داخل #systems قبل </section>
+-->
+
+<!-- ════════════════ DEMO SECTION (تجربة بوت تفاعلية) ════════════════ -->
+<section id="demo">
+  <div class="container">
+    <div class="ctr">
+      <span class="tag">🎮 تجربة مباشرة</span>
+      <h2 class="sec-h">جرّب البوت بنفسك الآن</h2>
+      <p class="sec-p">هذا هو نفس البوت الذي سيستخدمه عملاؤك — كلّمه كأنك عميل في مقهى</p>
+    </div>
+    <div class="demo-wrap reveal">
+      <div class="demo-info">
+        <h3>هذا ما يراه عملاؤك كل يوم</h3>
+        <p>من أول رسالة حتى تأكيد الطلب — البوت يتولى كل شيء بشكل احترافي يعكس صورة مميزة لمشروعك</p>
+        <ul class="demo-feat">
+          <li>استقبال طلبات غير محدودة على مدار الساعة</li>
+          <li>عرض المنيو بشكل تفاعلي ومنظم بالصور</li>
+          <li>تأكيد الطلب مع ملخص كامل وفاتورة للعميل</li>
+          <li>إشعار فوري لصاحب المحل بكل طلب جديد</li>
+          <li>لوحة تحكم لإدارة وتتبع جميع الطلبات</li>
+        </ul>
+        <div class="demo-action">
+          <a class="btn-wa" href="#pricing">ابدأ الآن بباقتك 🚀</a>
+        </div>
+      </div>
+      <div>
+        <div class="wa-widget">
+          <div class="wa-hdr">
+            <div class="wa-av">☕</div>
+            <div class="wa-inf">
+              <strong>مقهى النخيل 🌴</strong>
+              <small><span class="online"></span> متصل الآن</small>
+            </div>
+          </div>
+          <div class="wa-msgs" id="waMsgs">
+            <div class="demo-start-wrap">
+              <button class="btn-start" id="startBtn">▶️ ابدأ التجربة</button>
+              <p style="font-size:12px;color:#aaa;margin-top:8px">اضغط لبدء محادثة تجريبية</p>
+            </div>
+          </div>
+          <div class="wa-bar">
+            <button class="wa-snd" id="sndBtn" onclick="sendMsg()" disabled>➤</button>
+            <input class="wa-in" id="waIn" placeholder="اكتب رسالتك..." disabled onkeydown="if(event.key==='Enter')sendMsg()">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ════════════════ TRIAL/MASTER OVERRIDE (داخل #systems قبل </section>) ════════════════ -->
+<!-- ⭐ Master override + trial -->
+<div style="margin-top:48px;padding:28px;background:linear-gradient(135deg,#fff,var(--green-lt));border-radius:var(--radius-lg);border:1px solid var(--border2)">
+  <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:28px;align-items:center" class="trial-grid">
+    <div>
+      <span class="tag">🎁 جربها الآن</span>
+      <h3 style="font-size:24px;font-weight:900;color:var(--g1);margin:10px 0 12px">جرّب المنصة كاملة قبل الاشتراك</h3>
+      <p style="color:var(--text2);font-size:14.5px;line-height:1.8;margin-bottom:18px">حساب تجربة جاهز بباقة <b>متكاملة</b> 📦 (سلة + بوت) — افتح لوحة الأدمن، تصفّح المتجر العلني، أضف طلباً تجريبياً، شارك على واتس. كل المميزات الجديدة مفعّلة:</p>
+      <ul style="list-style:none;padding:0;font-size:13.5px;color:var(--text2);line-height:2">
+        <li>✅ تبديل مسار الاشتراك من الماستر فوراً (سلة/بوت/متكامل) — يظهر للتاجر بـ <b>30 ثانية</b></li>
+        <li>✅ Track badge ملوّن لكل متجر في لوحة الإدارة</li>
+        <li>✅ 12 قالب بث جاهز للاستخدام</li>
+        <li>✅ بحث + فلاتر + الأكثر مبيعاً تلقائياً</li>
+        <li>✅ مشاركة المتجر على واتس + تويتر + تلغرام</li>
+        <li>✅ NEXUS AI متعدد المزودين (Groq + Claude + Gemini)</li>
+        <li>✅ Backup يومي + rotation تلقائي (14 يوم + 12 أسبوع)</li>
+      </ul>
+    </div>
+    <div style="background:#fff;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow)">
+      <div style="font-size:13px;color:var(--gray);font-weight:700;margin-bottom:14px">🔑 بيانات الدخول التجريبية:</div>
+      <div style="background:var(--bg);padding:14px;border-radius:10px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:4px">رقم الجوال (لـ login التاجر)</div>
+        <div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--g1);direction:ltr;text-align:left">201278632120</div>
+      </div>
+      <div style="background:var(--bg);padding:14px;border-radius:10px;margin-bottom:18px">
+        <div style="font-size:11px;color:var(--gray);margin-bottom:4px">كلمة المرور</div>
+        <div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--g1);direction:ltr;text-align:left">test1278</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="https://thawani.tail19ddab.ts.net/login.html" target="_blank" style="background:var(--green);color:#fff;padding:11px 18px;border-radius:10px;text-align:center;font-weight:800;text-decoration:none;font-size:14px">🎛️ افتح لوحة التاجر</a>
+        <a href="https://thawani.tail19ddab.ts.net/store/store_1782065514953" target="_blank" style="background:var(--wa);color:#fff;padding:11px 18px;border-radius:10px;text-align:center;font-weight:800;text-decoration:none;font-size:14px">🛍️ افتح المتجر العلني</a>
+      </div>
+      <p style="font-size:11px;color:var(--gray);margin-top:12px;text-align:center">باقة متقدمة 👑 • مسار متكامل 📦 • نشط حتى 2099</p>
+    </div>
+  </div>
+</div>
+<style>@media(max-width:780px){.trial-grid{grid-template-columns:1fr !important}}</style>

@@ -224,29 +224,159 @@ footer a:hover{opacity:.8}
 .btn-modal-p:hover{background:var(--wa-dark)}
 .btn-modal-c{padding:14px 20px;border:1.5px solid var(--border);border-radius:10px;background:transparent;color:var(--text2);font-size:14px;cursor:pointer;font-family:inherit}
 
-/* ══ RESPONSIVE ══ */
-@media(max-width:900px){
-  .feat-grid{grid-template-columns:repeat(2,1fr)}
-  .plans{grid-template-columns:1fr;max-width:440px;margin:0 auto}
-  .demo-wrap{grid-template-columns:1fr;gap:32px}
-  .demo-info{text-align:center}
-  .demo-action{display:flex;justify-content:center}
+/* ══ RESPONSIVE — إعادة بناء كاملة ══ */
+
+/* Tablets (901-1024) */
+@media(max-width:1024px){
+  .feat-grid{grid-template-columns:repeat(3,1fr);gap:18px}
+  .nav-inner{padding:0 18px}
+  .nav-links{gap:20px}
 }
+
+/* Medium tablets / large phones (768-900) */
+@media(max-width:900px){
+  section{padding:72px 20px}
+  .feat-grid{grid-template-columns:repeat(2,1fr);gap:16px}
+  .plans{grid-template-columns:1fr;max-width:420px;margin:0 auto;gap:18px}
+  .demo-wrap{grid-template-columns:1fr;gap:28px}
+  .demo-info{text-align:center}
+  .demo-info p{max-width:520px;margin-left:auto;margin-right:auto;margin-bottom:18px}
+  .demo-feat{max-width:520px;margin:0 auto 18px}
+  .demo-action{display:flex;justify-content:center}
+  .sec-h{font-size:32px}
+  .reg-plan-grid{grid-template-columns:repeat(3,1fr);gap:10px}
+}
+
+/* Phones (≤768) */
 @media(max-width:768px){
+  /* ── Nav ── */
   .nav-links,.nav-cta{display:none}
   .hamburger{display:flex}
-  section{padding:64px 16px}
+  .nav-inner{height:58px;padding:0 16px}
+  .logo{font-size:19px}
+
+  /* ── Section padding أصغر ── */
+  section{padding:56px 16px}
+
+  /* ── Hero ── */
+  .hero{padding:90px 18px 56px;min-height:auto}
+  .hero h1{font-size:32px;line-height:1.2;margin-bottom:18px}
+  .hero-sub{font-size:15px;margin-bottom:30px;line-height:1.7}
+  .hero-badge{font-size:11px;padding:5px 14px;margin-bottom:22px}
+  .hero-btns{flex-direction:column;align-items:center;gap:10px;margin-bottom:42px}
+  .btn-wa,.btn-ghost{width:100%;max-width:320px;justify-content:center;padding:14px 24px;font-size:15px}
+  .hero-stats{grid-template-columns:repeat(2,1fr);max-width:380px}
+  .h-stat{padding:16px 8px}
+  .h-stat .val{font-size:22px}
+  .h-stat .lab{font-size:11px}
+
+  /* ── Types ── */
+  #types{padding:32px 16px}
+  .type-chip{font-size:13px;padding:7px 14px}
+
+  /* ── Section headers ── */
+  .sec-h{font-size:26px;margin-bottom:10px}
+  .sec-p{font-size:15px;margin-bottom:38px;padding:0 8px}
+  .tag{font-size:11px;padding:4px 12px}
+
+  /* ── Steps ── */
   .steps{grid-template-columns:1fr;gap:16px}
-  .step{margin:0}
-  .hero-stats{grid-template-columns:repeat(2,1fr)}
-  .hero-btns{flex-direction:column;align-items:center}
-  .btn-wa,.btn-ghost{width:100%;max-width:320px;justify-content:center}
-  .cta-btns{flex-direction:column;align-items:center}
-  .btn-cta-w,.btn-cta-o{width:100%;max-width:340px;justify-content:center}
+  .step{margin:0;padding:28px 20px}
+  .step h3{font-size:17px}
+  .step p{font-size:13.5px}
+
+  /* ── Demo (WhatsApp widget) ── */
+  .wa-widget{max-width:100%;border-radius:16px}
+  .wa-msgs{height:280px;padding:12px 10px}
+  .wa-msg{font-size:13px;padding:8px 11px}
+  .demo-info h3{font-size:21px}
+  .demo-feat li{font-size:13.5px;padding:8px 0}
+
+  /* ── CTA buttons ── */
+  .cta-btns{flex-direction:column;align-items:center;gap:10px}
+  .btn-cta-w,.btn-cta-o{width:100%;max-width:340px;justify-content:center;padding:14px 24px;font-size:15px}
+  #cta{padding:64px 18px}
+
+  /* ── Pricing ── */
+  .plan{padding:28px 22px}
+  .plan-emoji{font-size:38px}
+  .plan h3{font-size:18px}
+  .plan-price{font-size:38px}
+  .plan-feats li{font-size:13.5px;padding:7px 0}
+
+  /* ── FAQ ── */
+  .faq-q{font-size:14.5px;padding:16px 18px}
+  .faq-a{font-size:14px;padding:0 18px 18px;line-height:1.75}
+  .faq-ico{font-size:18px}
+
+  /* ── Register form ── */
+  .reg-body{padding:24px 18px}
+  .reg-tab{font-size:11px;padding:11px 4px}
+  .reg-plan-grid{grid-template-columns:1fr;gap:12px}
+  .reg-h{font-size:19px}
+  .reg-s{font-size:13.5px;margin-bottom:22px}
+
+  /* ── Footer ── */
+  footer{padding:24px 18px}
+  .footer-links{gap:14px;font-size:12px}
+  .footer-links a{font-size:12.5px}
 }
+
+/* Small phones (≤480) */
 @media(max-width:480px){
-  .hero h1{font-size:27px}
-  .feat-grid{grid-template-columns:1fr}
+  section{padding:48px 14px}
+  .hero{padding:80px 14px 48px}
+  .hero h1{font-size:26px;margin-bottom:14px;letter-spacing:-.3px}
+  .hero-sub{font-size:14px;margin-bottom:24px}
+  .hero-badge{font-size:10.5px}
+  .hero-stats{max-width:100%}
+  .h-stat .val{font-size:19px}
+  .h-stat .lab{font-size:10px}
+
+  .feat-grid{grid-template-columns:1fr;gap:14px}
+  .feat-card{padding:24px 20px}
+  .feat-icon{font-size:32px}
+
+  .sec-h{font-size:23px;line-height:1.3}
+  .sec-p{font-size:14px;margin-bottom:32px}
+
+  /* Smaller step circles */
+  .step{padding:24px 18px}
+  .step-n{width:46px;height:46px;font-size:19px}
+  .step-icon{font-size:34px}
+
+  /* Tighter padding */
+  #types{padding:24px 14px}
+  .types-row{gap:8px}
+  .type-chip{font-size:12px;padding:6px 12px}
+
+  /* WA widget smaller */
+  .wa-msgs{height:260px}
+  .wa-hdr{padding:12px 14px}
+  .wa-av{width:38px;height:38px;font-size:17px}
+  .wa-inf strong{font-size:14px}
+  .wa-inf small{font-size:11px}
+
+  /* Pricing tighter */
+  .plan{padding:24px 18px}
+  .plan-emoji{font-size:34px}
+  .plan-price{font-size:34px}
+  .plan-feats li{font-size:13px}
+  .btn-plan{padding:13px;font-size:14px}
+
+  /* CTA tighter */
+  #cta{padding:56px 14px}
+
+  /* Footer tighter */
+  .footer-links{flex-direction:column;gap:8px;margin-bottom:14px}
+}
+
+/* Tiny phones (≤360) */
+@media(max-width:360px){
+  .hero h1{font-size:22px}
+  .hero-sub{font-size:13px}
+  .sec-h{font-size:21px}
+  .btn-wa,.btn-ghost{padding:12px 20px;font-size:14px}
 }
 
 /* ══ 3D & PARTICLES ══ */
@@ -290,6 +420,14 @@ footer a:hover{opacity:.8}
 .rfield input,.rfield select{width:100%;padding:13px 16px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;direction:rtl;outline:none;transition:.2s;background:#fff;color:var(--text)}
 .rfield input:focus,.rfield select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.12)}
 .reg-plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:8px}
+.reg-track-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+.rt-card{border:2px solid var(--border);border-radius:var(--radius);padding:18px 12px;text-align:center;cursor:pointer;transition:.3s;position:relative;overflow:visible;background:#fff}
+.rt-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:var(--shadow)}
+.rt-card.sel{border-color:var(--gold);background:linear-gradient(135deg,#fff,rgba(201,162,75,.07));box-shadow:0 0 0 3px rgba(201,162,75,.18)}
+.rt-badge{position:absolute;top:-11px;right:50%;transform:translateX(50%);background:var(--gold);color:#fff;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+.rt-emoji{font-size:30px;margin-bottom:6px}
+.rt-name{font-size:15px;font-weight:900;color:var(--g1);margin-bottom:4px}
+.rt-desc{font-size:12px;color:var(--text3);line-height:1.6}
 .rp-card{border:2px solid var(--border);border-radius:var(--radius);padding:20px 10px;text-align:center;cursor:pointer;transition:.3s;position:relative;overflow:visible}
 .rp-card:hover{border-color:var(--green);transform:translateY(-4px);box-shadow:var(--shadow)}
 .rp-card.sel{border-color:var(--green);background:var(--green-lt);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
@@ -311,7 +449,7 @@ footer a:hover{opacity:.8}
 .reg-success h3{font-size:26px;font-weight:900;color:var(--g2);margin-bottom:10px}
 .reg-success p{color:var(--text2);line-height:1.8;max-width:420px;margin:0 auto 28px;font-size:15px}
 @media(max-width:640px){
-  .reg-plan-grid{grid-template-columns:1fr}
+  .reg-plan-grid,.reg-track-grid{grid-template-columns:1fr}
   .reg-body{padding:24px 18px}
   .reg-tab{font-size:11px;padding:12px 4px}
   .reg-tab-n{width:22px;height:22px;font-size:11px}
@@ -329,8 +467,8 @@ footer a:hover{opacity:.8}
     <a class="logo" href="#">🤖 ثواني <span class="logo-dot">| Thawani</span></a>
     <ul class="nav-links">
       <li><a href="#features">المميزات</a></li>
+      <li><a href="#systems">السلة 🛍️ vs البوت 🤖</a></li>
       <li><a href="#how">كيف يعمل</a></li>
-      <li><a href="#demo">جرّب البوت</a></li>
       <li><a href="#pricing">الباقات</a></li>
       <li><a href="#faq">الأسئلة</a></li>
     </ul>
@@ -343,8 +481,8 @@ footer a:hover{opacity:.8}
   </div>
   <div class="mob-nav" id="mobNav">
     <a href="#features" onclick="toggleMenu()">✨ المميزات</a>
+    <a href="#systems" onclick="toggleMenu()">🛍️ vs 🤖</a>
     <a href="#how" onclick="toggleMenu()">🛠️ كيف يعمل</a>
-    <a href="#demo" onclick="toggleMenu()">🎮 جرّب البوت</a>
     <a href="#pricing" onclick="toggleMenu()">💰 الباقات</a>
     <a href="#faq" onclick="toggleMenu()">❓ الأسئلة الشائعة</a>
     <a href="#register" onclick="toggleMenu()">🚀 سجّل الآن</a>
@@ -364,7 +502,7 @@ footer a:hover{opacity:.8}
     <h1>حوّل واتساب إلى<br><em>موظف طلبات لا يتعب</em> 🚀</h1>
     <p class="hero-sub">استقبل طلبات نشاطك التجاري تلقائياً على واتساب — بوت ذكي يعرض منتجاتك وخدماتك، يأخذ الطلبات والحجوزات، يؤكدها، ويُشعرك فوراً. كل هذا برقمك الأصلي في أقل من 5 دقائق.</p>
     <div class="hero-btns">
-      <a class="btn-wa" href="#demo">🎮 جرّب البوت الآن</a>
+      <a class="btn-wa" href="#register">🚀 ابدأ اشتراكك</a>
       <a class="btn-ghost" href="#how">كيف يعمل؟ ▾</a>
     </div>
     <div class="hero-stats">
@@ -645,50 +783,167 @@ footer a:hover{opacity:.8}
 </section>
 
 <!-- ════════════════ DEMO ════════════════ -->
-<section id="demo">
+<!-- 📦 قسم #demo (تجربة البوت التفاعلية) — محفوظ في _backup_demo_section.html. يمكن إعادته لاحقاً. -->
+
+<!-- ════════════════ النظامان: السلة + البوت ════════════════ -->
+<style>
+  #systems{padding:60px 24px;background:linear-gradient(180deg,var(--bg) 0%,#fff 100%)}
+  #systems .sys-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;max-width:var(--max);margin:0 auto}
+  @media (max-width:780px){#systems .sys-grid{grid-template-columns:1fr}}
+  .sys-card{background:var(--surface);border-radius:var(--radius-lg);padding:32px 28px;box-shadow:var(--shadow);position:relative;overflow:hidden;border:2px solid transparent;transition:.2s}
+  .sys-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+  .sys-card.cart{border-color:var(--gold)}
+  .sys-card.bot{border-color:var(--wa)}
+  .sys-card .sys-emoji{font-size:48px;margin-bottom:14px}
+  .sys-card h3{font-size:24px;font-weight:900;color:var(--g1);margin-bottom:8px}
+  .sys-card .sys-tag{display:inline-block;background:var(--green-lt);color:var(--g2);padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;margin-bottom:14px}
+  .sys-card.cart .sys-tag{background:rgba(201,162,75,.15);color:#854d0e}
+  .sys-card.bot .sys-tag{background:rgba(37,211,102,.15);color:var(--wa-dark)}
+  .sys-card .sys-lead{color:var(--text2);font-size:15px;line-height:1.8;margin-bottom:20px}
+  .sys-card ul{list-style:none;padding:0;margin:0 0 20px}
+  .sys-card li{padding:9px 0;border-bottom:1px dashed var(--border);font-size:14px;color:var(--text);display:flex;gap:10px;align-items:flex-start}
+  .sys-card li:last-child{border-bottom:none}
+  .sys-card li::before{content:"✓";color:var(--green);font-weight:900;flex-shrink:0;font-size:16px}
+  .sys-card .sys-when{margin-top:16px;padding:14px 16px;background:var(--green-lt);border-radius:12px;border-right:4px solid var(--green)}
+  .sys-card.cart .sys-when{background:rgba(201,162,75,.1);border-right-color:var(--gold)}
+  .sys-card.bot .sys-when{background:rgba(37,211,102,.1);border-right-color:var(--wa)}
+  .sys-when-h{font-weight:800;color:var(--g1);font-size:13px;margin-bottom:6px}
+  .sys-when-t{font-size:13.5px;color:var(--text2);line-height:1.7}
+
+  #systems .integration{max-width:var(--max);margin:48px auto 0;padding:32px;background:linear-gradient(135deg,var(--g1),var(--g2));border-radius:var(--radius-lg);color:#fff;text-align:center}
+  #systems .integration h3{color:#fff;font-size:22px;font-weight:900;margin-bottom:14px}
+  #systems .integration p{color:rgba(255,255,255,.85);font-size:15px;line-height:1.8;max-width:680px;margin:0 auto 22px}
+  #systems .integration .arrows{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:14px;color:rgba(255,255,255,.9)}
+  #systems .integration .arrow-step{background:rgba(255,255,255,.15);padding:10px 18px;border-radius:999px;font-weight:600}
+
+  #systems .tracks{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:36px auto 0;max-width:var(--max)}
+  @media (max-width:780px){#systems .tracks{grid-template-columns:1fr}}
+  .track-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:24px;text-align:center;transition:.2s}
+  .track-card.featured{border-color:var(--gold);background:linear-gradient(135deg,#fff,rgba(201,162,75,.05));position:relative}
+  .track-card.featured::before{content:"⭐ الأكثر طلباً";position:absolute;top:-10px;right:50%;transform:translateX(50%);background:var(--gold);color:#fff;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+  .track-card .tr-emoji{font-size:36px;margin-bottom:8px}
+  .track-card .tr-name{font-size:18px;font-weight:900;color:var(--g1);margin-bottom:6px}
+  .track-card .tr-desc{font-size:13px;color:var(--text3);margin-bottom:12px;min-height:36px}
+  .track-card .tr-feats{font-size:13px;color:var(--text2);line-height:1.9;text-align:right;list-style:none;padding:0}
+</style>
+
+<section id="systems">
   <div class="container">
     <div class="ctr">
-      <span class="tag">🎮 تجربة مباشرة</span>
-      <h2 class="sec-h">جرّب البوت بنفسك الآن</h2>
-      <p class="sec-p">هذا هو نفس البوت الذي سيستخدمه عملاؤك — كلّمه كأنك عميل في مقهى</p>
+      <span class="tag">🆕 جديد</span>
+      <h2 class="sec-h">🛍️ vs 🤖 — منصة بنظامين متكاملين</h2>
+      <p class="sec-p">منصة ثواني تقدّم قناتين للبيع: السلة (متجر علني) والبوت (واتساب). استخدم واحد، أو فعّل الاثنين معاً واحصل على تكامل تلقائي</p>
     </div>
-    <div class="demo-wrap reveal">
-      <div class="demo-info">
-        <h3>هذا ما يراه عملاؤك كل يوم</h3>
-        <p>من أول رسالة حتى تأكيد الطلب — البوت يتولى كل شيء بشكل احترافي يعكس صورة مميزة لمشروعك</p>
-        <ul class="demo-feat">
-          <li>استقبال طلبات غير محدودة على مدار الساعة</li>
-          <li>عرض المنيو بشكل تفاعلي ومنظم بالصور</li>
-          <li>تأكيد الطلب مع ملخص كامل وفاتورة للعميل</li>
-          <li>إشعار فوري لصاحب المحل بكل طلب جديد</li>
-          <li>لوحة تحكم لإدارة وتتبع جميع الطلبات</li>
+
+    <div class="sys-grid">
+      <div class="sys-card cart">
+        <div class="sys-emoji">🛍️</div>
+        <h3>السلة (Storefront)</h3>
+        <span class="sys-tag">رابط متجر إلكتروني</span>
+        <p class="sys-lead">صفحة ويب احترافية بسلة شراء وcheckout بسيط. يفتحها العميل من المتصفح بلا تسجيل.</p>
+        <ul>
+          <li>صفحة منتجات احترافية بصور وأسعار</li>
+          <li>سلة شراء مع تعديل الكميات</li>
+          <li>checkout بسيط (اسم + جوال + عنوان + GPS)</li>
+          <li>تتبع الطلب من رابط بدون login</li>
+          <li>🆕 <b>3 طرق دفع</b> — نقداً / تحويل بنكي (IBAN) / STC Pay</li>
+          <li>🆕 <b>كوبونات خصم</b> مخصصة للسلة (scope منفصل)</li>
+          <li>🆕 <b>تغليف هدايا</b> مع رسم اختياري (للورد/الهدايا)</li>
+          <li>بحث + فلاتر بالفئة والسعر</li>
+          <li>مشاركة المتجر (واتس + تويتر + تلغرام)</li>
+          <li>"الأكثر مبيعاً" تلقائياً + "طلباتي" بـ lookup الجوال</li>
+          <li>يعمل بدون تطبيق واتس على جوال العميل</li>
         </ul>
-        <div class="demo-action">
-          <a class="btn-wa" href="#pricing">ابدأ الآن بباقتك 🚀</a>
+        <div class="sys-when">
+          <div class="sys-when-h">🎯 الأنسب لـ:</div>
+          <div class="sys-when-t">إعلانات Instagram/TikTok • متاجر شحن الألعاب • متاجر بصور كثيرة • العملاء الجدد الذين لا يعرفونك</div>
         </div>
       </div>
-      <div>
-        <div class="wa-widget">
-          <div class="wa-hdr">
-            <div class="wa-av">☕</div>
-            <div class="wa-inf">
-              <strong>مقهى النخيل 🌴</strong>
-              <small><span class="online"></span> متصل الآن</small>
-            </div>
-          </div>
-          <div class="wa-msgs" id="waMsgs">
-            <div class="demo-start-wrap">
-              <button class="btn-start" id="startBtn">▶️ ابدأ التجربة</button>
-              <p style="font-size:12px;color:#aaa;margin-top:8px">اضغط لبدء محادثة تجريبية</p>
-            </div>
-          </div>
-          <div class="wa-bar">
-            <button class="wa-snd" id="sndBtn" onclick="sendMsg()" disabled>➤</button>
-            <input class="wa-in" id="waIn" placeholder="اكتب رسالتك..." disabled onkeydown="if(event.key==='Enter')sendMsg()">
-          </div>
+
+      <div class="sys-card bot">
+        <div class="sys-emoji">🤖</div>
+        <h3>البوت (WhatsApp Bot)</h3>
+        <span class="sys-tag">محادثة واتساب مباشرة</span>
+        <p class="sys-lead">رقم واتساب يرد تلقائياً على العملاء. يقدّم القائمة، يأخذ الطلب، يجمع البيانات.</p>
+        <ul>
+          <li>قائمة منتجات عبر أزرار/أرقام</li>
+          <li>سلة محادثة (إضافة/حذف بأوامر)</li>
+          <li>🧠 ذكاء اصطناعي (Groq+Claude+Gemini) يفهم العربية</li>
+          <li>🆕 <b>نظام حجوزات</b> للصالونات/العيادات + تذكير قبل 24س</li>
+          <li>🆕 <b>تنبيهات مخزون منخفض</b> للأكواد الرقمية (gaming)</li>
+          <li>🆕 <b>إضافات (toppings)</b> للأطعمة والمشروبات</li>
+          <li>إشعارات تلقائية للمالك + أوامر سريعة (قبول/رفض/تم)</li>
+          <li>12 قالب بث جاهز + حماية من حظر الرقم</li>
+          <li>تذكير السلات المتروكة + handoff للإنسان</li>
+          <li>نقاط ولاء + تقييمات بعد التسليم</li>
+        </ul>
+        <div class="sys-when">
+          <div class="sys-when-h">🎯 الأنسب لـ:</div>
+          <div class="sys-when-t">العملاء المعتادين على الواتس • المطاعم والمقاهي المحلية • المتاجر الصغيرة • التواصل المستمر مع العملاء</div>
         </div>
       </div>
     </div>
+
+    <div class="integration">
+      <h3>⚡ كيف يعملان معاً (التكامل التلقائي)</h3>
+      <p>سواء بدأ العميل من <b>الموقع</b> أو من <b>الواتس</b>، الطلب يصل لنفس الملف ولنفس لوحة الأدمن. التجربة موحّدة، والإدارة من مكان واحد.</p>
+      <div class="arrows">
+        <div class="arrow-step">🛒 سلة من الموقع</div>
+        <div class="arrow-step">+</div>
+        <div class="arrow-step">🤖 طلب من الواتس</div>
+        <div class="arrow-step">→</div>
+        <div class="arrow-step">📋 لوحة واحدة</div>
+        <div class="arrow-step">→</div>
+        <div class="arrow-step">📲 تأكيد للعميل</div>
+      </div>
+    </div>
+
+    <div class="ctr" style="margin-top:48px">
+      <span class="tag">📦 المسارات</span>
+      <h3 style="font-size:22px;font-weight:900;color:var(--g1);margin-bottom:8px">3 طرق للاشتراك حسب احتياج متجرك</h3>
+      <p class="sec-p" style="margin-bottom:0">الماستر يحدد "المسار" عند إنشاء الباقة — وtabs الأدمن تتكيّف تلقائياً</p>
+    </div>
+
+    <div class="tracks">
+      <div class="track-card">
+        <div class="tr-emoji">🛍️</div>
+        <div class="tr-name">سلة فقط</div>
+        <div class="tr-desc">متجر علني + طلبات بدون بوت واتس</div>
+        <ul class="tr-feats">
+          <li>✓ صفحة متجر علنية</li>
+          <li>✓ سلة + checkout</li>
+          <li>✓ تتبع طلبات</li>
+          <li>✓ بحث + فلاتر</li>
+          <li style="color:var(--text3)">✗ لا بث واتس</li>
+        </ul>
+      </div>
+      <div class="track-card">
+        <div class="tr-emoji">🤖</div>
+        <div class="tr-name">بوت فقط</div>
+        <div class="tr-desc">بوت واتس + بث + ولاء بدون متجر علني</div>
+        <ul class="tr-feats">
+          <li>✓ بوت واتس ذكي</li>
+          <li>✓ بث جماعي + قوالب</li>
+          <li>✓ نقاط ولاء</li>
+          <li>✓ تقييمات</li>
+          <li style="color:var(--text3)">✗ لا متجر علني</li>
+        </ul>
+      </div>
+      <div class="track-card featured">
+        <div class="tr-emoji">📦</div>
+        <div class="tr-name">متكامل</div>
+        <div class="tr-desc">كل شيء — السلة + البوت + التكامل التلقائي</div>
+        <ul class="tr-feats">
+          <li>✓ كل مميزات السلة</li>
+          <li>✓ كل مميزات البوت</li>
+          <li>✓ تكامل تلقائي</li>
+          <li>✓ سجل عميل موحّد</li>
+          <li>✓ سلات متروكة → واتس</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 📦 بلوك "جربها الآن" — محفوظ في _backup_demo_section.html. لإعادته انسخه من هناك. -->
   </div>
 </section>
 
@@ -825,7 +1080,23 @@ footer a:hover{opacity:.8}
         </div>
         <!-- Step 3 -->
         <div class="reg-step" id="rs3">
-          <h3 class="reg-h">💳 اختر باقتك</h3>
+          <h3 class="reg-h">📦 اختر نظامك</h3>
+          <p class="reg-s">حدّد القناة التي تريد البيع من خلالها — يمكنك التبديل لاحقاً</p>
+          <div class="reg-track-grid" style="grid-template-columns:1fr 1fr">
+            <div class="rt-card sel" id="rtc-bot" onclick="pickTrack('bot',this)">
+              <div class="rt-badge">⭐ الأكثر طلباً</div>
+              <div class="rt-emoji">🤖</div>
+              <div class="rt-name">بوت واتساب</div>
+              <div class="rt-desc">بوت ذكي + بث + ولاء + حجوزات<br><small style="opacity:.7">العملاء يطلبون من واتساب مباشرة</small></div>
+            </div>
+            <div class="rt-card" id="rtc-cart" onclick="pickTrack('cart',this)">
+              <div class="rt-emoji">🛍️</div>
+              <div class="rt-name">متجر علني (سلة)</div>
+              <div class="rt-desc">صفحة ويب احترافية + checkout<br><small style="opacity:.7">العملاء يطلبون من المتصفح</small></div>
+            </div>
+          </div>
+
+          <h3 class="reg-h" style="margin-top:28px">💳 اختر باقتك</h3>
           <p class="reg-s">جميع الباقات تشمل ربط واتساب فوري ولوحة تحكم كاملة — يمكنك الترقية في أي وقت</p>
           <div class="reg-plan-grid">
             <div class="rp-card" id="rpc-starter" onclick="pickPlan('starter',this)">
@@ -1088,7 +1359,7 @@ const ro=new IntersectionObserver(es=>es.forEach(e=>{
 document.querySelectorAll(".reveal").forEach(el=>ro.observe(el));
 
 // ══ REGISTRATION ══
-const regD={name:"",phone:"",store:"",type:"",city:"",plan:"pro"};
+const regD={name:"",phone:"",store:"",type:"",city:"",plan:"pro",track:"bot"};
 
 function goRegister(plan){
   document.getElementById("register").scrollIntoView({behavior:"smooth"});
@@ -1136,6 +1407,11 @@ function pickPlan(plan,el){
   document.querySelectorAll(".rp-card").forEach(c=>c.classList.remove("sel"));
   if(el)el.classList.add("sel");
 }
+function pickTrack(track,el){
+  regD.track=track;
+  document.querySelectorAll(".rt-card").forEach(c=>c.classList.remove("sel"));
+  if(el)el.classList.add("sel");
+}
 async function submitReg(){
   const btn=document.querySelector(".btn-rn");
   if(btn){btn.disabled=true;btn.textContent="⏳ جاري الإرسال...";}
@@ -1144,7 +1420,7 @@ async function submitReg(){
     const r=await fetch(SERVER_URL+"/api/register-request",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({name:regD.name,phone:regD.phone,store:regD.store,type:regD.type,city:regD.city,plan:regD.plan})
+      body:JSON.stringify({name:regD.name,phone:regD.phone,store:regD.store,type:regD.type,city:regD.city,plan:regD.plan,track:regD.track})
     });
     const d=await r.json();
     if(!r.ok)throw new Error(d.error||"فشل الإرسال");
@@ -1155,7 +1431,8 @@ async function submitReg(){
   }catch(e){
     alert("حدث خطأ: "+e.message+"\nسيتم تحويلك لواتساب كبديل.");
     const pn={starter:"🌱 الأساسية — 80 ر.س/شهر",pro:"⭐ الاحترافية — 150 ر.س/شهر",premium:"👑 المتقدمة — 250 ر.س/شهر"};
-    const msg=`🤖 طلب اشتراك جديد — منصة ثواني\n\nالاسم: ${regD.name}\nواتساب: ${regD.phone}\nالمتجر: ${regD.store}\nنوع المشروع: ${regD.type}\nالمدينة: ${regD.city||"—"}\nالباقة: ${pn[regD.plan]}`;
+    const tn={cart:"🛍️ سلة فقط",bot:"🤖 بوت واتساب"};
+    const msg=`🤖 طلب اشتراك جديد — منصة ثواني\n\nالاسم: ${regD.name}\nواتساب: ${regD.phone}\nالمتجر: ${regD.store}\nنوع المشروع: ${regD.type}\nالمدينة: ${regD.city||"—"}\nالنظام: ${tn[regD.track]||"—"}\nالباقة: ${pn[regD.plan]}`;
     window.open(`https://wa.me/966508572902?text=${encodeURIComponent(msg)}`,"_blank");
     if(btn){btn.disabled=false;btn.textContent="📱 أرسل طلب الاشتراك";}
   }
@@ -1172,10 +1449,16 @@ const PLANS={
 };
 function renderPlans(data){
   const g=document.getElementById("plansGrid");
-  g.innerHTML=["starter","pro","premium"].map(id=>{
-    const p={...PLANS[id],...(data[id]||{})};
-    const isFeat=p.featured||id==="pro";
-    const feats=p.feats||p.displayFeatures||[];
+  // إذا في باقات من السيرفر → استخدمها مباشرة (بدون merge مع PLANS المحلي)
+  // إذا فارغ → fallback للـ PLANS الافتراضية كاملة
+  const fromServer = data && Object.keys(data).length > 0;
+  const ids = fromServer ? Object.keys(data) : ["starter","pro","premium"];
+  g.innerHTML = ids.map(id=>{
+    // مصدر واحد فقط: السيرفر OR المحلي (لا دمج)
+    const p = fromServer ? (data[id] || {}) : (PLANS[id] || {});
+    const isFeat = p.featured;
+    // displayFeatures من السيرفر، feats من المحلي
+    const feats = p.displayFeatures || p.feats || [];
     return`<div class="plan${isFeat?" hot":""}">
       ${isFeat&&p.badge?`<div class="plan-badge">${p.badge}</div>`:""}
       <div class="plan-emoji">${p.emoji||""}</div>
@@ -1191,7 +1474,24 @@ function renderPlans(data){
     </div>`;
   }).join("");
 }
-renderPlans({});
+
+// 🌐 جلب الباقات الحقيقية من السيرفر — fallback للـ PLANS الافتراضية لو فشل
+const PLANS_API = "https://thawani.tail19ddab.ts.net/api/public/plans";
+(async function loadPlansFromServer(){
+  try {
+    const r = await fetch(PLANS_API, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    if (data && data.plans && Object.keys(data.plans).length) {
+      renderPlans(data.plans);
+      return;
+    }
+    throw new Error("لا توجد باقات من السيرفر");
+  } catch (e) {
+    console.warn("[plans] fallback للباقات المحلية:", e.message);
+    renderPlans({});
+  }
+})();
 
 // ══ DEMO ══
 let demoState=null;
