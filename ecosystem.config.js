@@ -26,6 +26,7 @@ module.exports = {
         TZ: "Asia/Riyadh",
         // V8 heap max (يطابق max_memory_restart)
         NODE_OPTIONS: "--max-old-space-size=2048",
+        CANVAS_WORKERS: "2",
         // DEBUG_POLLS: "1",  // فعّلها فقط عند تشخيص فك تشفير الاستطلاعات
       },
       // 2.5GB للـ 50 متجر؛ خفّض لـ "1G" إذا < 25 متجر و VPS صغير
@@ -39,13 +40,8 @@ module.exports = {
       error_file: "./logs/app.err.log",
       merge_logs: true,
     },
-    {
-      name: "cf-tunnel",
-      script: "start-tunnel.js",
-      watch: false,
-      autorestart: true,
-      restart_delay: 5000,
-      log_date_format: "YYYY-MM-DD HH:mm:ss"
-    }
+    // cf-tunnel أُزيل: المشروع يستخدم Tailscale Funnel (bothatim-vps.tail19ddab.ts.net)
+    // كان start-tunnel.js يحوي CF_BIN ثابت لـ Windows path يفشل على Linux بـ ENOENT
+    // ويعيد PM2 تشغيله كل 5 ثوان => استهلاك CPU/IO بلا فائدة.
   ]
 };

@@ -120,3 +120,20 @@ sessions-backup.json
 !data/images/.gitkeep
 !data/videos/.gitkeep
 !data/sessions/.gitkeep
+
+
+# ─── Backups (2026-07-07) ────────────────────────────────────────
+*.bak
+*.bak-*
+public/*.bak-*
+src/*.bak-*
+
+# ─── Local diagnostic files ──────────────────────────────────────
+git_diff.txt
+
+# ─── Runtime state (per-VPS) ─────────────────────────────────────
+data/alerts/
+data/errors-*.jsonl
+data/last_archive_date.json
+data/session-pause.json
+data/notifications_*.json

@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متجر — منصة ثواني</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08120e;--bg2:#0d1f17;--surface:#0e1a14;--surface-2:#122821;
+    --border:rgba(201,162,75,0.15);--border-hi:rgba(201,162,75,0.35);
+    --green:#1b5e20;--green-2:#2e7d32;--green-lt:rgba(46,125,50,0.18);
+    --gold:#c9a24b;--gold-2:#e0b85f;--gold-lt:rgba(201,162,75,0.12);
+    --accent:#34d399;--warn:#f59e0b;--danger:#ef4444;
+    --text:#f1f5f4;--text-2:#cfd8d4;--muted:#8a9a92;--muted-2:#5b6660;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    background:var(--bg);color:var(--text);min-height:100vh;
+    font-family:'Cairo',-apple-system,'Segoe UI',sans-serif;
+    background-image:linear-gradient(135deg,#08120e 0%,#0d1f17 100%);
+    padding-bottom:80px;
+  }
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:rgba(201,162,75,0.2);border-radius:4px}
+
+  /* ─── Hero ─── */
+  .hero{
+    background:linear-gradient(180deg,rgba(13,31,23,0.9) 0%,rgba(8,18,14,0.4) 100%),
+               linear-gradient(135deg,var(--green) 0%,var(--bg2) 100%);
+    padding:40px 20px 100px;
+    position:relative;
+    border-bottom:1px solid var(--border);
+  }
+  .hero-inner{max-width:900px;margin:0 auto;text-align:center}
+  .hero-logo{
+    width:80px;height:80px;border-radius:24px;
+    background:linear-gradient(135deg,var(--gold),var(--gold-2));
+    display:flex;align-items:center;justify-content:center;
+    font-size:36px;font-weight:900;color:var(--bg);
+    margin:0 auto 16px;box-shadow:0 10px 30px rgba(201,162,75,0.3);
+  }
+  .hero-logo img{width:100%;height:100%;border-radius:24px;object-fit:cover}
+  .hero h1{font-size:32px;font-weight:900;margin-bottom:8px;background:linear-gradient(135deg,#fff,var(--gold-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero .welcome{color:var(--text-2);font-size:14px;max-width:560px;margin:0 auto 16px;line-height:1.7;white-space:pre-line}
+  .hero-meta{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .meta-pill{
+    background:rgba(255,255,255,0.06);border:1px solid var(--border);
+    padding:5px 14px;border-radius:999px;font-size:12px;font-weight:600;
+    color:var(--text-2);display:inline-flex;align-items:center;gap:6px;
+  }
+  .meta-pill.open{background:var(--green-lt);color:var(--accent);border-color:rgba(52,211,153,0.3)}
+  .meta-pill.closed{background:rgba(239,68,68,0.1);color:#fca5a5;border-color:rgba(239,68,68,0.3)}
+  .hero-actions{display:flex;justify-content:center;gap:8px;margin-top:18px;flex-wrap:wrap}
+  .hero-actions a{
+    background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);
+    color:#fff;padding:8px 18px;border-radius:10px;
+    font-family:inherit;font-weight:700;font-size:13px;text-decoration:none;
+    display:inline-flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .hero-actions a:hover{background:rgba(255,255,255,0.15)}
+  .hero-actions .wa{background:linear-gradient(135deg,#25d366,#128c7e);border-color:transparent}
+
+  /* ─── Categories ─── */
+  .categories-wrap{
+    background:var(--surface);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    background:rgba(14,26,20,0.85);
+  }
+  .categories{
+    max-width:1100px;margin:0 auto;padding:14px 20px;
+    display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;
+  }
+  .categories::-webkit-scrollbar{display:none}
+  .cat-chip{
+    background:rgba(255,255,255,0.04);border:1px solid var(--border);
+    padding:8px 16px;border-radius:999px;
+    font-family:inherit;font-weight:700;font-size:13px;color:var(--text-2);
+    cursor:pointer;white-space:nowrap;flex-shrink:0;transition:.15s;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .cat-chip:hover{background:rgba(255,255,255,0.07);color:var(--text)}
+  .cat-chip.active{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg);border-color:transparent}
+  .cat-chip .cnt{font-size:11px;opacity:.8}
+
+  /* ─── Content ─── */
+  .content{max-width:1100px;margin:0 auto;padding:24px 20px}
+  .cat-section{margin-bottom:36px;scroll-margin-top:80px}
+  .cat-section h2{
+    font-size:20px;font-weight:900;color:var(--gold-2);margin-bottom:16px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .cat-section h2 .cnt{font-size:13px;color:var(--muted);font-weight:600}
+
+  /* ─── Products Grid ─── */
+  .products-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;
+  }
+  .product-card{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;overflow:hidden;cursor:pointer;
+    transition:.2s;display:flex;flex-direction:column;
+  }
+  .product-card:hover{border-color:var(--border-hi);transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,0.3)}
+  /* 🏠 بطاقة وحدة عقارية — أعرض + overflow:visible للـ badge */
+  .accommodation-card{
+    background:var(--surface);border:1px solid rgba(8,145,178,0.35);
+    border-radius:16px;overflow:visible;transition:.2s;display:flex;flex-direction:column;
+    grid-column: span 2;position:relative;
+    box-shadow:0 4px 14px rgba(0,0,0,0.2);
+  }
+  @media(max-width:640px){ .accommodation-card{grid-column: span 1} }
+  .accommodation-card:hover{border-color:#0891b2;transform:translateY(-3px);box-shadow:0 14px 36px rgba(8,145,178,0.25)}
+  .accommodation-card .product-img{
+    width:100%;aspect-ratio:16/10;background:var(--bg2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:64px;overflow:hidden;border-radius:16px 16px 0 0;
+  }
+  .accommodation-card .product-img img{width:100%;height:100%;object-fit:cover}
+  .accommodation-card .acm-body{padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+  .accommodation-card .acm-name{font-size:18px;font-weight:900;color:var(--text);line-height:1.3}
+  .accommodation-card .acm-location{font-size:13px;color:var(--muted)}
+  .accommodation-card .acm-chips{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--gold-2);font-weight:700}
+  .accommodation-card .acm-amen{font-size:22px;letter-spacing:6px}
+  .accommodation-card .acm-desc{font-size:13px;color:var(--text);line-height:1.6;opacity:.85}
+  .accommodation-card .acm-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.1)}
+  .accommodation-card .acm-price{font-size:22px;font-weight:900;color:#0891b2}
+  .accommodation-card .acm-price small{font-size:12px;color:var(--muted);font-weight:600}
+  .accommodation-card .acm-book-btn{
+    background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;
+    padding:12px 22px;border-radius:10px;font-family:inherit;font-weight:800;font-size:14px;
+    cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px;
+    box-shadow:0 4px 14px rgba(8,145,178,0.4);
+  }
+  .accommodation-card .acm-book-btn:hover{transform:scale(1.03);box-shadow:0 6px 20px rgba(8,145,178,0.6)}
+  .accommodation-card .acm-badge{
+    position:absolute;top:12px;left:12px;padding:6px 12px;border-radius:10px;
+    font-size:12px;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:5;
+    color:#fff;
+  }
+  .product-img{
+    width:100%;aspect-ratio:1;background:var(--bg2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:48px;overflow:hidden;
+  }
+  .product-img img{width:100%;height:100%;object-fit:cover}
+  .product-body{padding:12px;flex:1;display:flex;flex-direction:column;gap:6px}
+  .product-name{font-size:14px;font-weight:700;color:var(--text);line-height:1.4;min-height:38px}
+  .product-desc{font-size:11px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .product-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:8px}
+  .product-price{font-size:16px;font-weight:900;color:var(--gold-2)}
+  .product-price small{font-size:11px;color:var(--muted);font-weight:600}
+  .add-btn{
+    background:linear-gradient(135deg,var(--green),var(--green-2));color:#fff;border:none;
+    padding:8px 14px;border-radius:8px;font-family:inherit;font-weight:800;font-size:12px;
+    cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:5px;
+  }
+  .add-btn:hover{filter:brightness(1.1)}
+  .add-btn:active{transform:scale(.95)}
+  .add-btn.in-cart{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg)}
+  .qty-controls{display:flex;align-items:center;gap:4px;background:rgba(201,162,75,0.1);border:1px solid var(--border-hi);border-radius:8px;padding:2px}
+  .qty-controls button{background:transparent;border:none;color:var(--gold-2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .qty-controls button:hover{background:rgba(201,162,75,0.2)}
+  .qty-controls .val{min-width:24px;text-align:center;font-weight:800;color:var(--gold-2);font-size:13px}
+
+  /* ─── Floating Cart ─── */
+  .floating-cart{
+    position:fixed;bottom:20px;inset-inline-end:20px;z-index:200;
+    background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg);
+    padding:14px 22px;border-radius:50px;font-family:inherit;font-weight:900;
+    border:none;cursor:pointer;font-size:14px;
+    box-shadow:0 10px 30px rgba(201,162,75,0.4);
+    display:none;align-items:center;gap:10px;transition:.2s;
+  }
+  .floating-cart.show{display:flex;animation:cartIn .3s ease}
+  @keyframes cartIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .floating-cart:hover{transform:translateY(-2px);box-shadow:0 14px 36px rgba(201,162,75,0.5)}
+  .floating-cart .count{background:rgba(0,0,0,0.2);padding:2px 8px;border-radius:999px;font-size:12px}
+
+  /* ─── Cart Drawer ─── */
+  .drawer-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:250;backdrop-filter:blur(2px)}
+  .drawer-backdrop.show{display:block;animation:fadeIn .2s ease}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .cart-drawer{
+    position:fixed;top:0;bottom:0;inset-inline-end:0;z-index:300;
+    width:420px;max-width:100vw;
+    background:var(--surface);border-inline-start:1px solid var(--border-hi);
+    box-shadow:-30px 0 60px rgba(0,0,0,0.5);
+    transform:translateX(100%);transition:transform .3s ease;
+    display:flex;flex-direction:column;
+  }
+  [dir=ltr] .cart-drawer{transform:translateX(-100%);inset-inline-start:0;inset-inline-end:auto}
+  .cart-drawer.open{transform:translateX(0)}
+  .cart-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .cart-head h3{font-size:18px;font-weight:900;color:var(--gold-2)}
+  .cart-head button{background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer;padding:4px 10px;border-radius:6px}
+  .cart-head button:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+  .cart-items{flex:1;overflow-y:auto;padding:14px 20px}
+  .cart-empty{text-align:center;color:var(--muted);padding:60px 20px}
+  .cart-empty .ico{font-size:60px;margin-bottom:14px;opacity:.5}
+  .cart-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--border)}
+  .cart-item:last-child{border-bottom:none}
+  .cart-item .thumb{width:60px;height:60px;border-radius:8px;background:var(--bg2);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .cart-item .thumb img{width:100%;height:100%;object-fit:cover}
+  .cart-item .info{flex:1;min-width:0}
+  .cart-item .name{font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px}
+  .cart-item .price-line{font-size:12px;color:var(--muted)}
+  .cart-item .price-line b{color:var(--gold-2)}
+  .cart-item-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .cart-totals{padding:18px 20px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2)}
+  .total-line{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--text-2)}
+  .total-line.grand{font-size:18px;font-weight:900;color:var(--gold-2);padding-top:10px;margin-top:4px;border-top:1px dashed var(--border)}
+  .checkout-btn{
+    background:linear-gradient(135deg,var(--green),var(--green-2));color:#fff;border:none;
+    padding:14px;border-radius:10px;font-family:inherit;font-weight:900;font-size:15px;cursor:pointer;
+    width:100%;margin-top:14px;transition:.2s;
+  }
+  .checkout-btn:hover{filter:brightness(1.1)}
+  .checkout-btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ─── Modal (product details + checkout) ─── */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:400;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal-backdrop.show{display:flex;animation:fadeIn .2s ease}
+  .modal{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,0.5)}
+  .modal-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-head h3{font-size:17px;font-weight:900;color:var(--gold-2)}
+  .modal-body{padding:20px}
+  .modal-body label{display:block;font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:6px;margin-top:14px}
+  .modal-body label:first-child{margin-top:0}
+  .modal-body input,.modal-body textarea{
+    width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);
+    color:var(--text);padding:10px 12px;border-radius:8px;
+    font-family:inherit;font-size:13px;outline:none;
+  }
+  .modal-body input:focus,.modal-body textarea:focus{border-color:var(--gold)}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px}
+  .modal-foot button{flex:1;padding:12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;border:none}
+  .btn-cancel{background:rgba(255,255,255,0.06);color:var(--text-2);border:1px solid var(--border)}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg);flex:2}
+
+  /* ─── Loader / toast ─── */
+  .loader{display:flex;justify-content:center;padding:60px;color:var(--muted)}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border-hi);color:var(--text);padding:12px 22px;border-radius:999px;font-weight:700;font-size:13px;z-index:1000;box-shadow:0 12px 30px rgba(0,0,0,0.4);display:none}
+  .toast.show{display:block;animation:toastIn .2s ease}
+  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+  /* ─── Closed banner ─── */
+  .closed-banner{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:10px 20px;border-radius:10px;margin-bottom:20px;text-align:center;font-size:13px;font-weight:700}
+
+  /* ─── Footer ─── */
+  .footer{text-align:center;padding:30px 20px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:40px}
+  .footer .powered{margin-top:8px}
+  .footer a{color:var(--gold-2);text-decoration:none}
+
+  /* ─── Responsive ─── */
+  @media(max-width:640px){
+    .hero{padding:30px 16px 80px}
+    .hero h1{font-size:24px}
+    .cart-drawer{width:100vw}
+    .products-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+    .product-name{font-size:13px;min-height:34px}
+    .add-btn{padding:6px 10px;font-size:11px}
+    .content{padding:16px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-logo" id="storeLogo">🛍️</div>
+    <h1 id="storeName">جاري التحميل...</h1>
+    <div class="welcome" id="welcomeMsg"></div>
+    <div class="hero-meta">
+      <span class="meta-pill" id="hoursPill">⏰ —</span>
+      <span class="meta-pill" id="deliveryPill">🚚 —</span>
+    </div>
+    <div class="hero-actions" id="heroActions"></div>
+  </div>
+</section>
+
+<!-- Categories sticky bar -->
+<div class="categories-wrap" id="catsWrap" style="display:none">
+  <div class="categories" id="categoriesBar"></div>
+</div>
+
+<!-- Content -->
+<main class="content" id="content">
+  <div class="loader">⏳ جاري التحميل...</div>
+</main>
+
+<!-- Floating Cart Button — يفتح صفحة السلة المستقلة -->
+<a class="floating-cart" id="cartBtn" href="#" style="display:none;text-decoration:none">
+  🛒 <span class="count" id="cartCount">0</span>
+  <span id="cartTotal">0 ر.س</span>
+</a>
+
+<!-- السلة + Checkout انتقلت لصفحة مستقلة: /store/:slug/cart -->
+
+<!-- Footer -->
+<footer class="footer">
+  <p>مدعوم بـ <b style="color:var(--gold-2)">منصة ثواني</b></p>
+  <p class="powered"><a href="/">تعرّف على منصة ثواني</a></p>
+</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 🏠 Booking Modal (للعقارات/الشاليهات) -->
+<div id="bookingModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeBookingModal()">
+  <div style="background:#0e1a14;border:1px solid rgba(201,162,75,0.35);border-radius:14px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.6)">
+    <div style="padding:18px 22px;border-bottom:1px solid rgba(201,162,75,0.2);background:linear-gradient(135deg,rgba(8,145,178,0.12),transparent);display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div>
+        <div style="font-weight:800;font-size:17px;color:#f1f5f4">📅 احجز <span id="bkUnitName" style="color:#0891b2"></span></div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:3px"><span id="bkUnitLocation"></span> · <b id="bkUnitPrice" style="color:#e0b85f"></b></div>
+      </div>
+      <button onclick="closeBookingModal()" style="background:none;border:none;color:#9ca3af;font-size:24px;cursor:pointer;padding:4px 8px">×</button>
+    </div>
+    <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">
+      <!-- 📅 Calendar inline — يلوّن الأيام المحجوزة بالأحمر + يمنع اختيارها -->
+      <div style="padding:14px;background:rgba(0,0,0,0.3);border:1px solid rgba(201,162,75,0.2);border-radius:10px">
+        <div id="bkCalendar"></div>
+      </div>
+      <div>
+        <label style="font-size:12px;color:#cfd8d4;display:block;margin-bottom:4px">👥 عدد الأشخاص</label>
+        <input type="number" id="bkGuests" min="1" value="2" style="width:100%;padding:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,162,75,0.3);border-radius:8px;color:#f1f5f4;font-family:inherit;font-size:13px;box-sizing:border-box">
+      </div>
+      <div id="bkAvailMsg" style="display:none;padding:10px;background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.4);border-radius:8px;color:#fca5a5;font-size:13px;text-align:center"></div>
+      <div id="bkTotalBox" style="padding:14px;background:rgba(8,145,178,0.1);border:1px solid rgba(8,145,178,0.3);border-radius:10px;text-align:center"></div>
+      <div style="border-top:1px dashed rgba(201,162,75,0.2);padding-top:14px">
+        <label style="font-size:12px;color:#cfd8d4;display:block;margin-bottom:4px">👤 اسمك</label>
+        <input type="text" id="bkName" maxlength="80" placeholder="الاسم الكامل" style="width:100%;padding:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,162,75,0.3);border-radius:8px;color:#f1f5f4;font-family:inherit;font-size:13px;box-sizing:border-box;margin-bottom:10px">
+        <label style="font-size:12px;color:#cfd8d4;display:block;margin-bottom:4px">📱 رقم الجوال</label>
+        <input type="tel" id="bkPhone" placeholder="966500000000" dir="ltr" style="width:100%;padding:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,162,75,0.3);border-radius:8px;color:#f1f5f4;font-family:inherit;font-size:13px;box-sizing:border-box;margin-bottom:10px">
+        <label style="font-size:12px;color:#cfd8d4;display:block;margin-bottom:4px">📝 ملاحظات (اختياري)</label>
+        <textarea id="bkNotes" rows="2" maxlength="300" placeholder="أي تفضيلات أو ملاحظات..." style="width:100%;padding:10px;background:rgba(0,0,0,0.4);border:1px solid rgba(201,162,75,0.3);border-radius:8px;color:#f1f5f4;font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid rgba(201,162,75,0.15);display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeBookingModal()" style="background:transparent;border:1px solid rgba(201,162,75,0.3);color:#cfd8d4;padding:10px 18px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">إلغاء</button>
+      <button id="bkSubmitBtn" onclick="submitBooking()" style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:800">✅ أكّد الحجز</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════════
+let STORE = null;
+let CART  = { id: null, items: [] }; // {productId, qty}
+let SLUG  = (location.pathname.match(/\/store\/([^/?#]+)/) || [])[1] || "";
+
+const LS_CART_KEY = "thawani_cart_" + SLUG;
+
+// ═══════════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════════
+(async () => {
+  try {
+    // 🚀 cache buster: نتأكد دائماً من جلب أحدث بيانات (المنتجات/الـ terms/الـ accommodation)
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}?_=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) {
+      document.getElementById("content").innerHTML = '<div class="loader">❌ المتجر غير موجود</div>';
+      return;
+    }
+    STORE = await r.json();
+    document.title = STORE.storeName + " — ثواني";
+    console.log("[storefront] STORE loaded:", {
+      businessType: STORE.businessType,
+      terms: STORE.terms,
+      tagline: STORE.tagline,
+      accent: STORE.accent,
+      productsCount: STORE.products?.length,
+      accommodationCount: STORE.products?.filter(p => p.accommodation).length,
+    });
+    renderHero();
+    renderCategories();
+    renderProducts();
+    loadCartFromLS();
+    updateCartUI();
+  } catch (e) {
+    document.getElementById("content").innerHTML = `<div class="loader">❌ ${e.message}</div>`;
+  }
+})();
+
+function renderHero() {
+  const logo = document.getElementById("storeLogo");
+  if (STORE.invoiceLogoUrl) logo.innerHTML = `<img src="${esc(STORE.invoiceLogoUrl)}" alt="">`;
+  else logo.textContent = (STORE.storeName || "🛍️").slice(0, 1);
+
+  document.getElementById("storeName").textContent = STORE.storeName;
+  // 🎨 لو AI config له tagline → اعرضها تحت اسم المتجر
+  const wel = document.getElementById("welcomeMsg");
+  if (STORE.tagline) {
+    wel.innerHTML = `<div style="color:var(--gold-2);font-weight:700;margin-bottom:6px">${esc(STORE.tagline)}</div>${esc(STORE.welcomeMessage || "")}`;
+  } else {
+    wel.textContent = STORE.welcomeMessage || "";
+  }
+  // 🎨 accent color مخصص حسب البيزنس — يستبدل ذهبي افتراضي
+  if (STORE.accent && /^#[0-9a-f]{3,8}$/i.test(STORE.accent)) {
+    // نُولّد فاتح من نفس اللون للـ gradient
+    const acc = STORE.accent;
+    document.documentElement.style.setProperty('--gold', acc);
+    // اشتق لون فاتح: إن كان hex قصير → موسّع، وإلا أبقِ كما هو + نسبة شفافة
+    document.documentElement.style.setProperty('--gold-2', acc);
+    document.documentElement.style.setProperty('--gold-lt', acc + "22");
+  }
+
+  const hours = document.getElementById("hoursPill");
+  if (STORE.isOpen) {
+    hours.className = "meta-pill open";
+    hours.innerHTML = `✓ مفتوح الآن`;
+  } else {
+    hours.className = "meta-pill closed";
+    hours.innerHTML = `✕ مغلق حالياً`;
+  }
+
+  // 🏠 للـ rental: لا رسوم توصيل — اعرض بدلها المرافق العامة
+  const hasAccommodation = STORE.products?.some(p => p.accommodation);
+  if (hasAccommodation) {
+    document.getElementById("deliveryPill").innerHTML = `🔑 احجز وحدة من الكالندر`;
+  } else {
+    document.getElementById("deliveryPill").innerHTML = `🚚 رسوم التوصيل ${STORE.deliveryFee} ${esc(STORE.currency)}`;
+  }
+
+  const actions = document.getElementById("heroActions");
+  actions.innerHTML = "";
+  if (STORE.ownerPhone) {
+    const wa = String(STORE.ownerPhone).replace(/\D/g, "");
+    actions.innerHTML += `<a class="wa" href="https://wa.me/${wa}" target="_blank">💬 واتس المتجر</a>`;
+  }
+  if (STORE.locationMapUrl) {
+    actions.innerHTML += `<a href="${esc(STORE.locationMapUrl)}" target="_blank">📍 الموقع</a>`;
+  }
+
+  if (!STORE.isOpen) {
+    const banner = document.createElement("div");
+    banner.className = "closed-banner";
+    banner.innerHTML = `🌙 المتجر مغلق حالياً (${esc(STORE.workingHoursStart)} - ${esc(STORE.workingHoursEnd)}). يمكنك تصفّح المنتجات لكن لن تستطيع تأكيد الطلب.`;
+    document.getElementById("content").appendChild(banner);
+  }
+}
+
+function renderCategories() {
+  const cats = STORE.categories || [];
+  if (!cats.length) return;
+  const bar = document.getElementById("categoriesBar");
+  const all = `<button class="cat-chip active" onclick="filterCat('all',this)">🏠 الكل <span class="cnt">(${STORE.products.length})</span></button>`;
+  const chips = cats.map(c => {
+    const cnt = STORE.products.filter(p => p.category === c.id).length;
+    return `<button class="cat-chip" onclick="filterCat('${esc(c.id)}',this)">${esc(c.emoji||"📋")} ${esc(c.name)} <span class="cnt">(${cnt})</span></button>`;
+  }).join("");
+  bar.innerHTML = all + chips;
+  document.getElementById("catsWrap").style.display = "";
+}
+
+let _activeCat = "all";
+function filterCat(catId, btn) {
+  _activeCat = catId;
+  document.querySelectorAll(".cat-chip").forEach(b => b.classList.remove("active"));
+  btn?.classList.add("active");
+  renderProducts();
+}
+
+function renderProducts() {
+  const cats = STORE.categories || [];
+  const content = document.getElementById("content");
+  Array.from(content.querySelectorAll(".cat-section, .loader")).forEach(el => el.remove());
+
+  // 🏠 الوحدات العقارية (accommodation) — قسم خاص أعلى الصفحة
+  // يجمع كل المنتجات بـ accommodation بغض النظر عن category
+  const accommodationUnits = STORE.products.filter(p => p.accommodation);
+  if (accommodationUnits.length && (_activeCat === "all" || _activeCat === "accommodation")) {
+    const sec = document.createElement("section");
+    sec.className = "cat-section";
+    sec.id = "cat-accommodation";
+    const unitsLabel = STORE.terms?.catalog || "🏠 الوحدات المتاحة للحجز";
+    sec.innerHTML = `
+      <h2>${esc(unitsLabel)} <span class="cnt">(${accommodationUnits.length})</span></h2>
+      <div class="products-grid">${accommodationUnits.map(p => renderProductCard(p)).join("")}</div>
+    `;
+    content.appendChild(sec);
+  }
+
+  // المنتجات العادية (غير accommodation) — موزّعة على categories
+  const regularProducts = STORE.products.filter(p => !p.accommodation);
+  const shown = _activeCat === "all" ? cats : cats.filter(c => c.id === _activeCat);
+  shown.forEach(c => {
+    const prods = regularProducts.filter(p => p.category === c.id);
+    if (!prods.length) return;
+    const sec = document.createElement("section");
+    sec.className = "cat-section";
+    sec.id = "cat-" + c.id;
+    sec.innerHTML = `
+      <h2>${esc(c.emoji||"📋")} ${esc(c.name)} <span class="cnt">(${prods.length})</span></h2>
+      <div class="products-grid">${prods.map(p => renderProductCard(p)).join("")}</div>
+    `;
+    content.appendChild(sec);
+  });
+
+  // 📦 منتجات بدون صنف (orphans) — موجودة لكن category فارغ أو غير معرّف
+  const orphans = regularProducts.filter(p => !p.category || !cats.find(c => c.id === p.category));
+  if (orphans.length && (_activeCat === "all" || _activeCat === "orphan")) {
+    const sec = document.createElement("section");
+    sec.className = "cat-section";
+    sec.id = "cat-orphan";
+    sec.innerHTML = `
+      <h2>📦 منتجات أخرى <span class="cnt">(${orphans.length})</span></h2>
+      <div class="products-grid">${orphans.map(p => renderProductCard(p)).join("")}</div>
+    `;
+    content.appendChild(sec);
+  }
+
+  // empty state
+  if (!accommodationUnits.length && !cats.some(c => regularProducts.some(p => p.category === c.id)) && !orphans.length) {
+    content.innerHTML += `<div class="loader">لا توجد منتجات بعد</div>`;
+  }
+}
+
+function renderProductCard(p) {
+  // 🏠 لو وحدة عقارية (accommodation) → render خاص
+  if (p.accommodation) return renderAccommodationCard(p);
+
+  const inCart = CART.items.find(i => i.productId === p.id);
+  const img = p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}" loading="lazy">` : `<span style="font-size:60px;opacity:.3">📦</span>`;
+  const priceTxt = p.priceOnRequest ? `<span style="color:var(--gold-2)">💬 السعر عند الطلب</span>` : `<div class="product-price">${p.price} <small>${esc(STORE.currency)}</small></div>`;
+  // 🎨 نص الزر ديناميكي حسب البيزنس
+  const addLabel = STORE.terms?.itemAdd?.replace(/^[➕\s]+/,'') || "أضف";
+  const btn = inCart
+    ? `<div class="qty-controls"><button onclick="changeQty('${esc(p.id)}',-1)">−</button><span class="val">${inCart.qty}</span><button onclick="changeQty('${esc(p.id)}',1)">+</button></div>`
+    : `<button class="add-btn" onclick="addToCart('${esc(p.id)}')">➕ ${esc(addLabel)}</button>`;
+  return `<div class="product-card">
+    <div class="product-img">${img}</div>
+    <div class="product-body">
+      <div class="product-name">${esc(p.name)}</div>
+      ${p.description ? `<div class="product-desc">${esc(p.description)}</div>` : ""}
+      <div class="product-bottom">${priceTxt}${btn}</div>
+    </div>
+  </div>`;
+}
+
+// 🏠 عرض وحدة عقارية (شاليه/منزل) — مع حالة الإيجار + ميزات + زر "احجز"
+const AMENITY_LABELS = {
+  wifi:"📶", pool:"🏊", bbq:"🔥", parking:"🚗", kitchen:"🍳", ac:"❄️", heater:"🔆",
+  tv:"📺", washer:"🧺", balcony:"🌅", garden:"🌳", seaview:"🌊", jacuzzi:"🛁", gym:"🏋️"
+};
+function renderAccommodationCard(p) {
+  const acm = p.accommodation || {};
+  const av  = p.availability  || { available: true };
+  const img = p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="${esc(p.name)}" loading="lazy">` : `<span style="font-size:64px;opacity:.3">🏠</span>`;
+  // badge الحالة
+  let badgeColor = "#16a34a", badgeText = "🟢 متاح";
+  if (av.available === false && av.currentBooking) {
+    const endDate = new Date(av.currentBooking.endAt).toLocaleDateString("ar-EG",{month:"short",day:"numeric"});
+    badgeColor = "#dc2626"; badgeText = `🔴 محجوز حتى ${endDate}`;
+  } else if (av.nextBooking) {
+    const startDate = new Date(av.nextBooking.startAt).toLocaleDateString("ar-EG",{month:"short",day:"numeric"});
+    badgeColor = "#f59e0b"; badgeText = `🟡 متاح حتى ${startDate}`;
+  }
+  // chips
+  const chips = [];
+  if (acm.bedrooms)  chips.push(`🛏 ${acm.bedrooms} غرف`);
+  if (acm.bathrooms) chips.push(`🚿 ${acm.bathrooms} حمام`);
+  if (acm.maxGuests) chips.push(`👥 ${acm.maxGuests} ضيف`);
+  if (acm.sizeM2)    chips.push(`📐 ${acm.sizeM2}م²`);
+  const chipsHtml = chips.length ? `<div class="acm-chips">${chips.join(" · ")}</div>` : "";
+  // amenities (مع labels نصية)
+  const amenList = (acm.amenities||[]).slice(0,8).map(a => AMENITY_LABELS[a] || "").filter(Boolean);
+  const amenHtml = amenList.length ? `<div class="acm-amen">${amenList.join(" ")}</div>` : "";
+  // checkInTime/checkOutTime info
+  const timesLine = (acm.checkInTime || acm.checkOutTime)
+    ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">🔑 الوصول: ${esc(acm.checkInTime||"15:00")} · 👋 المغادرة: ${esc(acm.checkOutTime||"12:00")}</div>`
+    : "";
+  // min nights
+  const minNightsLine = acm.minNights && acm.minNights > 1
+    ? `<div style="font-size:12px;color:#f59e0b;margin-top:2px">⚠️ الحد الأدنى ${acm.minNights} ليالي</div>`
+    : "";
+  // location
+  const locLine = acm.location ? `<div class="acm-location">📍 ${esc(acm.location)}</div>` : "";
+
+  return `<div class="accommodation-card">
+    <span class="acm-badge" style="background:${badgeColor}">${badgeText}</span>
+    <div class="product-img">${img}</div>
+    <div class="acm-body">
+      <div class="acm-name">${esc(p.name)}</div>
+      ${locLine}
+      ${chipsHtml}
+      ${amenHtml}
+      ${timesLine}
+      ${minNightsLine}
+      ${p.description ? `<div class="acm-desc">${esc(p.description)}</div>` : ""}
+      <div class="acm-bottom">
+        <div class="acm-price">${p.price} <small>${esc(STORE.currency)}/ليلة</small></div>
+        <button class="acm-book-btn" onclick='openBookingModal(${JSON.stringify(p).replace(/'/g,"&#39;")})'>📅 احجز الآن</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🏠 Booking Modal — حجز وحدة عقارية
+// ═══════════════════════════════════════════════════════════════════
+let _BOOKING_UNIT = null;
+let _BOOKED_PERIODS = []; // {startAt, endAt} لكل حجز نشط
+let _BOOKED_DAYS_SET = new Set(); // YYYY-MM-DD للأيام المحجوزة (faster lookup)
+let _CAL_SHOWN_MONTH = new Date();
+let _CAL_PICK_MODE = "checkin"; // checkin → checkout → done
+let _CAL_CHECKIN = null;
+let _CAL_CHECKOUT = null;
+
+async function openBookingModal(unit) {
+  _BOOKING_UNIT = unit;
+  _CAL_CHECKIN = null;
+  _CAL_CHECKOUT = null;
+  _CAL_PICK_MODE = "checkin";
+  _CAL_SHOWN_MONTH = new Date();
+  const acm = unit.accommodation || {};
+  document.getElementById("bkUnitName").textContent = unit.name;
+  document.getElementById("bkUnitLocation").textContent = acm.location || "";
+  document.getElementById("bkUnitPrice").textContent = `${unit.price} ${STORE.currency}/ليلة`;
+  document.getElementById("bkGuests").max = acm.maxGuests || 99;
+  document.getElementById("bkGuests").value = 2;
+  document.getElementById("bkName").value = "";
+  document.getElementById("bkPhone").value = "";
+  document.getElementById("bkNotes").value = "";
+  document.getElementById("bkAvailMsg").style.display = "none";
+  document.getElementById("bookingModal").style.display = "flex";
+  // اجلب الفترات المحجوزة وارسم الكالندر
+  await loadBookedPeriods(unit.id);
+  renderBookingCalendar();
+  recalcBookingTotal();
+}
+
+async function loadBookedPeriods(unitId) {
+  _BOOKED_PERIODS = [];
+  _BOOKED_DAYS_SET = new Set();
+  try {
+    const r = await fetch(`/api/storefront/${STORE.slug}/unit-bookings/${encodeURIComponent(unitId)}`);
+    const d = await r.json();
+    _BOOKED_PERIODS = d.periods || [];
+    // اوسّع كل فترة لأيام منفردة (للـ lookup سريع)
+    for (const p of _BOOKED_PERIODS) {
+      const start = new Date(p.startAt).getTime();
+      const end   = new Date(p.endAt).getTime();
+      for (let t = start; t < end; t += 86400000) {
+        _BOOKED_DAYS_SET.add(new Date(t).toISOString().slice(0,10));
+      }
+    }
+  } catch {}
+}
+
+// يفحص: هل النطاق [from, to) يتداخل مع أي يوم محجوز؟
+function _rangeHasBookedDay(fromKey, toKey) {
+  const from = new Date(fromKey).getTime();
+  const to   = new Date(toKey).getTime();
+  for (let t = from; t < to; t += 86400000) {
+    if (_BOOKED_DAYS_SET.has(new Date(t).toISOString().slice(0,10))) return true;
+  }
+  return false;
+}
+
+function _calNavMonthStore(delta) {
+  _CAL_SHOWN_MONTH.setMonth(_CAL_SHOWN_MONTH.getMonth() + delta);
+  renderBookingCalendar();
+}
+
+function renderBookingCalendar() {
+  const box = document.getElementById("bkCalendar");
+  if (!box) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = today.toISOString().slice(0,10);
+  const y = _CAL_SHOWN_MONTH.getFullYear();
+  const m = _CAL_SHOWN_MONTH.getMonth();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const monthLabel = _CAL_SHOWN_MONTH.toLocaleDateString("ar-EG",{year:"numeric",month:"long"});
+  const ci = _CAL_CHECKIN;
+  const co = _CAL_CHECKOUT;
+
+  const WEEKDAYS = ["أحد","اثن","ثلا","أرب","خمي","جمع","سبت"];
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <button onclick="_calNavMonthStore(-1)" style="background:rgba(201,162,75,0.15);border:1px solid rgba(201,162,75,0.3);color:#e0b85f;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:13px;font-family:inherit">← السابق</button>
+      <span style="font-weight:800;color:#e0b85f;font-size:14px">${monthLabel}</span>
+      <button onclick="_calNavMonthStore(1)" style="background:rgba(201,162,75,0.15);border:1px solid rgba(201,162,75,0.3);color:#e0b85f;padding:6px 12px;border-radius:7px;cursor:pointer;font-size:13px;font-family:inherit">التالي →</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;direction:rtl">`;
+  for (let i = 0; i < 7; i++) {
+    html += `<div style="text-align:center;font-weight:700;font-size:11px;color:#9ca3af;padding:4px 0">${WEEKDAYS[i]}</div>`;
+  }
+  for (let i = 0; i < firstDay; i++) html += `<div></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(y, m, d);
+    const key = dateObj.toISOString().slice(0,10);
+    const isPast    = dateObj.getTime() < today.getTime();
+    const isBooked  = _BOOKED_DAYS_SET.has(key);
+    const isToday   = key === todayKey;
+    const isCheckin = ci === key;
+    const isCheckout= co === key;
+    const isInRange = ci && co && key > ci && key < co;
+    const isDisabled= isPast || isBooked;
+
+    let bg = "rgba(0,0,0,0.3)";
+    let color = "#cfd8d4";
+    let border = "1px solid transparent";
+    let cursor = "pointer";
+    let tip = "";
+
+    if (isBooked) {
+      bg = "rgba(220,38,38,0.25)"; color = "#fca5a5"; cursor = "not-allowed";
+      tip = "محجوز";
+    } else if (isPast) {
+      bg = "rgba(0,0,0,0.15)"; color = "#6b7280"; cursor = "not-allowed";
+      tip = "تاريخ منتهي";
+    }
+    if (isCheckin || isCheckout) {
+      bg = "linear-gradient(135deg,#0891b2,#0e7490)"; color = "#fff"; border = "1px solid #0e7490";
+      tip = isCheckin ? "🔑 الوصول" : "👋 المغادرة";
+    } else if (isInRange) {
+      bg = "rgba(8,145,178,0.3)"; color = "#a5f3fc";
+    }
+    if (isToday && !isCheckin && !isCheckout) {
+      border = "1px solid #e0b85f";
+    }
+
+    const onclick = isDisabled ? "" : `onclick=\"_calPickDay('${key}')\"`;
+    html += `<div title="${tip}" ${onclick} style="background:${bg};color:${color};border:${border};border-radius:6px;padding:7px 2px;text-align:center;font-size:12px;font-weight:600;cursor:${cursor};min-height:34px;display:flex;align-items:center;justify-content:center;transition:transform .1s" ${isDisabled?'':'onmouseover=\"this.style.transform=\\\'scale(1.05)\\\'\"  onmouseout=\"this.style.transform=\\\'scale(1)\\\'\"'}>${d}</div>`;
+  }
+  html += `</div>
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#9ca3af">
+      <span><span style="display:inline-block;width:12px;height:12px;background:rgba(220,38,38,0.25);border-radius:3px;vertical-align:middle"></span> محجوز</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:rgba(8,145,178,0.3);border-radius:3px;vertical-align:middle"></span> فترتك</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:3px;vertical-align:middle"></span> وصول/مغادرة</span>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-size:12px;color:${ci&&co?'#86efac':'#fcd34d'}">
+      ${ci&&co ? `✅ ${ci} → ${co}` : ci ? `🔑 الوصول: ${ci} — الآن اختر تاريخ المغادرة` : "👇 اضغط على يوم لاختيار تاريخ الوصول"}
+    </div>`;
+  box.innerHTML = html;
+}
+
+function _calPickDay(key) {
+  if (_CAL_PICK_MODE === "checkin" || (_CAL_CHECKIN && _CAL_CHECKOUT)) {
+    // ابدأ من جديد
+    _CAL_CHECKIN = key;
+    _CAL_CHECKOUT = null;
+    _CAL_PICK_MODE = "checkout";
+  } else {
+    // checkout
+    if (key <= _CAL_CHECKIN) {
+      // اختار قبل الـ checkin → اعتبر الاختيار الجديد checkin
+      _CAL_CHECKIN = key;
+      _CAL_CHECKOUT = null;
+      _CAL_PICK_MODE = "checkout";
+    } else if (_rangeHasBookedDay(_CAL_CHECKIN, key)) {
+      // الفترة تحتوي يوماً محجوزاً → ارفض
+      document.getElementById("bkAvailMsg").innerHTML = "❌ الفترة المختارة تتداخل مع حجز موجود";
+      document.getElementById("bkAvailMsg").style.display = "";
+      return;
+    } else {
+      _CAL_CHECKOUT = key;
+      _CAL_PICK_MODE = "checkin"; // جاهز للاختيار جديد
+      document.getElementById("bkAvailMsg").style.display = "none";
+    }
+  }
+  renderBookingCalendar();
+  recalcBookingTotal();
+}
+function closeBookingModal() {
+  document.getElementById("bookingModal").style.display = "none";
+  _BOOKING_UNIT = null;
+}
+function recalcBookingTotal() {
+  if (!_BOOKING_UNIT) return;
+  const totalBox = document.getElementById("bkTotalBox");
+  const submitBtn = document.getElementById("bkSubmitBtn");
+  const ci = _CAL_CHECKIN;
+  const co = _CAL_CHECKOUT;
+  if (!ci || !co) { totalBox.innerHTML = '<span style="color:#9ca3af;font-size:13px">اختر تاريخي الوصول والمغادرة من الكالندر أعلاه</span>'; submitBtn.disabled = true; return; }
+  const ciDate = new Date(ci).getTime();
+  const coDate = new Date(co).getTime();
+  const nights = Math.ceil((coDate - ciDate) / 86400000);
+  const acm = _BOOKING_UNIT.accommodation || {};
+  if (acm.minNights && nights < acm.minNights) {
+    totalBox.innerHTML = `<span style="color:#f59e0b">⚠️ الحد الأدنى ${acm.minNights} ليالي</span>`;
+    submitBtn.disabled = true; return;
+  }
+  const total = nights * _BOOKING_UNIT.price;
+  totalBox.innerHTML = `<div style="font-size:14px;color:var(--text-mute)">${nights} ليلة × ${_BOOKING_UNIT.price} = </div><div style="font-size:26px;font-weight:900;color:var(--gold-2);margin-top:4px">${total} ${STORE.currency}</div>`;
+  submitBtn.disabled = false;
+}
+
+async function submitBooking() {
+  if (!_BOOKING_UNIT) return;
+  if (!_CAL_CHECKIN || !_CAL_CHECKOUT) { toast("⚠️ اختر تواريخ الوصول والمغادرة", "error"); return; }
+  const name  = document.getElementById("bkName").value.trim();
+  const phone = document.getElementById("bkPhone").value.trim().replace(/\D/g,"");
+  if (!name || phone.length < 8) { toast("⚠️ الاسم + الجوال مطلوبان", "error"); return; }
+  const payload = {
+    unitId:        _BOOKING_UNIT.id,
+    unitName:      _BOOKING_UNIT.name,
+    startAt:       _CAL_CHECKIN + "T15:00:00",
+    endAt:         _CAL_CHECKOUT + "T12:00:00",
+    pricePerNight: _BOOKING_UNIT.price,
+    guests:        parseInt(document.getElementById("bkGuests").value) || 1,
+    customerName:  name,
+    customerPhone: phone,
+    notes:         document.getElementById("bkNotes").value.trim().slice(0,300),
+  };
+  document.getElementById("bkSubmitBtn").disabled = true;
+  document.getElementById("bkSubmitBtn").textContent = "⏳ جاري الحجز...";
+  try {
+    const r = await fetch(`/api/storefront/${STORE.slug}/book-unit`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+    });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || "فشل الحجز", "error"); document.getElementById("bkSubmitBtn").disabled = false; document.getElementById("bkSubmitBtn").textContent = "✅ أكّد الحجز"; return; }
+    closeBookingModal();
+    toast("✅ تم استلام طلب الحجز — سيتواصل معك المتجر للتأكيد", "success");
+  } catch (e) {
+    toast("خطأ: " + e.message, "error");
+    document.getElementById("bkSubmitBtn").disabled = false;
+    document.getElementById("bkSubmitBtn").textContent = "✅ أكّد الحجز";
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Cart logic
+// ═══════════════════════════════════════════════════════════════════
+function loadCartFromLS() {
+  try {
+    const raw = localStorage.getItem(LS_CART_KEY);
+    if (raw) CART = JSON.parse(raw);
+  } catch {}
+}
+
+function saveCartToLS() {
+  try { localStorage.setItem(LS_CART_KEY, JSON.stringify(CART)); } catch {}
+}
+
+async function addToCart(productId) {
+  const existing = CART.items.find(i => i.productId === productId);
+  if (existing) existing.qty++;
+  else CART.items.push({ productId, qty: 1 });
+  await syncCart();
+  toast("✓ أُضيف للسلة");
+  renderProducts();
+  updateCartUI();
+}
+
+async function changeQty(productId, delta) {
+  const it = CART.items.find(i => i.productId === productId);
+  if (!it) return;
+  it.qty += delta;
+  if (it.qty <= 0) CART.items = CART.items.filter(i => i.productId !== productId);
+  await syncCart();
+  renderProducts();
+  updateCartUI();
+  if (document.getElementById("cartDrawer").classList.contains("open")) renderCartDrawer();
+}
+
+async function syncCart() {
+  saveCartToLS();
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}/cart`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cartId: CART.id, items: CART.items }),
+    });
+    const d = await r.json();
+    if (d.ok && d.cart) {
+      CART.id = d.cart.id;
+      CART._totals = { subtotal: d.cart.subtotal, delivery: d.cart.delivery, total: d.cart.total, lines: d.cart.lines };
+      saveCartToLS();
+    }
+  } catch {}
+}
+
+function updateCartUI() {
+  const cnt = CART.items.reduce((s, i) => s + i.qty, 0);
+  const btn = document.getElementById("cartBtn");
+  // 🎨 ديناميكي: emoji + label حسب البيزنس
+  const cartLabel = STORE.terms?.cart || "🛒";
+  const cartEmoji = (cartLabel.match(/[\p{Emoji}]/u) || ["🛒"])[0];
+  btn.href = `/store/${encodeURIComponent(SLUG)}/cart`;
+  if (cnt > 0) {
+    btn.classList.add("show");
+    btn.style.display = "inline-flex";
+    btn.innerHTML = `${cartEmoji} <span class="count" id="cartCount">${cnt}</span> <small id="cartTotal" style="margin-right:6px"></small>`;
+    const total = CART._totals?.total || _computeLocal();
+    document.getElementById("cartTotal").textContent = `${total.toFixed(2)} ${STORE.currency}`;
+  } else {
+    btn.classList.remove("show");
+    btn.style.display = "none";
+  }
+}
+
+function _computeLocal() {
+  let s = 0;
+  CART.items.forEach(i => {
+    const p = STORE.products.find(x => x.id === i.productId);
+    if (p) s += p.price * i.qty;
+  });
+  return s + (STORE.deliveryFee || 0);
+}
+
+// السلة و Checkout الآن في صفحة /store/:slug/cart
+// ═══════════════════════════════════════════════════════════════════
+// Utils
+// ═══════════════════════════════════════════════════════════════════
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+let _toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+</script>
+
+</body>
+</html>

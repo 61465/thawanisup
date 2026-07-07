@@ -1,0 +1,259 @@
+/* ════════════════════════════════════════════════════════════════
+   🎨 UI Uplift v1 — تحسينات بصرية شاملة لكل صفحات منصة ثواني
+   - تأثيرات سلسة (transitions, hover, focus)
+   - typography hierarchy أوضح
+   - spacing موحّد (multiples of 4)
+   - colors بـ contrast أفضل
+   - micro-interactions لتجربة أكثر راحة
+   ════════════════════════════════════════════════════════════════ */
+
+/* 1. Smooth font rendering للعربية */
+body, button, input, select, textarea {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* 2. Focus rings أوضح (مهم للـ accessibility) */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary, #1b5e20);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary, #1b5e20) !important;
+  box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.12);
+  outline: none;
+}
+
+/* 3. Scrollbar مخصصة (Webkit + Firefox) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); border-radius: 5px; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.28));
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.35); }
+* { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.25) transparent; }
+
+/* 4. Cards: shadow أعمق + hover lift */
+.card, .stat-card, .product-card {
+  transition: box-shadow .25s ease, transform .25s cubic-bezier(.4,0,.2,1) !important;
+}
+.card:hover {
+  box-shadow: 0 12px 32px rgba(0,0,0,0.09), 0 4px 12px rgba(0,0,0,0.05) !important;
+}
+
+/* 5. Buttons: lift عند الـ hover + active state واضح */
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+.btn-primary, .btn-outline, .btn-secondary {
+  transition: all .18s cubic-bezier(.4,0,.2,1) !important;
+  letter-spacing: 0.01em;
+}
+.btn-primary:not(:disabled):hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px rgba(27,94,32,0.28);
+  transform: translateY(-1px);
+}
+.btn-outline:not(:disabled):hover {
+  background: var(--primary-lt, #e8f5e9) !important;
+  border-color: var(--primary, #1b5e20) !important;
+}
+
+/* 6. Tabs الأفضل (شريط متحرك تحت الـ tab المختار) */
+.tabs { gap: 2px !important; padding-bottom: 0 !important; }
+.tab {
+  position: relative;
+  letter-spacing: 0.01em;
+  border-radius: 8px 8px 0 0 !important;
+  padding: 12px 18px !important;
+}
+.tab:hover { background: rgba(27,94,32,0.04); }
+.tab.active {
+  background: rgba(27,94,32,0.06);
+  font-weight: 800 !important;
+}
+
+/* 7. Inputs/Selects أعرض + ارتفاع موحّد */
+input[type="text"], input[type="number"], input[type="date"],
+input[type="email"], input[type="tel"], input[type="search"],
+input[type="password"], select, textarea {
+  border-radius: 10px !important;
+  border: 1.5px solid #e5e7eb !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  background: #fff;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input:hover, select:hover, textarea:hover { border-color: #d1d5db !important; }
+input:disabled, select:disabled, textarea:disabled {
+  background: #f9fafb !important;
+  color: #9ca3af !important;
+  cursor: not-allowed;
+}
+
+/* 8. Labels أنظف */
+label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #374151;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* 9. Tables أنيقة */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+table thead th {
+  position: sticky;
+  top: 0;
+  background: #fafbfc;
+  color: #374151;
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+table tbody tr { transition: background .12s; }
+table tbody tr:hover { background: #fafbfc; }
+table tbody td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; }
+table tbody tr:last-child td { border-bottom: none; }
+
+/* 10. Modals بـ backdrop blur + fade-in */
+[id$="Modal"][style*="display:flex"],
+[id$="Modal"][style*="display: flex"] {
+  animation: fadeIn .2s ease-out;
+}
+[id$="Modal"] > div {
+  animation: slideUp .26s cubic-bezier(.4,0,.2,1);
+}
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 11. Toast (إن وُجد) — animation سلس */
+[class*="toast"], #toast {
+  animation: slideUp .3s ease-out !important;
+}
+
+/* 12. Empty states بـ padding أعرض */
+.empty-state {
+  background: linear-gradient(135deg, #fafbfc, #fff);
+  border-radius: 16px;
+  padding: 56px 24px !important;
+}
+
+/* 13. Badges أوضح */
+[class*="badge"], .stat-sub {
+  letter-spacing: 0.02em;
+}
+
+/* 14. Loading skeleton للعناصر التي تحمّل */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* 15. Forms في الـ modals بمسافة مريحة */
+[id$="Modal"] input,
+[id$="Modal"] select,
+[id$="Modal"] textarea {
+  margin-bottom: 4px;
+}
+
+/* 16. Selection (تحديد النص) */
+::selection {
+  background: var(--primary, #1b5e20);
+  color: #fff;
+}
+
+/* 17. Disabled state موحّد */
+button:disabled, .btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 18. Navbar polish */
+.navbar { backdrop-filter: blur(8px); }
+.navbar-brand { letter-spacing: 0.01em; }
+
+/* 19. Sidebar (master) hover سلس */
+.nav-item {
+  transition: all .15s ease;
+  position: relative;
+}
+.nav-item:hover { background: rgba(255,255,255,0.06); transform: translateX(-2px); }
+.nav-item.active {
+  background: rgba(255,255,255,0.12);
+  border-right: 3px solid var(--gold, #C9A24B);
+}
+
+/* 20. Stat cards: arrow up/down مع لون */
+.stat-card {
+  border-radius: 14px !important;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.stat-card:hover {
+  border-color: rgba(27,94,32,0.18);
+}
+
+/* 21. Code blocks (للـ IDs etc) */
+code {
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  color: #6b21a8;
+  border: 1px solid #e5e7eb;
+}
+
+/* 22. Links subtle */
+a {
+  transition: color .15s, text-decoration-color .15s;
+  text-decoration-color: transparent;
+}
+a:hover { text-decoration-color: currentColor; }
+
+/* 23. Mobile responsive polish */
+@media (max-width: 768px) {
+  .main { padding: 16px 12px !important; }
+  .tabs { padding: 0 12px !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { padding: 10px 14px !important; font-size: 13px !important; white-space: nowrap; }
+  .card { padding: 16px !important; border-radius: 12px !important; }
+  table thead th, table tbody td { padding: 8px 10px !important; font-size: 12px !important; }
+  [id$="Modal"] { padding: 10px !important; }
+  [id$="Modal"] > div { border-radius: 14px !important; }
+}
+
+/* 24. Print stylesheet — مفيد للطلبات */
+@media print {
+  .navbar, .tabs, .sidebar, .nav-item, button { display: none !important; }
+  .main { max-width: 100% !important; padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+}

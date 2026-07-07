@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>السلة — ثواني</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08120e;--bg2:#0d1f17;--surface:#0e1a14;--surface-2:#122821;
+    --border:rgba(201,162,75,0.15);--border-hi:rgba(201,162,75,0.35);
+    --green:#1b5e20;--green-2:#2e7d32;--green-lt:rgba(46,125,50,0.18);
+    --gold:#c9a24b;--gold-2:#e0b85f;--gold-lt:rgba(201,162,75,0.12);
+    --accent:#34d399;--warn:#f59e0b;--danger:#ef4444;
+    --text:#f1f5f4;--text-2:#cfd8d4;--muted:#8a9a92;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    background:var(--bg);color:var(--text);min-height:100vh;
+    font-family:'Cairo',-apple-system,sans-serif;
+    background-image:linear-gradient(135deg,#08120e 0%,#0d1f17 100%);
+  }
+
+  /* Top bar */
+  .topbar{
+    background:rgba(14,26,20,0.85);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+    padding:14px 20px;display:flex;align-items:center;gap:14px;
+    position:sticky;top:0;z-index:50;
+  }
+  .back-btn{
+    background:rgba(255,255,255,0.06);border:1px solid var(--border);
+    color:var(--text);padding:8px 14px;border-radius:8px;
+    font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;
+    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  }
+  .back-btn:hover{background:rgba(255,255,255,0.1)}
+  .topbar h1{flex:1;font-size:18px;font-weight:900;color:var(--gold-2)}
+  .topbar .cnt-badge{background:var(--gold);color:var(--bg);padding:3px 12px;border-radius:999px;font-size:12px;font-weight:800}
+
+  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 120px}
+
+  /* Empty */
+  .empty{text-align:center;padding:80px 20px;color:var(--muted)}
+  .empty .ico{font-size:80px;margin-bottom:18px;opacity:.5}
+  .empty h2{font-size:22px;font-weight:800;color:var(--text);margin-bottom:8px}
+  .empty p{font-size:14px;margin-bottom:20px}
+  .empty a{
+    background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg);
+    padding:12px 28px;border-radius:10px;font-weight:800;text-decoration:none;font-size:14px;
+  }
+
+  /* Items list */
+  .item{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:14px;margin-bottom:12px;
+    display:flex;gap:14px;align-items:center;
+  }
+  .item .thumb{
+    width:84px;height:84px;border-radius:10px;background:var(--bg2);
+    flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:32px;
+  }
+  .item .thumb img{width:100%;height:100%;object-fit:cover}
+  .item .info{flex:1;min-width:0}
+  .item .name{font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px;line-height:1.3}
+  .item .price-line{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .item .price-line b{color:var(--gold-2);font-size:14px}
+  .item-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .qty-box{display:flex;align-items:center;gap:2px;background:rgba(201,162,75,0.1);border:1px solid var(--border-hi);border-radius:8px;padding:2px}
+  .qty-box button{background:transparent;border:none;color:var(--gold-2);width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:18px;font-weight:800}
+  .qty-box button:hover{background:rgba(201,162,75,0.15)}
+  .qty-box .val{min-width:32px;text-align:center;font-weight:800;color:var(--gold-2);font-size:14px}
+  .item .remove{
+    background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);
+    padding:7px 14px;border-radius:8px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;
+  }
+  .item .remove:hover{background:rgba(239,68,68,0.2)}
+
+  /* Summary card */
+  .summary{
+    background:var(--surface);border:1px solid var(--border-hi);
+    border-radius:14px;padding:20px;margin-top:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.2);
+  }
+  .summary h3{font-size:15px;font-weight:800;color:var(--gold-2);margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
+  .line{display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:var(--text-2)}
+  .line.grand{font-size:18px;font-weight:900;color:var(--gold-2);padding-top:12px;margin-top:8px;border-top:1px dashed var(--border)}
+  .checkout-btn{
+    background:linear-gradient(135deg,var(--green),var(--green-2));color:#fff;border:none;
+    padding:16px;border-radius:10px;font-family:inherit;font-weight:900;font-size:16px;cursor:pointer;
+    width:100%;margin-top:14px;transition:.2s;
+  }
+  .checkout-btn:hover{filter:brightness(1.1)}
+  .checkout-btn:disabled{opacity:.5;cursor:not-allowed}
+  .continue-btn{
+    background:transparent;border:1px solid var(--border);color:var(--text-2);
+    padding:12px;border-radius:10px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;
+    width:100%;margin-top:8px;text-decoration:none;display:block;text-align:center;
+  }
+  .continue-btn:hover{border-color:var(--border-hi)}
+
+  /* Checkout modal */
+  .modal-bd{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:400;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+  .modal-bd.show{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,0.5)}
+  .modal-h{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-h h3{font-size:17px;font-weight:900;color:var(--gold-2)}
+  .modal-h button{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer}
+  .modal-b{padding:20px}
+  .modal-b label{display:block;font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:6px;margin-top:14px}
+  .modal-b label:first-child{margin-top:0}
+  .modal-b input,.modal-b textarea{
+    width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);
+    color:var(--text);padding:10px 12px;border-radius:8px;
+    font-family:inherit;font-size:13px;outline:none;
+  }
+  .modal-b input:focus,.modal-b textarea:focus{border-color:var(--gold)}
+  .modal-f{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px}
+  .modal-f button{flex:1;padding:12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;border:none}
+  .btn-cancel{background:rgba(255,255,255,0.06);color:var(--text-2);border:1px solid var(--border)}
+  .btn-confirm{background:linear-gradient(135deg,var(--gold),var(--gold-2));color:var(--bg);flex:2}
+
+  /* Toast */
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border-hi);color:var(--text);padding:12px 22px;border-radius:999px;font-weight:700;font-size:13px;z-index:1000;box-shadow:0 12px 30px rgba(0,0,0,0.4);display:none}
+  .toast.show{display:block}
+
+  @media(max-width:640px){
+    .item{flex-direction:row;gap:10px}
+    .item .thumb{width:70px;height:70px;font-size:28px}
+    .item .name{font-size:14px}
+    .topbar h1{font-size:16px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back-btn" id="backLink">← متابعة التسوق</a>
+  <h1>🛒 سلتك</h1>
+  <span class="cnt-badge" id="cntBadge">0</span>
+</div>
+
+<div class="wrap" id="wrap">
+  <div class="empty"><div class="ico">⏳</div>جاري التحميل...</div>
+</div>
+
+<!-- Checkout modal -->
+<div class="modal-bd" id="checkoutModal" onclick="if(event.target===this)closeCheckout()">
+  <div class="modal">
+    <div class="modal-h">
+      <h3>📦 إتمام الطلب</h3>
+      <button onclick="closeCheckout()">✕</button>
+    </div>
+    <div class="modal-b">
+      <label>الاسم *</label>
+      <input type="text" id="coName" placeholder="اسمك الكريم" maxlength="60">
+      <label>رقم الجوال *</label>
+      <input type="tel" id="coPhone" placeholder="9665XXXXXXXX" maxlength="15">
+      <label>العنوان (الحي + معلم قريب) *</label>
+      <textarea id="coLocation" rows="2" placeholder="مثل: حي النخيل، شارع الملك، بجانب الجامع"></textarea>
+
+      <!-- 📍 GPS / Maps Link / Manual options -->
+      <input type="hidden" id="coLat">
+      <input type="hidden" id="coLng">
+      <div style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px">
+        <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">📍 موقعك بدقة (اختياري — يساعد التوصيل):</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button type="button" id="coGpsBtn" onclick="useMyLocation()" style="padding:9px 14px;border:1px solid #3b82f6;border-radius:8px;background:#eff6ff;color:#1e40af;font-weight:700;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px">
+            📍 <span id="coGpsLabel">استخدم GPS</span>
+          </button>
+          <button type="button" onclick="useMapsLinkOption()" style="padding:9px 14px;border:1px solid #16a34a;border-radius:8px;background:#f0fdf4;color:#15803d;font-weight:700;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px">
+            🗺️ <span>أرسل رابط من Google Maps</span>
+          </button>
+        </div>
+        <div id="coGpsHint" style="font-size:11px;color:#6b7280;margin-top:8px;display:none"></div>
+      </div>
+
+      <!-- modal فتح رابط ماب -->
+      <div id="mapsLinkModal" style="display:none;margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px">
+        <div style="font-size:12px;color:#92400e;line-height:1.7;margin-bottom:8px">
+          <b>📲 من جوالك:</b><br>
+          1. افتح Google Maps<br>
+          2. ضع debouncer (نقطة) على موقعك<br>
+          3. اضغط "مشاركة" → "نسخ الرابط"<br>
+          4. الصق الرابط هنا:
+        </div>
+        <input type="text" id="mapsLinkInput" placeholder="https://maps.app.goo.gl/..." style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;direction:ltr;box-sizing:border-box">
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button type="button" onclick="parseMapsLink()" style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px">✓ استخراج الإحداثيات</button>
+          <button type="button" onclick="document.getElementById('mapsLinkModal').style.display='none'" style="padding:7px 12px;background:#fff;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:12px">إلغاء</button>
+        </div>
+      </div>
+      <label>ملاحظات (اختياري)</label>
+      <textarea id="coNotes" rows="2" placeholder="أي تعليمات إضافية..."></textarea>
+
+      <!-- 🎁 Gift Wrapping (florist) -->
+      <div id="coGiftBox" style="margin-top:10px;display:none">
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:9px;cursor:pointer">
+          <input type="checkbox" id="coGiftCheck" onchange="onGiftChange()" style="margin:0;width:18px;height:18px">
+          <span style="font-size:14px;font-weight:700">🎁 أريد خدمة تغليف الهدية</span>
+          <span id="coGiftFee" style="margin-right:auto;font-size:13px;color:#be185d;font-weight:700">—</span>
+        </label>
+      </div>
+
+      <!-- 💳 Payment Method -->
+      <div id="coPayBox" style="margin-top:10px;display:none">
+        <label>💳 طريقة الدفع *</label>
+        <div id="coPayOptions" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="coPayDetails" style="margin-top:8px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px;font-size:12px;line-height:1.7;display:none"></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn-cancel" onclick="closeCheckout()">إلغاء</button>
+      <button class="btn-confirm" id="confirmCheckout" onclick="submitCheckout()">✅ تأكيد الطلب</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmed -->
+<div class="modal-bd" id="confirmedModal">
+  <div class="modal">
+    <div class="modal-b" style="text-align:center;padding:40px 20px">
+      <div style="font-size:64px;margin-bottom:14px">✅</div>
+      <h2 style="color:var(--accent);font-size:22px;font-weight:900;margin-bottom:10px">تم استلام طلبك!</h2>
+      <p style="color:var(--text-2);font-size:14px;line-height:1.7;margin-bottom:20px">
+        رقم الطلب: <b id="confirmedOrderId" style="color:var(--gold-2)">—</b><br>
+        ستصلك رسالة واتساب بكل التفاصيل خلال ثوانٍ
+      </p>
+      <a id="trackLink" class="btn-confirm" style="text-align:center;padding:12px 20px;border-radius:8px;font-weight:800;text-decoration:none;display:block;margin-bottom:8px">🔍 تتبع الطلب</a>
+      <a id="backToStoreLink" class="btn-cancel" style="text-align:center;padding:12px 20px;border-radius:8px;font-weight:700;text-decoration:none;display:block">🛍️ متابعة التسوق</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SLUG = (location.pathname.match(/\/store\/([^/?#]+)\/cart/) || [])[1] || "";
+const STORE_URL = `/store/${encodeURIComponent(SLUG)}`;
+const LS_CART = "thawani_cart_" + SLUG;
+let STORE = null;
+let CART = { id: null, items: [] };
+let COUPON = { applied: null };
+
+async function applyCoupon() {
+  const input = document.getElementById("couponInput");
+  const code = (input?.value || "").trim().toUpperCase();
+  if (!code) return toast("اكتب كود الخصم");
+  if (!CART.id) return toast("سلتك فارغة");
+  const phone = document.getElementById("coPhone")?.value?.trim() || "";
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}/coupon/validate`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, cartId: CART.id, phone }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.valid) { toast(d.message || "❌ كود غير صحيح"); return; }
+    COUPON.applied = { code: d.code, discount: d.discount, type: d.type, newTotal: d.newTotal };
+    toast(d.message);
+    render();
+  } catch (e) {
+    toast("❌ فشل التحقق من الكود");
+  }
+}
+
+function removeCoupon() {
+  COUPON.applied = null;
+  render();
+  toast("تم إزالة الكوبون");
+}
+
+document.getElementById("backLink").href = STORE_URL;
+document.getElementById("backToStoreLink").href = STORE_URL;
+
+(async () => {
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}`);
+    if (!r.ok) {
+      document.getElementById("wrap").innerHTML = '<div class="empty"><div class="ico">❌</div><h2>المتجر غير موجود</h2></div>';
+      return;
+    }
+    STORE = await r.json();
+    loadCartFromLS();
+    if (CART.id) await refreshCart();
+    render();
+  } catch (e) {
+    document.getElementById("wrap").innerHTML = `<div class="empty"><div class="ico">⚠️</div><h2>تعذّر التحميل</h2><p>${e.message}</p></div>`;
+  }
+})();
+
+function loadCartFromLS() {
+  try { const raw = localStorage.getItem(LS_CART); if (raw) CART = JSON.parse(raw); } catch {}
+}
+function saveCart() { try { localStorage.setItem(LS_CART, JSON.stringify(CART)); } catch {} }
+
+async function refreshCart() {
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}/cart/${encodeURIComponent(CART.id)}`);
+    if (r.ok) {
+      const data = await r.json();
+      CART._totals = { subtotal: data.subtotal, delivery: data.delivery, total: data.total };
+    }
+  } catch {}
+}
+
+async function syncCart() {
+  saveCart();
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}/cart`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cartId: CART.id, items: CART.items }),
+    });
+    const d = await r.json();
+    if (d.ok && d.cart) {
+      CART.id = d.cart.id;
+      CART._totals = { subtotal: d.cart.subtotal, delivery: d.cart.delivery, total: d.cart.total };
+      saveCart();
+    }
+  } catch {}
+}
+
+function render() {
+  const wrap = document.getElementById("wrap");
+  document.getElementById("cntBadge").textContent = CART.items.reduce((s, i) => s + i.qty, 0);
+
+  if (!CART.items.length) {
+    wrap.innerHTML = `
+      <div class="empty">
+        <div class="ico">🛒</div>
+        <h2>سلتك فارغة</h2>
+        <p>تصفّح المنتجات وأضف ما تحب</p>
+        <a href="${STORE_URL}">🛍️ ابدأ التسوق</a>
+      </div>`;
+    return;
+  }
+
+  const itemsHtml = CART.items.map(i => {
+    const p = STORE.products.find(x => x.id === i.productId);
+    if (!p) return "";
+    const img = p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : "📦";
+    return `<div class="item">
+      <div class="thumb">${img}</div>
+      <div class="info">
+        <div class="name">${esc(p.name)}</div>
+        <div class="price-line">السعر: <b>${p.price} ${esc(STORE.currency)}</b> × ${i.qty} = <b>${(p.price * i.qty).toFixed(2)} ${esc(STORE.currency)}</b></div>
+        <div class="item-controls">
+          <div class="qty-box">
+            <button onclick="changeQty('${esc(p.id)}',-1)">−</button>
+            <span class="val">${i.qty}</span>
+            <button onclick="changeQty('${esc(p.id)}',1)">+</button>
+          </div>
+          <button class="remove" onclick="removeItem('${esc(p.id)}')">🗑️ حذف</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const t = CART._totals || { subtotal: _localSubtotal(), delivery: STORE.deliveryFee || 0, total: _localTotal() };
+
+  wrap.innerHTML = itemsHtml + `
+    <div class="summary">
+      <h3>📋 ملخّص الطلب</h3>
+      <div class="line"><span>المجموع الفرعي</span><span>${t.subtotal.toFixed(2)} ${esc(STORE.currency)}</span></div>
+      <div class="line"><span>التوصيل</span><span>${t.delivery.toFixed(2)} ${esc(STORE.currency)}</span></div>
+      ${COUPON.applied ? `
+        <div class="line" style="color:#16a34a;font-weight:700"><span>🎟️ خصم (${esc(COUPON.applied.code)})</span><span>-${COUPON.applied.discount.toFixed(2)} ${esc(STORE.currency)}</span></div>
+        <div class="line grand"><span>الإجمالي</span><span>${(COUPON.applied.newTotal !== undefined ? COUPON.applied.newTotal : t.total - COUPON.applied.discount).toFixed(2)} ${esc(STORE.currency)}</span></div>
+      ` : `
+        <div class="line grand"><span>الإجمالي</span><span>${t.total.toFixed(2)} ${esc(STORE.currency)}</span></div>
+      `}
+      <div class="coupon-box" style="margin:10px 0;display:flex;gap:6px;align-items:stretch">
+        <input id="couponInput" type="text" placeholder="🎟️ كود خصم (اختياري)" value="${COUPON.applied?.code || ''}" style="flex:1;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:13px;text-transform:uppercase" ${COUPON.applied ? 'disabled' : ''}>
+        ${COUPON.applied
+          ? `<button onclick="removeCoupon()" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:0 14px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">إزالة</button>`
+          : `<button onclick="applyCoupon()" style="background:#16a34a;color:#fff;border:none;padding:0 18px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">تطبيق</button>`
+        }
+      </div>
+      <button class="checkout-btn" onclick="openCheckout()" ${!STORE.isOpen?"disabled":""}>${STORE.isOpen?"✅ إتمام الطلب":"🌙 المتجر مغلق حالياً"}</button>
+      <a href="${STORE_URL}" class="continue-btn">+ أضف منتجات أخرى</a>
+    </div>`;
+}
+
+async function changeQty(productId, delta) {
+  const it = CART.items.find(i => i.productId === productId);
+  if (!it) return;
+  it.qty += delta;
+  if (it.qty <= 0) CART.items = CART.items.filter(i => i.productId !== productId);
+  await syncCart();
+  render();
+}
+
+async function removeItem(productId) {
+  CART.items = CART.items.filter(i => i.productId !== productId);
+  await syncCart();
+  render();
+  toast("تم الحذف");
+}
+
+function _localSubtotal() {
+  let s = 0;
+  CART.items.forEach(i => { const p = STORE.products.find(x => x.id === i.productId); if (p) s += p.price * i.qty; });
+  return s;
+}
+function _localTotal() { return _localSubtotal() + (STORE.deliveryFee || 0); }
+
+let _selectedPay = "cash";
+
+function buildPaymentOptions() {
+  const box = document.getElementById("coPayBox");
+  const opts = document.getElementById("coPayOptions");
+  const det  = document.getElementById("coPayDetails");
+  if (!box || !STORE.payment) return;
+  const p = STORE.payment;
+  const methods = [];
+  if (p.cash) methods.push({ id: "cash", icon: "💵", name: "نقداً عند الاستلام", details: "ادفع للمندوب عند استلام الطلب" });
+  if (p.bank) methods.push({ id: "bank", icon: "🏦", name: "تحويل بنكي", details:
+    `<b>اسم البنك:</b> ${esc(p.bank.name||'—')}<br>
+     <b>اسم صاحب الحساب:</b> ${esc(p.bank.holder||'—')}<br>
+     <b>IBAN:</b> <code style="background:#fff;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block;user-select:all">${esc(p.bank.iban||'—')}</code><br>
+     <small style="color:#92400e">📲 بعد التحويل، أرسل screenshot للمتجر عبر واتساب</small>`
+  });
+  if (p.stc) methods.push({ id: "stc", icon: "📱", name: "STC Pay", details:
+    `<b>رقم STC Pay:</b> <code style="background:#fff;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block;user-select:all">${esc(p.stc.phone||'—')}</code><br>
+     <small style="color:#92400e">📲 بعد التحويل، أرسل screenshot للمتجر عبر واتساب</small>`
+  });
+  if (!methods.length) { box.style.display = "none"; return; }
+  box.style.display = "";
+  _selectedPay = methods[0].id;
+  opts.innerHTML = methods.map((m,i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:9px;cursor:pointer;background:${i===0?'#f0fdf4':'#fff'}" data-pay-method="${m.id}">
+      <input type="radio" name="coPay" value="${m.id}" ${i===0?'checked':''} onchange="onPayChange(this)" style="margin:0">
+      <span style="font-size:20px">${m.icon}</span>
+      <div><div style="font-weight:700;font-size:14px">${m.name}</div></div>
+    </label>
+  `).join("");
+  showPayDetails(_selectedPay);
+}
+function onPayChange(input) {
+  _selectedPay = input.value;
+  document.querySelectorAll('[data-pay-method]').forEach(el => {
+    el.style.background = el.dataset.payMethod === _selectedPay ? '#f0fdf4' : '#fff';
+    el.style.borderColor = el.dataset.payMethod === _selectedPay ? '#16a34a' : '#e5e7eb';
+  });
+  showPayDetails(_selectedPay);
+}
+function showPayDetails(id) {
+  const det = document.getElementById("coPayDetails");
+  const p = STORE.payment || {};
+  let html = "";
+  if (id === "cash") html = "ادفع للمندوب عند استلام الطلب 💵";
+  else if (id === "bank" && p.bank) html = `<b>اسم البنك:</b> ${esc(p.bank.name||'—')}<br><b>صاحب الحساب:</b> ${esc(p.bank.holder||'—')}<br><b>IBAN:</b> <code style="background:#fff;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block;user-select:all">${esc(p.bank.iban||'—')}</code><br><small style="color:#92400e">📲 بعد التحويل، أرسل screenshot للمتجر</small>`;
+  else if (id === "stc" && p.stc) html = `<b>رقم STC Pay:</b> <code style="background:#fff;padding:2px 6px;border-radius:4px;direction:ltr;display:inline-block;user-select:all">${esc(p.stc.phone||'—')}</code><br><small style="color:#92400e">📲 بعد التحويل، أرسل screenshot للمتجر</small>`;
+  det.innerHTML = html;
+  det.style.display = html ? "block" : "none";
+}
+
+function buildGiftWrapping() {
+  const box = document.getElementById("coGiftBox");
+  if (!box) return;
+  if (STORE.giftWrapping) {
+    box.style.display = "";
+    document.getElementById("coGiftFee").textContent = `+${STORE.giftWrapping.fee.toFixed(2)} ${STORE.currency}`;
+  } else {
+    box.style.display = "none";
+  }
+}
+function onGiftChange() { /* placeholder for future preview */ }
+
+function openCheckout() {
+  if (!STORE.isOpen) return toast("المتجر مغلق");
+  if (!CART.items.length) return toast("سلتك فارغة");
+  buildPaymentOptions();
+  buildGiftWrapping();
+  document.getElementById("checkoutModal").classList.add("show");
+}
+function closeCheckout() { document.getElementById("checkoutModal").classList.remove("show"); }
+
+async function submitCheckout() {
+  const name = document.getElementById("coName").value.trim();
+  const phone = document.getElementById("coPhone").value.trim().replace(/\D/g, "");
+  const location = document.getElementById("coLocation").value.trim();
+  const notes = document.getElementById("coNotes").value.trim();
+  if (name.length < 2) return toast("اكتب اسماً صحيحاً");
+  if (phone.length < 10) return toast("اكتب رقم جوال صحيح");
+  if (location.length < 5) return toast("اكتب عنواناً أوضح");
+
+  const btn = document.getElementById("confirmCheckout");
+  btn.disabled = true; btn.textContent = "⏳ جاري الإرسال...";
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(SLUG)}/checkout`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cartId: CART.id, customerName: name, customerPhone: phone,
+        customerLocation: location, notes,
+        customerLat: document.getElementById("coLat").value || null,
+        customerLng: document.getElementById("coLng").value || null,
+        couponCode: COUPON.applied?.code || null,
+        paymentMethod: _selectedPay || "cash",
+        giftWrapping: !!document.getElementById("coGiftCheck")?.checked,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "فشل");
+    closeCheckout();
+    document.getElementById("confirmedOrderId").textContent = d.order.orderId;
+    document.getElementById("trackLink").href = `/track/${encodeURIComponent(d.order.orderId)}?slug=${encodeURIComponent(SLUG)}`;
+    document.getElementById("confirmedModal").classList.add("show");
+    CART = { id: null, items: [] };
+    saveCart();
+  } catch (e) {
+    toast("❌ " + (e.message || "فشل"));
+    btn.disabled = false; btn.textContent = "✅ تأكيد الطلب";
+  }
+}
+
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+let _toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// 📍 GPS: استخدام الموقع الحالي (مع fallback + رسائل واضحة)
+async function useMyLocation() {
+  const btn = document.getElementById("coGpsBtn");
+  const label = document.getElementById("coGpsLabel");
+  const hint = document.getElementById("coGpsHint");
+
+  if (!navigator.geolocation) {
+    toast("متصفحك لا يدعم GPS");
+    return;
+  }
+
+  // فحص HTTPS (GPS يعمل على HTTPS أو localhost فقط)
+  if (location.protocol !== "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+    toast("⚠️ GPS يتطلب اتصال HTTPS آمن");
+    return;
+  }
+
+  // فحص permission مسبقاً (إن متاح)
+  if (navigator.permissions && navigator.permissions.query) {
+    try {
+      const p = await navigator.permissions.query({ name: "geolocation" });
+      console.log("[GPS] permission state:", p.state);
+      if (p.state === "denied") {
+        toast("⚠️ سماحية الموقع محظورة. اذهب لإعدادات المتصفح وفعّلها");
+        hint.style.display = "block";
+        hint.innerHTML = `<b style="color:#dc2626">للتفعيل:</b><br>iPhone: الإعدادات → Safari → الموقع → ثواني<br>Android: 🔒 بالـ URL → سماحيات → الموقع`;
+        return;
+      }
+    } catch (e) { console.log("[GPS] permissions API not supported"); }
+  }
+
+  label.textContent = "جاري تحديد موقعك...";
+  btn.disabled = true;
+  hint.style.display = "none";
+
+  // محاولتان: عالية الدقة (15s)، ثم عادية (8s) لو فشلت
+  const tryGet = (highAccuracy, timeout) => new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: highAccuracy,
+      timeout: timeout,
+      maximumAge: 30000,
+    });
+  });
+
+  let pos = null;
+  let lastErr = null;
+  try {
+    console.log("[GPS] trying high accuracy...");
+    pos = await tryGet(true, 15000);
+    console.log("[GPS] success high acc:", pos.coords);
+  } catch (e1) {
+    lastErr = e1;
+    console.warn("[GPS] high acc failed:", e1.code, e1.message);
+    // جرب عادية
+    try {
+      label.textContent = "جاري المحاولة مرة أخرى...";
+      pos = await tryGet(false, 8000);
+      console.log("[GPS] success low acc:", pos.coords);
+    } catch (e2) {
+      lastErr = e2;
+      console.error("[GPS] low acc also failed:", e2.code, e2.message);
+    }
+  }
+
+  btn.disabled = false;
+
+  if (pos) {
+    const lat = pos.coords.latitude.toFixed(6);
+    const lng = pos.coords.longitude.toFixed(6);
+    const accuracy = Math.round(pos.coords.accuracy);
+    document.getElementById("coLat").value = lat;
+    document.getElementById("coLng").value = lng;
+    label.textContent = "✓ تم تحديد موقعك";
+    btn.style.background = "#dcfce7";
+    btn.style.color = "#166534";
+    btn.style.borderColor = "#86efac";
+    hint.style.display = "block";
+    hint.innerHTML = `📍 جاري ترجمة الموقع إلى عنوان نصي...`;
+
+    // 🌍 Reverse geocoding (lat/lng → address) via Nominatim (مجاني OSM)
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar&zoom=18`, {
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(7000),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const addr = d.address || {};
+        // ابنِ عنواناً مفهوماً: حي + شارع + مدينة
+        const parts = [
+          addr.neighbourhood || addr.suburb || addr.quarter || addr.hamlet,
+          addr.road || addr.pedestrian || addr.street,
+          addr.city || addr.town || addr.village || addr.county,
+        ].filter(Boolean);
+        const niceAddr = parts.length ? parts.join("، ") : (d.display_name || "").split(",").slice(0, 3).join("،");
+        const loc = document.getElementById("coLocation");
+        if (niceAddr && !loc.value.trim()) {
+          loc.value = niceAddr;
+          hint.innerHTML = `✓ تم تحديد عنوانك (دقة ≈ ${accuracy}م) — عدّل لو احتجت`;
+        } else if (niceAddr) {
+          // العميل كتب شيئاً بالفعل، اعرض الاقتراح بزر "استبدال"
+          hint.innerHTML = `📍 اقتراح: <b>${niceAddr}</b> <button type="button" onclick="document.getElementById('coLocation').value='${niceAddr.replace(/'/g,"\\'")}'" style="background:#16a34a;color:#fff;border:none;padding:3px 8px;border-radius:5px;font-size:11px;cursor:pointer;margin-right:4px">استبدل</button>`;
+        } else {
+          hint.innerHTML = `✓ موقعك مُحدَّد (دقة ≈ ${accuracy}م) — اكتب الحي والشارع يدوياً`;
+          loc.focus();
+        }
+      } else {
+        throw new Error("nominatim_http_" + r.status);
+      }
+    } catch (e) {
+      console.warn("[GPS] reverse geocoding failed:", e.message);
+      hint.innerHTML = `✓ موقعك مُحدَّد (دقة ≈ ${accuracy}م) — تعذّر جلب العنوان، اكتبه يدوياً`;
+      const loc = document.getElementById("coLocation");
+      if (!loc.value.trim()) loc.focus();
+    }
+    return;
+  }
+
+  // كل المحاولات فشلت
+  label.textContent = "📍 استخدم موقعي الحالي (GPS)";
+  const err = lastErr || { code: 0, message: "unknown" };
+  let msg, helpText;
+  if (err.code === 1) {
+    msg = "⚠️ رفضت السماح بالوصول للموقع";
+    helpText = "<b>للتفعيل:</b><br>اضغط 🔒/ⓘ بجانب الرابط في المتصفح → سماحيات → الموقع → اسمح";
+  } else if (err.code === 2) {
+    msg = "⚠️ تعذر تحديد موقعك (GPS مغلق؟)";
+    helpText = "<b>تحقق من:</b><br>• GPS مفعّل على جوالك<br>• إذن الموقع للمتصفح مسموح<br>• إنترنت متصل";
+  } else if (err.code === 3) {
+    msg = "⚠️ انتهت مهلة GPS — حاول في مكان مفتوح";
+    helpText = "ابتعد عن المباني أو اخرج للهواء الطلق";
+  } else {
+    msg = "⚠️ خطأ في GPS: " + (err.message || "غير معروف");
+    helpText = "أعد المحاولة أو اكتب العنوان يدوياً";
+  }
+  toast(msg);
+  hint.style.display = "block";
+  hint.innerHTML = `<span style="color:#dc2626">${msg}</span><br>${helpText}`;
+}
+</script>
+
+</body>
+</html>

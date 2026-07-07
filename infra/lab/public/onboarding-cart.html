@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل السلة 🛍️ — منصة ثواني</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#1b5e20;--primary-md:#2e7d32;--gold:#C9A24B;--bg:#f8fafc;--text:#1f2937;--gray:#6b7280;--green:#16a34a;--green-lt:#dcfce7;--surface:#fff;--border:#e5e7eb}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Tajawal,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;padding:0 0 60px}
+  .hero{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);padding:46px 24px 36px;text-align:center;color:#78350f}
+  .hero h1{font-size:2rem;font-weight:900;margin-bottom:10px}
+  .hero p{font-size:1.05rem;max-width:640px;margin:0 auto 14px;color:#92400e}
+  .badge{display:inline-block;background:#fff;color:var(--gold);padding:6px 16px;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid var(--gold)}
+  .wrap{max-width:860px;margin:36px auto;padding:0 20px}
+  .section{margin-bottom:36px}
+  .sec-title{display:flex;align-items:center;gap:12px;font-size:1.4rem;font-weight:800;color:var(--primary);margin-bottom:18px}
+  .num{background:linear-gradient(135deg,var(--gold),#a47e2c);color:#fff;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1rem;flex-shrink:0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .card h3{font-size:1.05rem;font-weight:800;margin-bottom:12px;color:var(--text)}
+  .steps{list-style:none}
+  .steps li{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{content:"✓";flex-shrink:0;background:var(--green-lt);color:var(--green);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:.85rem}
+  .step-body strong{display:block;margin-bottom:3px;font-size:.95rem}
+  .step-body span{font-size:.88rem;color:var(--gray)}
+  .alert{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:12px 0;font-size:.9rem;line-height:1.7}
+  .alert.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .alert.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+  .alert.gold{background:rgba(201,162,75,.1);border:1px solid var(--gold);color:#854d0e}
+  .ic{font-size:1.3rem;flex-shrink:0}
+  .checklist{list-style:none}
+  .checklist li{padding:9px 0;display:flex;gap:10px;align-items:flex-start}
+  .checklist li::before{content:"✓";color:var(--green);font-weight:900;flex-shrink:0;font-size:1.1rem}
+  .btn{display:inline-block;background:var(--gold);color:#fff;padding:10px 22px;border-radius:9px;text-decoration:none;font-weight:700;margin-top:14px}
+  .switch{text-align:center;margin:24px auto;padding:14px;background:#fff;border:1px dashed var(--border);border-radius:12px;max-width:520px}
+  .switch a{color:var(--primary);text-decoration:none;font-weight:700;font-size:.95rem}
+  @media(max-width:640px){.hero h1{font-size:1.5rem}.wrap{padding:0 12px}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div style="font-size:3rem;margin-bottom:10px">🛍️</div>
+  <h1>دليل السلة (Storefront)</h1>
+  <p>المتجر العلني — صفحة ويب احترافية بسلة شراء وcheckout، يفتحها العميل من المتصفح بلا تسجيل</p>
+  <div class="badge">⏱️ وقت الإعداد: 15 دقيقة</div>
+</div>
+
+<div class="wrap">
+
+  <!-- التبديل بين الدليلين -->
+  <div class="switch">
+    📚 هل تستخدم البوت أيضاً؟ <a href="/onboarding-bot.html">افتح دليل البوت 🤖 →</a>
+  </div>
+
+  <!-- ما تحصل عليه -->
+  <div class="section">
+    <div class="sec-title"><div class="num">✓</div> ما تقدمه السلة</div>
+    <div class="card">
+      <ul class="checklist">
+        <li>صفحة منتجات احترافية بصور وأسعار (رابط يُشارَك)</li>
+        <li>سلة شراء + checkout بسيط (اسم + جوال + عنوان)</li>
+        <li>🆕 3 طرق دفع: نقداً عند الاستلام / تحويل بنكي / STC Pay</li>
+        <li>🆕 كوبونات خصم مخصصة للسلة (scope منفصل عن البوت)</li>
+        <li>🆕 GPS في checkout (يُحوّل لعنوان نصي تلقائياً)</li>
+        <li>🆕 خدمة تغليف هدايا (للورد ومحلات الهدايا)</li>
+        <li>تتبع الطلب من رابط بدون login</li>
+        <li>بحث + فلاتر بالفئة والسعر</li>
+        <li>مشاركة المتجر على واتس + تويتر + تلغرام</li>
+        <li>"الأكثر مبيعاً" تلقائياً + "طلباتي" بـ lookup الجوال</li>
+        <li>تقرير لكل طلب يصل لمحادثة الواتس الخاصة بك (chat-to-self)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 1: ربط واتس -->
+  <div class="section">
+    <div class="sec-title"><div class="num">1</div> اربط واتساب (لإرسال التقارير)</div>
+    <div class="alert info"><div class="ic">ℹ️</div><div>السلة لا تحتاج بوت تفاعلي — لكنها تحتاج ربط رقم واتساب <strong>لإرسال تقرير الطلبات لمحادثتك الخاصة</strong> ولتظهر أزرار "كلّم العميل" مباشرة من التقرير.</div></div>
+    <div class="card">
+      <h3>📷 خطوات الربط</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>افتح لوحة التحكم</strong><span>اذهب لـ /store-admin.html وسجّل دخولك</span></div></li>
+        <li><div class="step-body"><strong>اذهب لتبويب 📱 ربط واتساب</strong><span>اضغط "📷 طلب QR جديد"</span></div></li>
+        <li><div class="step-body"><strong>امسح الرمز من واتساب الهاتف</strong><span>افتح واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز</span></div></li>
+        <li><div class="step-body"><strong>تم!</strong><span>كل طلب جديد سيصلك تقرير شامل لمحادثتك الخاصة (chat-to-self)</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 2: إعداد المتجر -->
+  <div class="section">
+    <div class="sec-title"><div class="num">2</div> إعدادات المتجر</div>
+    <div class="card">
+      <h3>⚙️ الإعدادات الأساسية</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>اسم المتجر + الشعار + الألوان</strong><span>من ⚙️ الإعدادات — تظهر في الصفحة العلنية</span></div></li>
+        <li><div class="step-body"><strong>ساعات العمل</strong><span>خارج هذه الساعات يظهر للعميل "🌙 المتجر مغلق"</span></div></li>
+        <li><div class="step-body"><strong>رسوم التوصيل + العملة</strong><span>تُضاف تلقائياً للـ checkout</span></div></li>
+        <li><div class="step-body"><strong>نوع المتجر (businessType)</strong><span>يُكيّف التسميات: مطعم/بقالة/صالون/شحن ألعاب...</span></div></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>💳 طرق الدفع (جديد!)</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>💵 نقداً عند الاستلام</strong><span>مفعّل افتراضياً — لا يحتاج إعداد</span></div></li>
+        <li><div class="step-body"><strong>🏦 تحويل بنكي</strong><span>أضف اسم البنك + صاحب الحساب + IBAN</span></div></li>
+        <li><div class="step-body"><strong>📱 STC Pay</strong><span>أضف رقم STC Pay الخاص بك</span></div></li>
+      </ul>
+      <div class="alert gold"><div class="ic">💡</div><div>بعد دفع التحويل البنكي/STC، العميل يرسل screenshot عبر واتساب وأنت تؤكد يدوياً.</div></div>
+    </div>
+
+    <div class="card">
+      <h3>🎁 خدمة التغليف (للورد والهدايا)</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>فعّل الخدمة + ضع رسم التغليف</strong><span>(يظهر القسم فقط لـ businessType=florist/gift_shop)</span></div></li>
+        <li><div class="step-body"><strong>العميل يختار في checkout</strong><span>يضاف الرسم للإجمالي تلقائياً</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 3: المنتجات -->
+  <div class="section">
+    <div class="sec-title"><div class="num">3</div> إضافة المنتجات</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>أضف الأصناف (categories) أولاً</strong><span>تبويب 📋 القائمة ← ➕ صنف جديد</span></div></li>
+        <li><div class="step-body"><strong>أضف المنتجات داخل كل صنف</strong><span>اسم + سعر + وصف + صورة (موصى بها 800×800)</span></div></li>
+        <li><div class="step-body"><strong>🆕 إضافات (toppings/modifiers)</strong><span>للأطعمة: أضف "جبنة +5، صلصة حارة +2" — يختارها العميل في السلة</span></div></li>
+        <li><div class="step-body"><strong>المخزون</strong><span>اختياري — لو محدد، السلة تمنع الطلب عند النفاد</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 4: كوبونات -->
+  <div class="section">
+    <div class="sec-title"><div class="num">4</div> الكوبونات (اختياري)</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>اذهب لـ 🎟️ الكوبونات → ➕ كوبون جديد</strong><span>اختر نوع الخصم (مبلغ ثابت أو نسبة)</span></div></li>
+        <li><div class="step-body"><strong>🆕 اختر النطاق (scope)</strong><span><b>السلة فقط</b> — يعمل في cart فقط، أو <b>الاثنان</b> — للسلة والبوت</span></div></li>
+        <li><div class="step-body"><strong>حد أدنى للطلب + تاريخ انتهاء + عدد استخدام</strong><span>اختياري</span></div></li>
+        <li><div class="step-body"><strong>العميل يطبّق الكود في cart checkout</strong><span>الخصم يظهر مباشرة في الملخّص</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 5: مشاركة -->
+  <div class="section">
+    <div class="sec-title"><div class="num">5</div> شارك متجرك</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>انسخ رابط المتجر</strong><span>من Dashboard → widget "🛍️ متجرك العلني" — اضغط "نسخ الرابط"</span></div></li>
+        <li><div class="step-body"><strong>شارك على</strong><span>واتساب / تويتر / تلغرام / Instagram bio</span></div></li>
+        <li><div class="step-body"><strong>أو ضع QR Code</strong><span>اطبعه وضعه في محلك — العميل يمسحه ويفتح متجرك</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 6: استلام الطلبات -->
+  <div class="section">
+    <div class="sec-title"><div class="num">6</div> إدارة الطلبات</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>كل طلب → إشعار فوري في 📦 الطلبات</strong><span>+ تقرير شامل في محادثتك الخاصة (chat-to-self)</span></div></li>
+        <li><div class="step-body"><strong>أزرار سريعة</strong><span>قبول → يبعت "تم تأكيد طلبك" للعميل + ETA. رفض → يبعت سبب الرفض.</span></div></li>
+        <li><div class="step-body"><strong>تتبع الحالة</strong><span>قيد التحضير / في الطريق / تم التسليم — كل تغيير يصل العميل تلقائياً</span></div></li>
+        <li><div class="step-body"><strong>كلّم العميل مباشرة</strong><span>اضغط الرابط في التقرير → يفتح محادثة واتساب فوراً</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="switch">
+    📚 هل تستخدم البوت أيضاً؟ <a href="/onboarding-bot.html">افتح دليل البوت 🤖 →</a>
+  </div>
+
+  <p style="text-align:center;color:var(--gray);margin-top:30px;font-size:.85rem">
+    لأي استفسار: <a href="https://wa.me/966508572902" style="color:var(--green);font-weight:700">تواصل مع دعم منصة ثواني</a>
+  </p>
+
+</div>
+</body>
+</html>

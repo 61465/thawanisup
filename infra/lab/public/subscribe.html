@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اشترك في بوت الواتساب</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#1b5e20;--primary-md:#2e7d32;--primary-lt:#e8f5e9;--gold:#C9A24B;--border:#e5e7eb;--bg:#f4f6f4;--text:#1f2937;--gray:#6b7280;--radius:16px;--shadow:0 4px 24px rgba(0,0,0,0.09)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.hero{background:linear-gradient(135deg,var(--primary) 0%,#1a3c1a 100%);padding:60px 20px;text-align:center;color:#fff}
+.hero h1{font-size:clamp(26px,5vw,44px);font-weight:900;margin-bottom:12px}
+.hero p{font-size:17px;opacity:0.85;max-width:500px;margin:0 auto;line-height:1.7}
+.badge{display:inline-block;background:var(--gold);color:#fff;font-size:13px;font-weight:700;padding:4px 14px;border-radius:999px;margin-bottom:16px}
+
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;max-width:900px;margin:0 auto;padding:48px 20px}
+.plan-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:32px;position:relative;border:2px solid var(--border);transition:transform 0.2s,box-shadow 0.2s}
+.plan-card:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,0.14)}
+.plan-card.popular{border-color:var(--primary)}
+.popular-badge{position:absolute;top:-14px;right:24px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;padding:4px 14px;border-radius:999px}
+.plan-name{font-size:22px;font-weight:800;color:var(--primary);margin-bottom:8px}
+.plan-desc{font-size:13px;color:var(--gray);margin-bottom:20px}
+.plan-price{font-size:40px;font-weight:900;color:var(--text);line-height:1}
+.plan-price span{font-size:16px;font-weight:500;color:var(--gray)}
+.plan-period{display:flex;gap:8px;margin:16px 0;background:var(--bg);border-radius:10px;padding:4px}
+.period-btn{flex:1;padding:8px;border:none;background:none;border-radius:8px;font-family:inherit;font-size:13px;font-weight:600;color:var(--gray);cursor:pointer;transition:all 0.15s}
+.period-btn.active{background:#fff;color:var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.plan-features{list-style:none;margin:20px 0;display:flex;flex-direction:column;gap:10px}
+.plan-features li{display:flex;align-items:center;gap:10px;font-size:14px}
+.plan-features li::before{content:"✅";font-size:14px}
+.plan-btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--primary);color:#fff;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer;transition:background 0.18s;margin-top:16px}
+.plan-btn:hover{background:var(--primary-md)}
+.plan-btn:disabled{background:var(--gray);cursor:not-allowed}
+.plan-btn.loading::after{content:" ⏳"}
+
+/* Store ID section */
+.store-section{max-width:600px;margin:0 auto;padding:0 20px 48px}
+.store-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:28px}
+.store-card h2{font-size:19px;font-weight:800;color:var(--primary);margin-bottom:8px}
+.store-card p{font-size:14px;color:var(--gray);margin-bottom:20px;line-height:1.7}
+.store-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;transition:border-color 0.15s}
+.store-input:focus{outline:none;border-color:var(--primary)}
+.hint{font-size:12px;color:var(--gray);margin-top:6px}
+.error-msg{color:#dc2626;font-size:13px;margin-top:8px;display:none}
+
+/* FAQ */
+.faq{max-width:700px;margin:0 auto;padding:0 20px 60px}
+.faq h2{font-size:22px;font-weight:800;color:var(--primary);margin-bottom:24px;text-align:center}
+.faq-item{background:#fff;border-radius:12px;box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.faq-q{padding:16px 20px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.faq-q::after{content:"▼";font-size:12px;color:var(--gray);transition:transform 0.2s}
+.faq-item.open .faq-q::after{transform:rotate(180deg)}
+.faq-a{padding:0 20px;max-height:0;overflow:hidden;transition:max-height 0.3s,padding 0.3s;font-size:14px;color:var(--gray);line-height:1.7}
+.faq-item.open .faq-a{max-height:200px;padding:0 20px 16px}
+
+@media(max-width:640px){
+  .hero{padding:40px 16px}
+  .plans{padding:32px 16px;gap:16px}
+  .plan-card{padding:24px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="badge">🤖 بوت واتساب التجاري</div>
+  <h1>ابدأ بيعك على واتساب اليوم</h1>
+  <p>بوت ذكي يستقبل الطلبات، يدير المنيو، ويرسل الفواتير — بدون أي خبرة تقنية</p>
+</div>
+
+<!-- Store ID input -->
+<div class="store-section" style="margin-top:40px">
+  <div class="store-card">
+    <h2>🔑 أدخل رقم متجرك</h2>
+    <p>ستجد رقم متجرك في لوحة التحكم أو من مزود الخدمة. هذا الرقم يربط اشتراكك بمتجرك تلقائياً.</p>
+    <input id="storeIdInput" class="store-input" placeholder="مثال: nakheel_001" type="text">
+    <div class="hint">تواصل مع مزود الخدمة للحصول على رقم متجرك</div>
+    <div id="storeError" class="error-msg">رقم المتجر غير صحيح أو غير موجود</div>
+  </div>
+</div>
+
+<!-- Plans -->
+<div class="plans" id="plansGrid">
+  <!-- Basic -->
+  <div class="plan-card">
+    <div class="plan-name">الأساسي</div>
+    <div class="plan-desc">مثالي للمشاريع الصغيرة والمطاعم الناشئة</div>
+    <div class="plan-price" id="price_basic">99 <span>ر.س / شهر</span></div>
+    <div class="plan-period">
+      <button class="period-btn active" onclick="setPeriod('basic','monthly',this)">شهري</button>
+      <button class="period-btn" onclick="setPeriod('basic','yearly',this)">سنوي 🔥 وفّر 25%</button>
+    </div>
+    <ul class="plan-features">
+      <li>بوت واتساب كامل</li>
+      <li>لوحة تحكم المتجر</li>
+      <li>200 طلب / شهر</li>
+      <li>دعم فني</li>
+    </ul>
+    <button class="plan-btn" id="btn_basic" onclick="subscribe('basic')">اشترك الآن</button>
+  </div>
+
+  <!-- Pro -->
+  <div class="plan-card popular">
+    <div class="popular-badge">⭐ الأكثر شيوعاً</div>
+    <div class="plan-name">الاحترافي</div>
+    <div class="plan-desc">للمتاجر النشطة والمطاعم المتوسطة</div>
+    <div class="plan-price" id="price_pro">199 <span>ر.س / شهر</span></div>
+    <div class="plan-period">
+      <button class="period-btn active" onclick="setPeriod('pro','monthly',this)">شهري</button>
+      <button class="period-btn" onclick="setPeriod('pro','yearly',this)">سنوي 🔥 وفّر 25%</button>
+    </div>
+    <ul class="plan-features">
+      <li>كل مميزات الأساسي</li>
+      <li>طلبات غير محدودة</li>
+      <li>تقارير وإحصائيات متقدمة</li>
+      <li>دعم أولوي 24/7</li>
+    </ul>
+    <button class="plan-btn" id="btn_pro" onclick="subscribe('pro')">اشترك الآن</button>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="faq">
+  <h2>الأسئلة الشائعة</h2>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">هل يمكنني إلغاء الاشتراك في أي وقت؟</div>
+    <div class="faq-a">نعم، يمكنك إلغاء اشتراكك في أي وقت من لوحة التحكم. ستظل الخدمة مفعّلة حتى نهاية فترة الاشتراك المدفوعة.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">ما طرق الدفع المقبولة؟</div>
+    <div class="faq-a">نقبل جميع بطاقات Visa وMastercard وAmerican Express، بالإضافة إلى Apple Pay وGoogle Pay.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">هل بياناتي آمنة؟</div>
+    <div class="faq-a">نعم، جميع المدفوعات تتم عبر Stripe المعتمد عالمياً بمعيار PCI-DSS. نحن لا نخزن بيانات بطاقتك الائتمانية.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">هل يتجدد الاشتراك تلقائياً؟</div>
+    <div class="faq-a">نعم، يتجدد الاشتراك تلقائياً في نهاية كل دورة. ستصلك رسالة واتساب قبل التجديد وبعده.</div>
+  </div>
+</div>
+
+<script>
+const BASE = window.location.origin;
+const periods = { basic: "monthly", pro: "monthly" };
+
+function setPeriod(plan, period, btn) {
+  periods[plan] = period;
+  btn.closest(".plan-period").querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const prices = { basic: { monthly: "99", yearly: "74" }, pro: { monthly: "199", yearly: "149" } };
+  const suffix = period === "yearly" ? " ر.س / شهر (يُدفع سنوياً)" : " ر.س / شهر";
+  document.getElementById(`price_${plan}`).innerHTML = `${prices[plan][period]} <span>${suffix}</span>`;
+}
+
+async function subscribe(plan) {
+  const storeId = document.getElementById("storeIdInput").value.trim();
+  const errEl   = document.getElementById("storeError");
+  errEl.style.display = "none";
+
+  if (!storeId) {
+    errEl.textContent = "يرجى إدخال رقم المتجر أولاً";
+    errEl.style.display = "block";
+    document.getElementById("storeIdInput").focus();
+    return;
+  }
+
+  const btn = document.getElementById(`btn_${plan}`);
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.textContent = "جاري الإعداد";
+
+  try {
+    const res = await fetch(`${BASE}/payments/create-checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storeId, plan, period: periods[plan] }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || "حدث خطأ، حاول مرة أخرى";
+      errEl.style.display = "block";
+      btn.disabled = false;
+      btn.classList.remove("loading");
+      btn.textContent = "اشترك الآن";
+      return;
+    }
+
+    window.location.href = data.checkoutUrl;
+  } catch (e) {
+    errEl.textContent = "خطأ في الاتصال، تحقق من الإنترنت";
+    errEl.style.display = "block";
+    btn.disabled = false;
+    btn.classList.remove("loading");
+    btn.textContent = "اشترك الآن";
+  }
+}
+
+function toggleFaq(el) {
+  el.closest(".faq-item").classList.toggle("open");
+}
+</script>
+</body>
+</html>

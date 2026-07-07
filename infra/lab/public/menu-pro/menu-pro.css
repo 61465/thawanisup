@@ -1,0 +1,1030 @@
+/* ============================================================
+   🍽️ Thawani Menu Pro — تصميم منيو احترافي (نمط Achay/Talabat)
+   - Mobile-first, RTL, Cairo font
+   - 6 ثيمات قابلة للتخصيص عبر CSS variables
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+
+/* ---------- Default theme (Maroon Classic) ---------- */
+:root {
+  --mp-primary: #6F1025;
+  --mp-primary-soft: #FDEDF2;
+  --mp-primary-dark: #5A0D1F;
+  --mp-accent: #43C6BC;
+  --mp-accent-dark: #1A4B3A;
+  --mp-bg: #FAFAF7;
+  --mp-card: #FFFFFF;
+  --mp-text: #131313;
+  --mp-text-muted: #737373;
+  --mp-border: #EEEEE9;
+  --mp-shadow-sm: 0 1px 3px rgba(0,0,0,.04);
+  --mp-shadow: 0 2px 12px rgba(111,16,37,.08);
+  --mp-shadow-lg: 0 12px 32px rgba(111,16,37,.18);
+  --mp-radius-sm: 8px;
+  --mp-radius: 16px;
+  --mp-radius-img: 12px;
+  --mp-radius-pill: 999px;
+  --mp-transition: .18s cubic-bezier(.4,0,.2,1);
+}
+
+/* Theme: coffee */
+.mp-theme-coffee {
+  --mp-primary: #6B4423; --mp-primary-soft: #F5EDE2; --mp-primary-dark: #4A2F18;
+  --mp-accent: #C9A24B; --mp-bg: #FBF8F3; --mp-shadow: 0 2px 12px rgba(107,68,35,.08);
+}
+/* Theme: forest */
+.mp-theme-forest {
+  --mp-primary: #1B4D3E; --mp-primary-soft: #E0F0E8; --mp-primary-dark: #0F2E25;
+  --mp-accent: #D4AF37; --mp-bg: #F7FAF7; --mp-shadow: 0 2px 12px rgba(27,77,62,.08);
+}
+/* Theme: midnight */
+.mp-theme-midnight {
+  --mp-primary: #1A1A1A; --mp-primary-soft: #2A2A2A; --mp-primary-dark: #0A0A0A;
+  --mp-accent: #D4AF37; --mp-bg: #0F0F0F; --mp-card: #1C1C1C;
+  --mp-text: #F5F5F5; --mp-text-muted: #999999; --mp-border: #2C2C2C;
+  --mp-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+/* Theme: sunset */
+.mp-theme-sunset {
+  --mp-primary: #C2410C; --mp-primary-soft: #FFEFE5; --mp-primary-dark: #9A3409;
+  --mp-accent: #F59E0B; --mp-bg: #FFFAF5; --mp-shadow: 0 2px 12px rgba(194,65,12,.08);
+}
+/* Theme: royal */
+.mp-theme-royal {
+  --mp-primary: #5B21B6; --mp-primary-soft: #F3EBFF; --mp-primary-dark: #3F1782;
+  --mp-accent: #F59E0B; --mp-bg: #FAFAFF; --mp-shadow: 0 2px 12px rgba(91,33,182,.08);
+}
+/* Theme: achay (مطابق لتصميم Achay الحقيقي) */
+.mp-theme-achay {
+  --mp-primary: #05007A; --mp-primary-soft: #E8D8B7; --mp-primary-dark: #040062;
+  --mp-accent: #05007A; --mp-bg: #EBD9B9; --mp-card: #F5E9D0;
+  --mp-text: #05007A; --mp-text-muted: #5B5A87; --mp-border: #D6C5A3;
+  --mp-shadow: 0 2px 12px rgba(5,0,122,.06);
+}
+
+/* ============================================================
+   ACHAY-STYLE: hero header + large circular category icons
+   ============================================================ */
+.mp-hero {
+  position: relative;
+  width: 100%; height: 200px;
+  background: var(--mp-primary-soft);
+  overflow: visible;     /* ⚠️ سمح للوغو يطفو خارج حدود الهيرو */
+}
+.mp-hero img { border-radius: 0 0 24px 24px; pointer-events: none; }
+.mp-card-img-wrap, .mp-card-img-wrap img,
+.mp-card-grid-img, .mp-card-grid-img img { touch-action: manipulation; }
+/* hero فارغ — gradient لطيف بدل blob الصورة المكررة */
+.mp-hero-empty {
+  height: 90px;
+  background: linear-gradient(180deg, var(--mp-primary) 0%, var(--mp-primary-dark) 100%);
+}
+.mp-hero-empty::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.08) 1px, transparent 1px),
+    radial-gradient(circle at 60% 70%, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 24px 24px, 32px 32px;
+  opacity: .8;
+}
+.mp-hero img { width: 100%; height: 100%; object-fit: cover; }
+.mp-hero-watermark {
+  position: absolute; bottom: 8px; left: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--mp-primary);
+  padding: 4px 9px 4px 5px;
+  border-radius: var(--mp-radius-pill);
+  font-size: 10px; font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.1);
+  z-index: 1; opacity: .85;
+  transition: opacity var(--mp-transition);
+}
+.mp-hero-watermark:hover { opacity: 1; }
+.mp-hero-watermark img { width: 18px; height: 18px; border-radius: 50%; }
+.mp-hero-user {
+  position: absolute; top: 12px; right: 12px;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.95); color: var(--mp-primary);
+  border: none; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--mp-shadow);
+  cursor: pointer;
+}
+.mp-hero-logo {
+  position: absolute; bottom: -55px; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 120px; border-radius: 50%;
+  background: var(--mp-card);
+  border: 5px solid var(--mp-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42px; color: var(--mp-primary); font-weight: 800;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  overflow: hidden;
+  z-index: 5;
+}
+.mp-hero-logo > span { font-size: 38px; line-height: 1; }
+.mp-hero-logo img { width: 100%; height: 100%; object-fit: cover; }
+.mp-brand {
+  text-align: center; padding: 70px 16px 8px;
+}
+.mp-brand-name {
+  font-size: 24px; font-weight: 800; color: var(--mp-primary);
+  margin: 0;
+}
+.mp-brand-lang {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: none; color: var(--mp-primary);
+  font-size: 12px; font-weight: 700;
+  padding: 4px 8px; margin-top: 4px;
+  font-family: inherit; cursor: pointer;
+}
+.mp-brand-tagline {
+  font-size: 13.5px; color: var(--mp-text-muted, #7a7a7a);
+  margin: 8px 24px 0; line-height: 1.6; font-weight: 500;
+  max-width: 400px; margin-left: auto; margin-right: auto;
+}
+
+/* 📊 Info Pill Bar — شريط معلومات المتجر (Segmented Pill Bar) */
+.mp-info-chips {
+  display: flex; align-items: stretch;
+  margin: 14px 16px 6px;
+  background: var(--mp-card, #fff);
+  border: 1px solid var(--mp-border, rgba(0,0,0,0.08));
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.mp-info-chip {
+  flex: 1; padding: 12px 8px; text-align: center;
+  border-inline-start: 1px solid var(--mp-border, rgba(0,0,0,0.08));
+  min-width: 0;
+  transition: background var(--mp-transition);
+}
+.mp-info-chip:first-child { border-inline-start: 0; }
+.mp-info-chip:active { background: rgba(0,0,0,0.03); }
+.mp-info-chip-icon {
+  font-size: 18px; margin-bottom: 2px;
+  line-height: 1;
+}
+.mp-info-chip-value {
+  font-size: 14px; color: var(--mp-text, #1a1a1a);
+  font-weight: 800; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mp-info-chip-label {
+  font-size: 10.5px; color: var(--mp-text-muted, #7a7a7a);
+  margin-top: 3px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 380px) {
+  .mp-info-chips { margin: 12px 12px 6px; }
+  .mp-info-chip { padding: 10px 6px; }
+  .mp-info-chip-icon { font-size: 16px; }
+  .mp-info-chip-value { font-size: 13px; }
+  .mp-info-chip-label { font-size: 10px; }
+}
+
+/* Social icons row */
+.mp-socials {
+  display: flex; justify-content: center; gap: 14px;
+  padding: 10px 16px 14px;
+  flex-wrap: wrap;
+}
+.mp-social {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: none; border: none; color: var(--mp-primary);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer;
+  transition: transform var(--mp-transition), background var(--mp-transition);
+  text-decoration: none;
+}
+.mp-social:hover { background: rgba(5,0,122,.08); transform: scale(1.08); }
+
+/* Large circular categories (achay style) */
+.mp-cats-circles {
+  display: flex; gap: 12px; padding: 12px;
+  overflow-x: auto; overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: var(--mp-bg);
+  /* 🛡️ يسمح للمتصفح بتمرير pan-y للـ parent (يصلح iOS scroll vertical) */
+  touch-action: pan-x;
+  /* لا تستخدم scroll-snap (يتعب على iOS) */
+}
+.mp-cats-circles::-webkit-scrollbar { display: none; }
+.mp-cat-circle {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+  background: none; border: none; padding: 4px 6px;
+  font-family: inherit; cursor: pointer;
+  min-width: 76px;
+}
+.mp-cat-circle-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--mp-card);
+  border: 2px solid transparent;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: var(--mp-primary);
+  transition: all var(--mp-transition);
+  overflow: hidden;
+}
+.mp-cat-circle-icon img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%;
+}
+.mp-cat-circle.active .mp-cat-circle-icon {
+  border-color: var(--mp-primary);
+  box-shadow: 0 0 0 2px var(--mp-bg), 0 0 0 4px var(--mp-primary);
+}
+.mp-cat-circle-name {
+  font-size: 12px; font-weight: 700;
+  color: var(--mp-primary);
+  white-space: nowrap; max-width: 80px;
+  overflow: hidden; text-overflow: ellipsis;
+  opacity: .75;
+  transition: opacity var(--mp-transition);
+}
+.mp-cat-circle.active .mp-cat-circle-name { opacity: 1; }
+
+/* Separator under tabs */
+.mp-tabs-sep {
+  width: 80px; height: 3px;
+  background: var(--mp-primary);
+  border-radius: 2px;
+  margin: 4px auto 12px;
+  opacity: .5;
+}
+
+/* View toggle (grid/list) */
+.mp-view-toggle {
+  display: inline-flex; align-items: center;
+  background: var(--mp-card);
+  border-radius: 10px;
+  padding: 4px;
+  margin: 0 16px 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.mp-view-toggle button {
+  background: none; border: none;
+  width: 32px; height: 28px;
+  border-radius: 7px;
+  color: var(--mp-text-muted);
+  cursor: pointer; font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all var(--mp-transition);
+}
+.mp-view-toggle button.active {
+  background: var(--mp-primary); color: #fff;
+}
+
+/* Section subtitle (hours) */
+.mp-section-meta {
+  font-size: 12px; color: var(--mp-text-muted);
+  margin: -8px 0 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Price chip (achay-style: dark bg + currency icon) */
+.mp-price-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--mp-primary); color: #fff;
+  padding: 5px 12px; border-radius: var(--mp-radius-pill);
+  font-size: 14px; font-weight: 800;
+  font-feature-settings: "tnum";
+}
+.mp-price-chip-sym {
+  font-size: 11px; opacity: .9;
+  display: inline-flex; align-items: center;
+}
+.mp-price-chip-sym svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* 💰 SAR symbol (يظهر داخل أي سعر: كارت، سلة، سلة صغيرة، chips) */
+.mp-sar-sym {
+  display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: middle; margin: 0 1px;
+}
+.mp-sar-sym svg {
+  width: 0.85em; height: 0.85em;
+  fill: currentColor;
+  transform: translateY(1px);
+}
+
+/* 🎨 Portfolio/Showcase-only cards — للأعمال (بلا سعر، بلا زر) */
+.mp-portfolio-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--mp-card, #fff);
+  border: 1px solid var(--mp-border, rgba(0,0,0,0.08));
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s;
+}
+.mp-portfolio-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+}
+.mp-portfolio-card:active { transform: scale(0.99); }
+.mp-portfolio-media {
+  position: relative;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e5e7eb, #f3f4f6);
+}
+.mp-portfolio-media img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mp-portfolio-card:hover .mp-portfolio-media img { transform: scale(1.06); }
+.mp-portfolio-img-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px; opacity: 0.35;
+}
+.mp-portfolio-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 62px; height: 62px; border-radius: 50%;
+  background: rgba(0,0,0,0.7);
+  border: 3px solid rgba(255,255,255,0.9);
+  color: #fff; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 2;
+  backdrop-filter: blur(4px);
+  animation: portfolioPulse 2s ease-in-out infinite;
+}
+@keyframes portfolioPulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 0 0 0 rgba(255,255,255,.5); }
+  100%     { box-shadow: 0 6px 18px rgba(0,0,0,.4), 0 0 0 18px rgba(255,255,255,0); }
+}
+.mp-portfolio-play:active { transform: scale(0.9); }
+.mp-portfolio-body {
+  padding: 12px 14px 14px;
+}
+.mp-portfolio-name {
+  margin: 0; font-size: 14.5px; font-weight: 800;
+  color: var(--mp-text, #111);
+  line-height: 1.3;
+}
+.mp-portfolio-desc {
+  margin: 4px 0 0; font-size: 12px; font-weight: 500;
+  color: var(--mp-text-muted, #6b7280);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* 🎨 Portfolio grid layout — عرض شبكي مضغوط (2 كارت في صف على الموبايل، 3 على PC) */
+.mp-section-portfolio .mp-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 720px) {
+  .mp-section-portfolio .mp-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .mp-section-portfolio .mp-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Achay theme — البطاقات تستخدم نفس الـ classic shape (مع زر +) */
+/* فقط بسيطة من التعديلات: لون النص والسعر بالـ navy */
+.mp-theme-achay .mp-card-name { color: var(--mp-primary); }
+.mp-theme-achay .mp-card-price { color: var(--mp-primary); }
+
+/* Grid view (مربعات جنب بعض — 2 columns على الموبايل، 3 على tablet+) */
+.mp-card-grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  padding: 0 14px;
+}
+@media (min-width: 640px) {
+  .mp-card-grid-wrap { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+@media (min-width: 900px) {
+  .mp-card-grid-wrap { grid-template-columns: repeat(4, 1fr); }
+}
+.mp-card-grid {
+  background: var(--mp-card);
+  border-radius: var(--mp-radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--mp-transition), box-shadow var(--mp-transition);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  border: 1px solid var(--mp-border);
+}
+.mp-card-grid:active { transform: scale(.97); }
+.mp-card-grid:hover { box-shadow: 0 6px 18px rgba(0,0,0,.12); transform: translateY(-2px); }
+.mp-card-grid-img {
+  width: 100%; aspect-ratio: 1;
+  background: var(--mp-primary-soft);
+  overflow: hidden;
+  position: relative;
+}
+.mp-card-grid-img img { width: 100%; height: 100%; object-fit: cover; }
+.mp-card-grid-body {
+  padding: 12px 14px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  flex: 1;
+}
+.mp-card-grid-name {
+  font-size: 15px; font-weight: 800; color: var(--mp-text);
+  line-height: 1.3; margin: 0;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  min-height: 39px;
+}
+.mp-card-grid .mp-card-desc {
+  font-size: 12px; -webkit-line-clamp: 2; margin: 0;
+  line-height: 1.4;
+  min-height: 32px;
+}
+.mp-card-grid .mp-card-foot {
+  margin-top: auto; padding-top: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px;
+}
+.mp-card-grid .mp-card-price {
+  font-size: 15px;
+  font-weight: 800;
+}
+.mp-card-grid .mp-card-cal {
+  font-size: 11px;
+}
+.mp-card-grid .mp-card-add,
+.mp-card-grid .mp-card-add-wrap.in-cart {
+  flex-shrink: 0;
+}
+.mp-card-grid .mp-card-add {
+  width: 38px; height: 38px;
+  font-size: 22px;
+}
+.mp-card-grid .mp-card-qty-minus,
+.mp-card-grid .mp-card-qty-plus {
+  width: 32px; height: 36px;
+  font-size: 18px;
+}
+.mp-card-grid .mp-card-qty-val {
+  font-size: 14px;
+  min-width: 22px;
+}
+.mp-card-grid:active { transform: scale(.98); }
+.mp-card-grid-img {
+  width: 100%; height: 220px;
+  background: var(--mp-primary-soft);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.mp-card-grid-img img { width: 100%; height: 100%; object-fit: cover; }
+.mp-card-grid-body {
+  padding: 14px 16px 16px;
+}
+.mp-card-grid-name {
+  font-size: 17px; font-weight: 800;
+  color: var(--mp-primary);
+  margin: 0 0 4px;
+}
+.mp-card-grid-cal {
+  font-size: 12px; color: var(--mp-text-muted);
+  margin-bottom: 8px;
+}
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* لا height: 100vh — يكسر iOS scroll */
+}
+body {
+  margin: 0; padding: 0;
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+  background: var(--mp-bg);
+  color: var(--mp-text);
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  /* ⚠️ بدون overscroll-behavior + بدون height fixed = scroll حر */
+}
+.mp-app {
+  padding-bottom: 120px;
+  /* لا min-height، لا overflow، لا height — اتركها تنمو طبيعياً */
+}
+/* فقط body class عند فتح sheet/drawer (نمنع scroll الخلفية) */
+/* ⚠️ لا نستخدم position:fixed — كان يفقد scroll position عند الإغلاق */
+body.mp-sheet-open, body.mp-drawer-open {
+  overflow: hidden;
+}
+img { max-width: 100%; display: block; }
+button { font-family: inherit; cursor: pointer; }
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.mp-header {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--mp-card);
+  border-bottom: 1px solid var(--mp-border);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--mp-shadow-sm);
+}
+.mp-header-menu {
+  background: none; border: none; padding: 8px;
+  color: var(--mp-text); font-size: 22px; line-height: 1;
+  border-radius: var(--mp-radius-sm);
+  transition: background var(--mp-transition);
+}
+.mp-header-menu:hover { background: var(--mp-border); }
+.mp-header-brand {
+  flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.mp-header-logo {
+  width: 40px; height: 40px; border-radius: 50%;
+  object-fit: cover; background: var(--mp-primary-soft);
+}
+.mp-header-info { min-width: 0; }
+.mp-header-name {
+  font-size: 16px; font-weight: 800; color: var(--mp-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mp-header-sub {
+  font-size: 11px; color: var(--mp-text-muted); margin-top: 2px;
+}
+.mp-header-lang {
+  background: var(--mp-primary-soft); color: var(--mp-primary);
+  border: none; padding: 6px 12px; border-radius: var(--mp-radius-pill);
+  font-size: 12px; font-weight: 700;
+  transition: all var(--mp-transition);
+}
+.mp-header-lang:hover { background: var(--mp-primary); color: #fff; }
+
+/* Dine-in badge (طاولة) */
+.mp-table-badge {
+  background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-dark));
+  color: #fff; padding: 10px 16px; text-align: center;
+  font-weight: 800; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+/* ============================================================
+   STICKY CATEGORY TABS (chips)
+   ============================================================ */
+.mp-tabs {
+  position: sticky; top: 65px; z-index: 25;
+  background: var(--mp-bg);
+  padding: 10px 12px;
+  display: flex; gap: 8px;
+  overflow-x: auto; overflow-y: visible;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  border-bottom: 1px solid var(--mp-border);
+  touch-action: pan-x;
+}
+.mp-tabs::-webkit-scrollbar { display: none; }
+.mp-tab {
+  flex: 0 0 auto; white-space: nowrap;
+  background: var(--mp-card); color: var(--mp-text);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius-pill);
+  padding: 8px 16px;
+  font-size: 13px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all var(--mp-transition);
+}
+.mp-tab:hover { border-color: var(--mp-primary); }
+.mp-tab.active {
+  background: var(--mp-primary); color: #fff;
+  border-color: var(--mp-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
+.mp-tab-emoji { font-size: 16px; line-height: 1; }
+.mp-tab-count {
+  background: rgba(255,255,255,.2);
+  padding: 1px 7px; border-radius: var(--mp-radius-pill);
+  font-size: 11px; font-weight: 600;
+}
+.mp-tab:not(.active) .mp-tab-count {
+  background: var(--mp-border); color: var(--mp-text-muted);
+}
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.mp-section {
+  padding: 16px 12px 4px;
+}
+.mp-section-title {
+  font-size: 18px; font-weight: 800; color: var(--mp-text);
+  margin: 0 0 10px; padding-right: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.mp-section-title::before {
+  content: ""; display: block;
+  width: 4px; height: 22px; border-radius: 2px;
+  background: var(--mp-primary);
+}
+.mp-section-subtitle {
+  font-size: 12px; color: var(--mp-text-muted); margin-bottom: 8px;
+}
+
+/* ============================================================
+   PRODUCT CARD (Vertical list — Achay style)
+   ============================================================ */
+.mp-card-list { display: flex; flex-direction: column; gap: 10px; }
+.mp-card {
+  background: var(--mp-card);
+  border: 1px solid var(--mp-border);
+  border-radius: var(--mp-radius);
+  padding: 10px;
+  display: flex; gap: 12px;
+  position: relative; overflow: hidden;
+  transition: all var(--mp-transition);
+  cursor: pointer;
+}
+.mp-card:active { transform: scale(.98); }
+.mp-card:hover {
+  border-color: var(--mp-primary);
+  box-shadow: var(--mp-shadow);
+}
+.mp-card-img-wrap {
+  flex-shrink: 0;
+  width: 96px; height: 96px;
+  border-radius: var(--mp-radius-img);
+  overflow: hidden;
+  background: var(--mp-primary-soft);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.mp-card-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.mp-card-img-placeholder {
+  font-size: 32px; color: var(--mp-primary); opacity: .5;
+}
+.mp-card-badges {
+  position: absolute; top: 4px; right: 4px; left: 4px;
+  display: flex; justify-content: space-between; pointer-events: none;
+}
+.mp-badge {
+  background: var(--mp-accent); color: #fff;
+  font-size: 9px; font-weight: 800;
+  padding: 3px 8px; border-radius: var(--mp-radius-pill);
+  letter-spacing: .3px;
+}
+.mp-badge.popular { background: #F59E0B; }
+.mp-badge.spicy { background: #DC2626; }
+.mp-badge.new { background: #10B981; }
+.mp-card-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.mp-card-name {
+  font-size: 15px; font-weight: 700; color: var(--mp-text);
+  line-height: 1.3; margin: 0;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+}
+.mp-card-desc {
+  font-size: 12px; color: var(--mp-text-muted);
+  line-height: 1.4; margin: 0;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.mp-card-foot {
+  margin-top: auto; padding-top: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.mp-card-price-wrap { display: flex; flex-direction: column; gap: 2px; }
+.mp-card-price {
+  font-size: 16px; font-weight: 800; color: var(--mp-primary);
+  font-feature-settings: "tnum";
+}
+.mp-card-price-orig {
+  font-size: 11px; color: var(--mp-text-muted);
+  text-decoration: line-through;
+}
+.mp-card-cal {
+  font-size: 11px; color: var(--mp-text-muted);
+  display: inline-flex; align-items: center; gap: 3px;
+}
+.mp-card-add {
+  width: 38px; height: 38px;
+  border-radius: 50%; border: none;
+  background: var(--mp-primary); color: #fff;
+  font-size: 22px; line-height: 1; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(111,16,37,.25);
+  transition: all var(--mp-transition);
+}
+.mp-card-add:hover {
+  background: var(--mp-primary-dark);
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(111,16,37,.35);
+}
+.mp-card-add:active { transform: scale(.95); }
+.mp-card-add.in-cart {
+  background: var(--mp-accent);
+  box-shadow: 0 4px 12px rgba(67,198,188,.35);
+}
+
+/* 🛒 Stepper (-N+) ينظهر بعد إضافة المنتج للسلة */
+.mp-card-add-wrap {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center;
+}
+.mp-card-add-wrap.in-cart {
+  background: var(--mp-primary);
+  border-radius: var(--mp-radius-pill);
+  padding: 0;
+  box-shadow: 0 4px 12px rgba(111,16,37,.25);
+  overflow: hidden;
+}
+.mp-card-qty-minus,
+.mp-card-qty-plus {
+  width: 36px; height: 38px;
+  background: none; border: none; color: #fff;
+  font-size: 20px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background var(--mp-transition);
+  font-family: inherit;
+}
+.mp-card-qty-minus:hover,
+.mp-card-qty-plus:hover { background: rgba(255,255,255,.15); }
+.mp-card-qty-minus:active,
+.mp-card-qty-plus:active { background: rgba(0,0,0,.18); }
+.mp-card-qty-val {
+  min-width: 24px;
+  color: #fff;
+  font-weight: 800; font-size: 15px;
+  text-align: center;
+  font-feature-settings: "tnum";
+  padding: 0 2px;
+}
+
+/* Skeleton state */
+.mp-skeleton {
+  background: linear-gradient(90deg, var(--mp-border) 0%, var(--mp-primary-soft) 50%, var(--mp-border) 100%);
+  background-size: 200% 100%;
+  animation: mp-skeleton 1.4s infinite;
+  border-radius: var(--mp-radius);
+}
+@keyframes mp-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.mp-card-skeleton {
+  height: 116px;
+}
+
+/* ============================================================
+   FLOATING CART CHIP
+   ============================================================ */
+.mp-cart-fab {
+  position: fixed; bottom: 14px; left: 14px; right: 14px;
+  z-index: 40;
+  background: var(--mp-primary); color: #fff;
+  border: none; border-radius: var(--mp-radius-pill);
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  font-size: 14px; font-weight: 700;
+  transform: translateY(140%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  font-family: inherit;
+  pointer-events: none;              /* 🚫 ما يبلوك scroll لو مخفي */
+  visibility: hidden;
+}
+.mp-cart-fab.show { transform: translateY(0); pointer-events: auto; visibility: visible; }
+.mp-cart-fab:active { transform: scale(.98); }
+.mp-cart-fab-count {
+  background: rgba(255,255,255,.2);
+  width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800;
+}
+.mp-cart-fab-label { flex: 1; text-align: center; }
+.mp-cart-fab-total {
+  background: rgba(255,255,255,.2);
+  padding: 4px 12px; border-radius: var(--mp-radius-pill);
+  font-size: 13px; font-weight: 800;
+}
+
+/* ============================================================
+   BOTTOM SHEET (product detail)
+   ============================================================ */
+.mp-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--mp-transition);
+}
+.mp-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+.mp-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 51; background: var(--mp-card);
+  border-radius: 24px 24px 0 0;
+  max-height: 92vh;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.mp-sheet.show { transform: translateY(0); }
+.mp-sheet-handle {
+  width: 44px; height: 4px;
+  background: var(--mp-border); border-radius: 4px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+.mp-sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.mp-sheet-hero {
+  width: 100%; height: 240px;
+  background: var(--mp-primary-soft);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+.mp-sheet-hero img { width: 100%; height: 100%; object-fit: cover; }
+.mp-sheet-close {
+  position: absolute; top: 12px; left: 12px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,.95); color: var(--mp-text);
+  border: none; font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--mp-shadow);
+}
+.mp-sheet-content { padding: 16px 18px; }
+.mp-sheet-name {
+  font-size: 22px; font-weight: 800; color: var(--mp-text);
+  margin: 0 0 6px;
+}
+.mp-sheet-desc {
+  font-size: 14px; color: var(--mp-text-muted); line-height: 1.6;
+  margin: 0 0 12px;
+}
+.mp-sheet-meta {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.mp-sheet-meta-item {
+  background: var(--mp-primary-soft); color: var(--mp-primary);
+  padding: 5px 12px; border-radius: var(--mp-radius-pill);
+  font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.mp-sheet-modifiers { margin-top: 14px; }
+.mp-sheet-mod-title {
+  font-size: 14px; font-weight: 800; color: var(--mp-text);
+  margin: 0 0 8px;
+}
+.mp-sheet-mod-chips {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.mp-sheet-mod-chip {
+  background: var(--mp-card); color: var(--mp-text);
+  border: 1.5px solid var(--mp-border);
+  padding: 8px 14px; border-radius: var(--mp-radius-pill);
+  font-size: 13px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all var(--mp-transition);
+}
+.mp-sheet-mod-chip:hover { border-color: var(--mp-primary); }
+.mp-sheet-mod-chip.selected {
+  background: var(--mp-primary); color: #fff; border-color: var(--mp-primary);
+}
+/* 🚫 Phase 1: excluded ingredient chip — red strike-through */
+.mp-sheet-mod-chip.excluded {
+  background: #fee2e2 !important; color: #991b1b !important;
+  border-color: #fca5a5 !important; font-weight: 700;
+}
+.mp-sheet-excl .mp-sheet-mod-title { color: #991b1b; }
+.mp-sheet-mod-price {
+  font-size: 11px; opacity: .7;
+}
+.mp-sheet-foot {
+  padding: 14px 18px;
+  border-top: 1px solid var(--mp-border);
+  background: var(--mp-card);
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; bottom: 0;
+}
+.mp-stepper {
+  display: inline-flex; align-items: center;
+  background: var(--mp-bg); border: 1.5px solid var(--mp-border);
+  border-radius: var(--mp-radius-pill);
+  overflow: hidden;
+}
+.mp-stepper button {
+  width: 38px; height: 38px;
+  background: none; border: none; color: var(--mp-primary);
+  font-size: 20px; font-weight: 700;
+}
+.mp-stepper button:disabled { color: var(--mp-text-muted); opacity: .5; }
+.mp-stepper-val {
+  min-width: 32px; text-align: center;
+  font-size: 16px; font-weight: 800; color: var(--mp-text);
+  font-feature-settings: "tnum";
+}
+.mp-sheet-cta {
+  flex: 1; background: var(--mp-primary); color: #fff;
+  border: none; border-radius: var(--mp-radius-pill);
+  padding: 14px; font-size: 15px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: inherit;
+  transition: all var(--mp-transition);
+  box-shadow: 0 4px 12px rgba(111,16,37,.25);
+}
+.mp-sheet-cta:hover { background: var(--mp-primary-dark); }
+.mp-sheet-cta:active { transform: scale(.97); }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+.mp-empty {
+  text-align: center; padding: 60px 20px;
+  color: var(--mp-text-muted);
+}
+.mp-empty-icon { font-size: 56px; margin-bottom: 12px; opacity: .4; }
+.mp-empty-title { font-size: 16px; font-weight: 700; color: var(--mp-text); margin-bottom: 6px; }
+
+/* ============================================================
+   COMPLIANCE FOOTER (calories disclaimer)
+   ============================================================ */
+.mp-compliance {
+  padding: 24px 16px 40px;
+  text-align: center;
+  font-size: 12px; color: var(--mp-text-muted);
+  line-height: 1.8;
+  border-top: 1px solid var(--mp-border);
+  margin-top: 24px;
+}
+.mp-footer-brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--mp-text-muted);
+  text-decoration: none;
+  transition: opacity var(--mp-transition);
+  opacity: .85;
+}
+.mp-footer-brand:hover { opacity: 1; color: var(--mp-primary); }
+.mp-footer-brand img { width: 24px; height: 24px; border-radius: 50%; }
+.mp-footer-brand b { color: var(--mp-primary); font-weight: 800; }
+
+/* ============================================================
+   SIDE DRAWER (account/menu)
+   ============================================================ */
+.mp-drawer-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0,0,0,.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--mp-transition);
+}
+.mp-drawer-backdrop.show { opacity: 1; pointer-events: auto; }
+.mp-drawer {
+  position: fixed; top: 0; bottom: 0; right: 0;
+  width: min(85vw, 320px); z-index: 61;
+  background: var(--mp-card);
+  transform: translateX(100%);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 24px rgba(0,0,0,.2);
+}
+.mp-drawer.show { transform: translateX(0); }
+.mp-drawer-head {
+  padding: 20px 18px;
+  background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-dark));
+  color: #fff;
+}
+.mp-drawer-title { font-size: 18px; font-weight: 800; margin: 0 0 4px; }
+.mp-drawer-sub { font-size: 12px; opacity: .85; }
+.mp-drawer-body {
+  flex: 1; overflow-y: auto; padding: 12px;
+}
+.mp-drawer-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 12px; border-radius: var(--mp-radius);
+  text-decoration: none; color: var(--mp-text);
+  font-size: 14px; font-weight: 600;
+  transition: background var(--mp-transition);
+  cursor: pointer;
+}
+.mp-drawer-item:hover { background: var(--mp-primary-soft); }
+.mp-drawer-item-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--mp-primary-soft); color: var(--mp-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.mp-drawer-item-chev {
+  margin-right: auto; color: var(--mp-text-muted);
+}

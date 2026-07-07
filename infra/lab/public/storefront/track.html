@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تتبع الطلب — ثواني</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Cairo',sans-serif}
+body{background:linear-gradient(135deg,#08120e,#0d1f17);color:#f1f5f4;min-height:100vh;padding:30px 20px}
+.box{max-width:520px;margin:0 auto;background:#0e1a14;border:1px solid rgba(201,162,75,0.2);border-radius:20px;padding:30px}
+h1{font-size:22px;color:#c9a24b;margin-bottom:16px;text-align:center}
+.status-badge{display:block;padding:14px 20px;border-radius:12px;text-align:center;font-weight:800;font-size:18px;margin:16px 0}
+.s-pending{background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3)}
+.s-confirmed{background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3)}
+.s-rejected{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(248,113,113,0.3)}
+.s-other{background:rgba(255,255,255,0.06);color:#cfd8d4;border:1px solid rgba(255,255,255,0.1)}
+.info{padding:12px 16px;background:rgba(0,0,0,0.2);border-radius:10px;margin:8px 0;font-size:13px;color:#cfd8d4}
+.info b{color:#c9a24b}
+.items{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(201,162,75,0.2)}
+.item{padding:8px 0;font-size:13px;color:#cfd8d4;border-bottom:1px dashed rgba(255,255,255,0.05)}
+.loader{text-align:center;padding:40px;color:#8a9a92}
+</style></head><body>
+<div class="box">
+  <h1>📦 تتبع الطلب</h1>
+  <div id="content"><div class="loader">⏳ جاري التحميل...</div></div>
+</div>
+<script>
+const orderId = (location.pathname.match(/\/track\/([^/?#]+)/) || [])[1] || "";
+const slug    = new URLSearchParams(location.search).get("slug") || "";
+const statusMap = {
+  pending_confirmation: { txt: "⏳ بانتظار التأكيد", cls: "s-pending" },
+  confirmed:            { txt: "✅ تم التأكيد",      cls: "s-confirmed" },
+  preparing:            { txt: "👨‍🍳 قيد التحضير",   cls: "s-confirmed" },
+  out_for_delivery:     { txt: "🚴 في الطريق",      cls: "s-confirmed" },
+  ready_pickup:         { txt: "📦 جاهز للاستلام",  cls: "s-confirmed" },
+  completed:            { txt: "🏁 تم التسليم",     cls: "s-confirmed" },
+  rejected:             { txt: "❌ مرفوض",         cls: "s-rejected" },
+  cancelled:            { txt: "🚫 ملغي",          cls: "s-rejected" },
+};
+(async () => {
+  if (!orderId || !slug) {
+    document.getElementById("content").innerHTML = '<div class="loader">⚠️ رابط غير صحيح</div>';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/storefront/${encodeURIComponent(slug)}/track/${encodeURIComponent(orderId)}`);
+    const d = await r.json();
+    if (!r.ok) {
+      document.getElementById("content").innerHTML = `<div class="loader">❌ ${d.error || "الطلب غير موجود"}</div>`;
+      return;
+    }
+    const s = statusMap[d.status] || { txt: d.status, cls: "s-other" };
+    const items = (d.items||[]).map(i => `<div class="item">• ${esc(i.name)} × ${i.qty}</div>`).join("");
+    document.getElementById("content").innerHTML = `
+      <div class="status-badge ${s.cls}">${s.txt}</div>
+      ${d.rejectReason ? `<div class="info">📋 سبب الرفض: <b>${esc(d.rejectReason)}</b></div>` : ""}
+      <div class="info">🆔 رقم الطلب: <b style="font-family:monospace">${esc(d.orderId)}</b></div>
+      <div class="info">💰 الإجمالي: <b>${d.total} ${esc(d.currency)}</b></div>
+      <div class="info">🕒 وقت الطلب: <b>${new Date(d.timestamp).toLocaleString("ar-EG")}</b></div>
+      ${items ? `<div class="items"><b style="color:#c9a24b">📦 المنتجات:</b>${items}</div>` : ""}
+    `;
+  } catch (e) {
+    document.getElementById("content").innerHTML = `<div class="loader">❌ ${e.message}</div>`;
+  }
+})();
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+</script>
+</body></html>

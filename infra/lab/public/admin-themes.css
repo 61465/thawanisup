@@ -1,0 +1,270 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Admin Themes v4 — يفوّز على theme-v2-overlay.css بـ scope أعلى + !important
+   selectors: html[data-admin-theme="X"] #appScreen * (specificity 0,2,2)
+   royal-gold = الافتراضي (لا overrides — يستخدم overlay الأصلي)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   🌿 SAUDI VISION — أخضر سعودي + أبيض نقي
+   ───────────────────────────────────────────────────────────────────────── */
+html[data-admin-theme="saudi-vision"] #appScreen,
+html[data-admin-theme="saudi-vision"] #appScreen *{
+  --primary:    #0f4c2c !important;
+  --primary-md: #1b6f3f !important;
+  --primary-lt: rgba(15,76,44,0.10) !important;
+  --gold:       #c9a227 !important;
+  --gold-2:     #d6b13b !important;
+  --bg:         #f3f7f1 !important;
+  --surface:    #ffffff !important;
+  --surface-2:  #f7faf5 !important;
+  --border:     rgba(15,76,44,0.14) !important;
+  --text:       #102218 !important;
+  --text-2:     #2d4636 !important;
+  --muted:      #6a7d70 !important;
+  --gray:       #6a7d70 !important;
+}
+html[data-admin-theme="saudi-vision"] body,
+html[data-admin-theme="saudi-vision"] #appScreen{
+  background:#f3f7f1 !important; color:#102218 !important;
+}
+html[data-admin-theme="saudi-vision"] #appScreen .card,
+html[data-admin-theme="saudi-vision"] #appScreen .stat-card,
+html[data-admin-theme="saudi-vision"] #appScreen .product-card{
+  background:#ffffff !important; color:#102218 !important;
+  border:1px solid rgba(15,76,44,0.12) !important;
+}
+html[data-admin-theme="saudi-vision"] #appScreen .stat-value,
+html[data-admin-theme="saudi-vision"] #appScreen .card-title,
+html[data-admin-theme="saudi-vision"] #appScreen .product-name{ color:#0f4c2c !important; }
+html[data-admin-theme="saudi-vision"] #appScreen input,
+html[data-admin-theme="saudi-vision"] #appScreen select,
+html[data-admin-theme="saudi-vision"] #appScreen textarea{
+  background:#ffffff !important; color:#102218 !important; border-color:#d8e4d2 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   ⚪ LIGHT PRO — أبيض احترافي
+   ───────────────────────────────────────────────────────────────────────── */
+html[data-admin-theme="light-pro"] #appScreen,
+html[data-admin-theme="light-pro"] #appScreen *{
+  --primary:    #111827 !important;
+  --primary-md: #1f2937 !important;
+  --primary-lt: #f3f4f6 !important;
+  --gold:       #b8860b !important;
+  --gold-2:     #d4a017 !important;
+  --bg:         #f7f8fa !important;
+  --surface:    #ffffff !important;
+  --surface-2:  #f4f6fa !important;
+  --border:     rgba(31,41,55,0.10) !important;
+  --text:       #111827 !important;
+  --text-2:     #374151 !important;
+  --muted:      #6b7280 !important;
+  --gray:       #6b7280 !important;
+}
+html[data-admin-theme="light-pro"] body,
+html[data-admin-theme="light-pro"] #appScreen{
+  background:#f7f8fa !important; color:#111827 !important;
+}
+html[data-admin-theme="light-pro"] #appScreen .card,
+html[data-admin-theme="light-pro"] #appScreen .stat-card,
+html[data-admin-theme="light-pro"] #appScreen .product-card{
+  background:#ffffff !important; color:#111827 !important;
+  border:1px solid rgba(31,41,55,0.08) !important;
+}
+html[data-admin-theme="light-pro"] #appScreen .stat-value,
+html[data-admin-theme="light-pro"] #appScreen .card-title,
+html[data-admin-theme="light-pro"] #appScreen .product-name{ color:#111827 !important; }
+html[data-admin-theme="light-pro"] #appScreen input,
+html[data-admin-theme="light-pro"] #appScreen select,
+html[data-admin-theme="light-pro"] #appScreen textarea{
+  background:#ffffff !important; color:#111827 !important; border-color:#d1d5db !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   🌃 MIDNIGHT — أزرق ليلي
+   ───────────────────────────────────────────────────────────────────────── */
+html[data-admin-theme="midnight"] #appScreen,
+html[data-admin-theme="midnight"] #appScreen *{
+  --primary:    #38bdf8 !important;
+  --primary-md: #0ea5e9 !important;
+  --primary-lt: rgba(56,189,248,0.12) !important;
+  --gold:       #7dd3fc !important;
+  --gold-2:     #38bdf8 !important;
+  --bg:         #0a0e1a !important;
+  --surface:    #131a2b !important;
+  --surface-2:  #1a2238 !important;
+  --border:     rgba(56,189,248,0.18) !important;
+  --text:       #e2e8f0 !important;
+  --text-2:     #cbd5e1 !important;
+  --muted:      #94a3b8 !important;
+  --gray:       #94a3b8 !important;
+}
+html[data-admin-theme="midnight"] body,
+html[data-admin-theme="midnight"] #appScreen{
+  background:#0a0e1a !important; color:#e2e8f0 !important;
+}
+html[data-admin-theme="midnight"] #appScreen .card,
+html[data-admin-theme="midnight"] #appScreen .stat-card,
+html[data-admin-theme="midnight"] #appScreen .product-card{
+  background:#131a2b !important; color:#e2e8f0 !important;
+  border:1px solid rgba(56,189,248,0.15) !important;
+}
+html[data-admin-theme="midnight"] #appScreen .stat-value,
+html[data-admin-theme="midnight"] #appScreen .card-title,
+html[data-admin-theme="midnight"] #appScreen .product-name{ color:#7dd3fc !important; }
+html[data-admin-theme="midnight"] #appScreen input,
+html[data-admin-theme="midnight"] #appScreen select,
+html[data-admin-theme="midnight"] #appScreen textarea{
+  background:#1a2238 !important; color:#e2e8f0 !important; border-color:rgba(56,189,248,0.22) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Section-label coloring per theme (يفوّز على admin-polish)
+   ───────────────────────────────────────────────────────────────────────── */
+html[data-admin-theme="saudi-vision"] #appScreen .section-label{
+  color:#0f4c2c !important;
+  background:linear-gradient(135deg,rgba(15,76,44,0.10),transparent) !important;
+  border-right:4px solid #0f4c2c !important;
+}
+html[data-admin-theme="light-pro"] #appScreen .section-label{
+  color:#111827 !important;
+  background:linear-gradient(135deg,rgba(184,134,11,0.10),transparent) !important;
+  border-right:4px solid #b8860b !important;
+}
+html[data-admin-theme="midnight"] #appScreen .section-label{
+  color:#7dd3fc !important;
+  background:linear-gradient(135deg,rgba(56,189,248,0.10),transparent) !important;
+  border-right:4px solid #38bdf8 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Sidebar overrides (#tv2-sidebar من theme-v2-overlay.css) لكل ثيم
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 🌿 SAUDI VISION sidebar — أخضر داكن + ذهبي */
+html[data-admin-theme="saudi-vision"] #tv2-sidebar{
+  background:#0f4c2c !important; color:#f0f6ed !important;
+  border-left-color:rgba(201,162,39,0.30) !important;
+}
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-logo{
+  background:linear-gradient(135deg,#c9a227,#d6b13b) !important; color:#0f4c2c !important;
+}
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-brand .name{ color:#d6b13b !important; }
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-brand .store{ color:#a8c2a5 !important; }
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-item{ color:#d4e0d0 !important; }
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-item:hover{
+  background:rgba(201,162,39,0.12) !important; color:#f0f6ed !important;
+}
+html[data-admin-theme="saudi-vision"] #tv2-sidebar .tv2-item.active{
+  background:rgba(201,162,39,0.20) !important; color:#d6b13b !important;
+  border-color:rgba(201,162,39,0.40) !important;
+}
+
+/* ⚪ LIGHT PRO sidebar — رمادي داكن + accent ذهبي */
+html[data-admin-theme="light-pro"] #tv2-sidebar{
+  background:#1f2937 !important; color:#f3f4f6 !important;
+  border-left-color:rgba(184,134,11,0.25) !important;
+}
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-logo{
+  background:linear-gradient(135deg,#b8860b,#d4a017) !important; color:#111827 !important;
+}
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-brand .name{ color:#d4a017 !important; }
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-brand .store{ color:#9ca3af !important; }
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-item{ color:#d1d5db !important; }
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-item:hover{
+  background:rgba(184,134,11,0.12) !important; color:#f3f4f6 !important;
+}
+html[data-admin-theme="light-pro"] #tv2-sidebar .tv2-item.active{
+  background:rgba(184,134,11,0.20) !important; color:#d4a017 !important;
+  border-color:rgba(184,134,11,0.40) !important;
+}
+
+/* 🌃 MIDNIGHT sidebar — أزرق ليلي + سماوي */
+html[data-admin-theme="midnight"] #tv2-sidebar{
+  background:#131a2b !important; color:#e2e8f0 !important;
+  border-left-color:rgba(56,189,248,0.25) !important;
+}
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-logo{
+  background:linear-gradient(135deg,#38bdf8,#7dd3fc) !important; color:#0a0e1a !important;
+}
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-brand .name{ color:#7dd3fc !important; }
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-brand .store{ color:#94a3b8 !important; }
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-item{ color:#cbd5e1 !important; }
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-item:hover{
+  background:rgba(56,189,248,0.10) !important; color:#e2e8f0 !important;
+}
+html[data-admin-theme="midnight"] #tv2-sidebar .tv2-item.active{
+  background:rgba(56,189,248,0.18) !important; color:#7dd3fc !important;
+  border-color:rgba(56,189,248,0.40) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   تثبيت ألوان النصوص للثيمات الفاتحة — يهزم body color:#f1f5f4 من overlay
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* 🌿 SAUDI VISION — كل النصوص داكنة على bg فاتح */
+html[data-admin-theme="saudi-vision"] body,
+html[data-admin-theme="saudi-vision"] #appScreen{ color:#102218 !important; }
+html[data-admin-theme="saudi-vision"] #appScreen h1,
+html[data-admin-theme="saudi-vision"] #appScreen h2,
+html[data-admin-theme="saudi-vision"] #appScreen h3,
+html[data-admin-theme="saudi-vision"] #appScreen h4,
+html[data-admin-theme="saudi-vision"] #appScreen .card-title,
+html[data-admin-theme="saudi-vision"] #appScreen .product-name,
+html[data-admin-theme="saudi-vision"] #appScreen .stat-value,
+html[data-admin-theme="saudi-vision"] #appScreen table,
+html[data-admin-theme="saudi-vision"] #appScreen td,
+html[data-admin-theme="saudi-vision"] #appScreen th,
+html[data-admin-theme="saudi-vision"] #appScreen label,
+html[data-admin-theme="saudi-vision"] #appScreen p,
+html[data-admin-theme="saudi-vision"] #appScreen span,
+html[data-admin-theme="saudi-vision"] #appScreen .orders-desktop td strong,
+html[data-admin-theme="saudi-vision"] #appScreen .stat-label,
+html[data-admin-theme="saudi-vision"] #appScreen .stat-sub{ color:#102218 !important; }
+html[data-admin-theme="saudi-vision"] #appScreen .orders-desktop .order-meta,
+html[data-admin-theme="saudi-vision"] #appScreen .hint,
+html[data-admin-theme="saudi-vision"] #appScreen [class*="muted"]{ color:#5a6e62 !important; }
+
+/* ⚪ LIGHT PRO — نفس المعالجة */
+html[data-admin-theme="light-pro"] body,
+html[data-admin-theme="light-pro"] #appScreen{ color:#111827 !important; }
+html[data-admin-theme="light-pro"] #appScreen h1,
+html[data-admin-theme="light-pro"] #appScreen h2,
+html[data-admin-theme="light-pro"] #appScreen h3,
+html[data-admin-theme="light-pro"] #appScreen h4,
+html[data-admin-theme="light-pro"] #appScreen .card-title,
+html[data-admin-theme="light-pro"] #appScreen .product-name,
+html[data-admin-theme="light-pro"] #appScreen .stat-value,
+html[data-admin-theme="light-pro"] #appScreen table,
+html[data-admin-theme="light-pro"] #appScreen td,
+html[data-admin-theme="light-pro"] #appScreen th,
+html[data-admin-theme="light-pro"] #appScreen label,
+html[data-admin-theme="light-pro"] #appScreen p,
+html[data-admin-theme="light-pro"] #appScreen span,
+html[data-admin-theme="light-pro"] #appScreen .orders-desktop td strong,
+html[data-admin-theme="light-pro"] #appScreen .stat-label,
+html[data-admin-theme="light-pro"] #appScreen .stat-sub{ color:#111827 !important; }
+html[data-admin-theme="light-pro"] #appScreen .orders-desktop .order-meta,
+html[data-admin-theme="light-pro"] #appScreen .hint,
+html[data-admin-theme="light-pro"] #appScreen [class*="muted"]{ color:#6b7280 !important; }
+
+/* استثناءات: عناصر بـ background ملوّن صريح (gradient/dark) → النص يبقى أبيض */
+html[data-admin-theme="saudi-vision"] #appScreen [style*="background:linear-gradient"] *,
+html[data-admin-theme="saudi-vision"] #appScreen [style*="background:#0"],
+html[data-admin-theme="saudi-vision"] #appScreen [style*="background:#1"],
+html[data-admin-theme="light-pro"] #appScreen [style*="background:linear-gradient"] *,
+html[data-admin-theme="light-pro"] #appScreen [style*="background:#0"],
+html[data-admin-theme="light-pro"] #appScreen [style*="background:#1"]{
+  color:#fff !important;
+}
+/* البطاقات الملوّنة الخاصة (Salla card, maintenance card, share link, menu pro) تحتوي على ألوان أصلية لا نلمسها */
+html[data-admin-theme="saudi-vision"] #appScreen [style*="color:#fff"],
+html[data-admin-theme="saudi-vision"] #appScreen [style*="color:#FFF"],
+html[data-admin-theme="light-pro"] #appScreen [style*="color:#fff"],
+html[data-admin-theme="light-pro"] #appScreen [style*="color:#FFF"]{
+  color:#fff !important;
+}
+
+/* Scrollbar refinement (light themes) */
+html[data-admin-theme="saudi-vision"] ::-webkit-scrollbar-thumb,
+html[data-admin-theme="light-pro"]    ::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.20); }

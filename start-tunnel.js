@@ -6,7 +6,11 @@ const fs   = require("fs");
 const path = require("path");
 
 const ENV_FILE  = path.join(__dirname, ".env");
-const CF_BIN    = "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe";
+// cross-platform: على Linux/VPS اعتمد cloudflared في الـ PATH؛ على Windows استخدم المسار المحلي
+const CF_BIN = process.env.CLOUDFLARED_BIN
+  || (process.platform === "win32"
+      ? "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe"
+      : "cloudflared");
 const PORT      = process.env.PORT || 3003;
 
 console.log("🌐 Starting Cloudflare Tunnel...");

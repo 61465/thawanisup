@@ -1,0 +1,1361 @@
+/* ═══════════════════════════════════════════════════════════════════
+   منصة ثواني — Modern Mobile CSS (2026 standards)
+   ───────────────────────────────────────────────────────────────────
+   تقنيات مستخدمة:
+   • Cascade Layers (@layer) — ترتيب specificity واضح
+   • Dynamic Viewport Units (dvh/svh/lvh) — يحل bug 100vh على mobile
+   • Container Queries (@container) — components تتكيف مع الـ parent
+   • Logical Properties (margin-inline, padding-block) — RTL-safe بطبيعتها
+   • CSS @supports — graceful degradation
+   • clamp() — fluid typography بدون breakpoints
+   • color-mix() — ألوان مشتقة ديناميكياً
+   • aspect-ratio — لا حاجة لـ padding hacks
+   • scrollbar-gutter — layout يبقى ثابت مع/بدون scrollbar
+   • content-visibility — render محسّن
+   • overscroll-behavior — يمنع pull-to-refresh العشوائي
+   • safe-area-inset — للـ notch + home indicator
+   • scroll-snap — tabs أفقية أنيقة
+   • backdrop-filter — sticky headers زجاجي
+   • touch-action — touch optimization
+   • prefers-reduced-motion — احترام تفضيلات المستخدم
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════
+   🔧 CRITICAL FIXES — يطغى على الـ inline CSS الأصلي
+   (un-layered = أعلى priority من كل layers)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* الـ scroll يجب أن يعمل دائماً على html + body */
+html {
+  overflow-x: clip !important; /* clip لا يخلق scroll container، hidden يخلق ويكسر sticky */
+  overflow-y: auto !important;
+  block-size: auto !important;
+  min-block-size: 100%;
+  /* بدون scroll-behavior smooth — تركها للـ user */
+}
+
+body {
+  overflow-x: clip !important;
+  overflow-y: visible !important; /* visible = الـ scroll يحدث على html */
+  /* لا overscroll-behavior — كان يكسر smooth scroll في بعض المتصفحات */
+  min-block-size: 100dvh;
+  max-inline-size: 100vw;
+  position: relative;
+}
+
+/* container أساسي على mobile يجب أن يكون auto height */
+@media (max-width: 768px) {
+  #appScreen {
+    min-block-size: 100dvh !important;
+    block-size: auto !important; /* لا تحدد height ثابت */
+    overflow: visible !important;
+  }
+
+  .main-wrap,
+  main,
+  .main {
+    min-block-size: 100dvh !important;
+    block-size: auto !important;
+    max-block-size: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    position: relative;
+    /* مهم: padding تحتي لـ bottom-nav + safe area */
+    padding-block-end: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* sticky على navbar/page-header يحتاج scrollable parent */
+  .navbar,
+  .page-header,
+  .tabs {
+    /* تأكد من sticky position */
+    position: sticky !important;
+  }
+
+  /* modal scroll داخلي */
+  .modal {
+    max-block-size: min(92dvh, 92vh) !important;
+    overflow: hidden !important;
+  }
+  .modal-body {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+  }
+}
+
+/* ─── Cascade Layers (ترتيب priority واضح) ───────────────────────── */
+@layer reset, base, components, mobile, utilities, overrides;
+
+/* ─── Layer 1: Modern Reset ──────────────────────────────────────── */
+@layer reset {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Smooth scroll مع احترام reduced-motion */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    /* dvh = dynamic viewport — يحل bug iOS Safari address bar */
+    min-block-size: 100dvh;
+    /* overflow-x: clip و overflow-y: visible موجودة في الـ critical fixes أعلاه */
+  }
+
+  /* تحسين images تلقائياً */
+  img, picture, svg, video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* الـ touchable elements */
+  button, [role="button"], a, summary, label {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* ─── Layer 2: Base Typography (Fluid) ───────────────────────────── */
+@layer base {
+  :root {
+    /* Fluid type scale — لا حاجة لـ media queries للنص */
+    --fs-xs:   clamp(0.70rem, 0.66rem + 0.20vw, 0.78rem);
+    --fs-sm:   clamp(0.80rem, 0.74rem + 0.30vw, 0.90rem);
+    --fs-base: clamp(0.90rem, 0.83rem + 0.35vw, 1.00rem);
+    --fs-md:   clamp(1.00rem, 0.92rem + 0.40vw, 1.15rem);
+    --fs-lg:   clamp(1.15rem, 1.04rem + 0.55vw, 1.35rem);
+    --fs-xl:   clamp(1.30rem, 1.14rem + 0.80vw, 1.65rem);
+    --fs-2xl:  clamp(1.55rem, 1.30rem + 1.25vw, 2.10rem);
+    --fs-3xl:  clamp(2.00rem, 1.60rem + 2.00vw, 2.80rem);
+
+    /* Fluid spacing */
+    --space-xs:  clamp(0.25rem, 0.20rem + 0.25vw, 0.50rem);
+    --space-sm:  clamp(0.50rem, 0.40rem + 0.50vw, 0.85rem);
+    --space-md:  clamp(0.85rem, 0.70rem + 0.75vw, 1.35rem);
+    --space-lg:  clamp(1.20rem, 0.95rem + 1.25vw, 2.00rem);
+    --space-xl:  clamp(1.80rem, 1.40rem + 2.00vw, 3.20rem);
+
+    /* Touch target minimum (Apple HIG: 44px, Material: 48px) */
+    --touch-min: 44px;
+
+    /* Safe areas (notch + home bar) */
+    --safe-top:    env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left:   env(safe-area-inset-left, 0px);
+    --safe-right:  env(safe-area-inset-right, 0px);
+
+    /* color-scheme support */
+    color-scheme: light;
+  }
+
+  /* iOS auto-zoom prevention — input ≥ 16px */
+  @supports (-webkit-touch-callout: none) {
+    input, select, textarea {
+      font-size: max(16px, var(--fs-base));
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Layer 3: Mobile Components — أعمدة الـ UX على الهاتف
+   ═══════════════════════════════════════════════════════════════════ */
+@layer mobile {
+
+  /* ─── Mobile Detection — تطبيقات للـ ≤ 768px ────────────────────── */
+  @media (max-width: 768px) {
+
+    /* ─── Body — modern fluid scaling ──────────────────────────────── */
+    body {
+      font-size: var(--fs-base);
+      line-height: 1.55;
+      /* safe-area تطبق على body padding */
+      padding-block-end: var(--safe-bottom);
+      padding-inline: 0;
+    }
+
+    /* ─── Navbar (store-admin) — modern compact ────────────────────── */
+    .navbar {
+      padding-block: var(--space-sm);
+      padding-inline: var(--space-md);
+      block-size: auto;
+      min-block-size: 56px;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex-wrap: nowrap;
+      /* glassmorphism */
+      background: color-mix(in srgb, var(--primary, #1b5e20) 95%, transparent);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      backdrop-filter: blur(12px) saturate(180%);
+      /* notch safe area */
+      padding-block-start: max(var(--space-sm), var(--safe-top));
+      position: sticky;
+      inset-block-start: 0;
+      z-index: 50;
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex: 1;
+      min-inline-size: 0; /* allows shrinking */
+    }
+
+    .navbar-brand img {
+      block-size: clamp(24px, 5vw, 32px);
+      inline-size: auto;
+      flex-shrink: 0;
+      filter: brightness(0) invert(1);
+    }
+
+    .navbar-brand span {
+      font-size: var(--fs-md);
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #fff;
+    }
+
+    /* badges الثانوية — مخفية على mobile */
+    #bizTypeBadge,
+    #planBadge,
+    .store-badge {
+      display: none;
+    }
+
+    .navbar-right {
+      display: flex;
+      gap: var(--space-xs);
+      flex-shrink: 0;
+    }
+
+    /* أزرار navbar — emoji فقط، touch-friendly */
+    .navbar-right > button,
+    .navbar-right > .logout-btn {
+      min-block-size: var(--touch-min);
+      min-inline-size: var(--touch-min);
+      padding: var(--space-xs) var(--space-sm);
+      font-size: 0;
+      border-radius: 12px;
+      background: color-mix(in srgb, #fff 18%, transparent);
+      border: 1px solid color-mix(in srgb, #fff 22%, transparent);
+      color: #fff;
+      cursor: pointer;
+    }
+    .navbar-right > button[onclick*="previewOrder"]::after { content: "👁"; font-size: 16px; }
+    .navbar-right > button[onclick*="openEditMode"]::after { content: "🎨"; font-size: 16px; }
+    .navbar-right > .logout-btn::after { content: "🚪"; font-size: 16px; }
+
+    /* ─── Tabs — Scroll Snap (يقف على tab كامل) ────────────────────── */
+    .tabs {
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      gap: 0;
+      padding-inline: var(--space-sm);
+      background: #fff;
+      border-block-end: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+      position: sticky;
+      inset-block-start: 56px;
+      z-index: 40;
+      /* scroll snap للأناقة */
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: var(--space-md);
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      padding-block: var(--space-md);
+      padding-inline: var(--space-md);
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      border: 0;
+      background: transparent;
+      color: color-mix(in srgb, currentColor 60%, transparent);
+      border-block-end: 3px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      min-block-size: var(--touch-min);
+      transition: color .2s, border-color .2s;
+    }
+
+    .tab.active {
+      color: var(--primary, #1b5e20);
+      border-block-end-color: var(--primary, #1b5e20);
+    }
+
+    /* ─── Main area ────────────────────────────────────────────────── */
+    .main,
+    main {
+      padding-block: var(--space-md);
+      padding-inline: var(--space-md);
+      padding-block-end: calc(80px + var(--safe-bottom));
+      /* content-visibility يحسّن render للأقسام المخفية */
+      content-visibility: auto;
+      contain-intrinsic-size: 0 500px;
+    }
+
+    /* ─── Page Header (master) ─────────────────────────────────────── */
+    .page-header {
+      position: sticky;
+      inset-block-start: var(--safe-top);
+      z-index: 45;
+      padding-block: var(--space-md);
+      padding-inline: var(--space-md);
+      background: color-mix(in srgb, var(--bg, #f4f6f4) 96%, transparent);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .page-header h1 {
+      font-size: var(--fs-lg);
+      font-weight: 800;
+      margin: 0;
+      flex: 1;
+      min-inline-size: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .page-header .sub {
+      display: none;
+    }
+
+    /* ─── Stats Grid — fluid columns ───────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: var(--space-sm);
+      margin-block-end: var(--space-md);
+    }
+
+    .stat-card {
+      padding: var(--space-md);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 2px 12px color-mix(in srgb, currentColor 6%, transparent);
+      /* container query للـ card */
+      container-type: inline-size;
+      container-name: stat;
+    }
+
+    .stat-value {
+      font-size: var(--fs-2xl);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-block-start: var(--space-xs);
+    }
+
+    .stat-label {
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: color-mix(in srgb, currentColor 65%, transparent);
+    }
+
+    .stat-sub {
+      font-size: var(--fs-xs);
+      margin-block-start: var(--space-xs);
+    }
+
+    /* Container query — لو الـ stat-card ضيق، أخفي sub */
+    @container stat (max-width: 130px) {
+      .stat-sub { display: none; }
+      .stat-value { font-size: var(--fs-xl); }
+    }
+
+    /* ─── Cards ────────────────────────────────────────────────────── */
+    .card {
+      padding: var(--space-md);
+      border-radius: 16px;
+      margin-block-end: var(--space-md);
+      background: #fff;
+      box-shadow: 0 2px 12px color-mix(in srgb, currentColor 5%, transparent);
+    }
+
+    .card-title {
+      font-size: var(--fs-md);
+      font-weight: 800;
+      margin-block: 0 var(--space-md);
+    }
+
+    /* ─── Store Cards (master mobile list) ─────────────────────────── */
+    .store-card {
+      padding: var(--space-md);
+      border-radius: 16px;
+      margin-block-end: var(--space-sm);
+      background: #fff;
+      box-shadow: 0 2px 10px color-mix(in srgb, currentColor 6%, transparent);
+      border-inline-end: 4px solid var(--green, #16a34a);
+      container-type: inline-size;
+    }
+
+    .store-card-info .sn {
+      font-size: var(--fs-md);
+      font-weight: 800;
+    }
+
+    .store-card-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+      gap: var(--space-xs);
+    }
+
+    .sc-btn {
+      min-block-size: var(--touch-min);
+      padding: var(--space-sm);
+      font-size: var(--fs-sm);
+      border-radius: 10px;
+      border: 0;
+      cursor: pointer;
+      background: color-mix(in srgb, currentColor 6%, transparent);
+      font-weight: 700;
+      transition: transform .1s, background .15s;
+    }
+
+    .sc-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* ─── Products Grid — Native Aspect Ratio ──────────────────────── */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: var(--space-sm);
+    }
+
+    .product-card {
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 2px 8px color-mix(in srgb, currentColor 5%, transparent);
+    }
+
+    .product-img {
+      aspect-ratio: 4 / 3;
+      block-size: auto;
+      object-fit: cover;
+      inline-size: 100%;
+    }
+
+    .product-name {
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      padding: var(--space-sm);
+      margin: 0;
+    }
+
+    /* ─── Forms ────────────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    .field label {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      padding-block: var(--space-sm);
+      padding-inline: var(--space-md);
+      font-size: 16px; /* iOS no-zoom */
+      border-radius: 12px;
+      border: 1.5px solid color-mix(in srgb, currentColor 15%, transparent);
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none;
+      appearance: none;
+      min-block-size: var(--touch-min);
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--primary, #1b5e20);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #1b5e20) 18%, transparent);
+      outline: none;
+    }
+
+    /* ─── Buttons ──────────────────────────────────────────────────── */
+    .btn {
+      min-block-size: var(--touch-min);
+      padding-block: var(--space-sm);
+      padding-inline: var(--space-md);
+      font-size: var(--fs-base);
+      font-weight: 700;
+      border-radius: 12px;
+      border: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      transition: transform .1s, box-shadow .15s, background .15s;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-sm {
+      min-block-size: 36px;
+      padding-block: var(--space-xs);
+      padding-inline: var(--space-sm);
+      font-size: var(--fs-sm);
+    }
+
+    /* ═══ Modal Bottom Sheet — Modern with drag handle ════════════ */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: color-mix(in srgb, #000 50%, transparent);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+      padding: 0;
+      animation: overlayFade .25s ease-out;
+    }
+
+    @keyframes overlayFade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      inline-size: 100%;
+      max-block-size: 92dvh; /* dynamic viewport */
+      border-start-start-radius: 24px;
+      border-start-end-radius: 24px;
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+      background: #fff;
+      box-shadow: 0 -12px 40px color-mix(in srgb, #000 25%, transparent);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: sheetUp .35s cubic-bezier(.32, .72, 0, 1);
+      padding-block-end: var(--safe-bottom);
+    }
+
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    /* Drag handle */
+    .modal::before {
+      content: '';
+      flex-shrink: 0;
+      inline-size: 40px;
+      block-size: 4px;
+      background: color-mix(in srgb, currentColor 20%, transparent);
+      border-radius: 2px;
+      margin-block: var(--space-sm);
+      margin-inline: auto;
+    }
+
+    .modal-header {
+      padding-inline: var(--space-md);
+      padding-block-start: var(--space-xs);
+      padding-block-end: var(--space-sm);
+      flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+      font-size: var(--fs-lg);
+      font-weight: 800;
+      margin: 0;
+    }
+
+    .modal-body {
+      padding-inline: var(--space-md);
+      padding-block: var(--space-md);
+      overflow-y: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .modal-footer {
+      padding-inline: var(--space-md);
+      padding-block: var(--space-md);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--space-sm);
+      border-block-start: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+    }
+
+    .modal-footer .btn {
+      inline-size: 100%;
+    }
+
+    /* ─── Login Card — Glass morphism ──────────────────────────────── */
+    #loginScreen {
+      min-block-size: 100dvh;
+      display: flex;
+      align-items: flex-end;
+      background: linear-gradient(160deg, var(--primary, #1b5e20) 0%, #0a3d2b 100%);
+      padding: 0;
+    }
+
+    .login-card {
+      inline-size: 100%;
+      margin: 0;
+      max-inline-size: 100%;
+      border-start-start-radius: 28px;
+      border-start-end-radius: 28px;
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+      padding-block: var(--space-xl);
+      padding-inline: var(--space-lg);
+      padding-block-end: calc(var(--space-xl) + var(--safe-bottom));
+      background: #fff;
+      box-shadow: 0 -16px 48px color-mix(in srgb, #000 30%, transparent);
+      animation: sheetUp .5s cubic-bezier(.32, .72, 0, 1);
+    }
+
+    .login-logo {
+      text-align: center;
+      margin-block-end: var(--space-lg);
+    }
+
+    .login-logo img {
+      block-size: clamp(48px, 12vw, 80px);
+      inline-size: auto;
+      max-inline-size: 70%;
+      margin-inline: auto;
+      object-fit: contain;
+    }
+
+    .login-logo .sub {
+      font-size: var(--fs-sm);
+      color: color-mix(in srgb, currentColor 60%, transparent);
+      margin-block-start: var(--space-sm);
+    }
+
+    /* ─── Bottom Nav (master) — Native feel ────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      inset-block-end: 0;
+      inset-inline: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--green, #16a34a) 96%, transparent);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      backdrop-filter: blur(12px) saturate(180%);
+      padding-block-end: var(--safe-bottom);
+      box-shadow: 0 -4px 20px color-mix(in srgb, #000 12%, transparent);
+    }
+
+    .bottom-nav-inner {
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+    }
+
+    .bottom-nav-inner::-webkit-scrollbar { display: none; }
+
+    .bnav-item {
+      flex: 1;
+      min-inline-size: 64px;
+      min-block-size: var(--touch-min);
+      padding-block: var(--space-sm);
+      padding-inline: var(--space-xs);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      color: color-mix(in srgb, #fff 70%, transparent);
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      scroll-snap-align: start;
+      transition: color .15s, background .15s;
+    }
+
+    .bnav-item .bicon {
+      font-size: 22px;
+    }
+
+    .bnav-item.active {
+      color: #fff;
+      background: color-mix(in srgb, #fff 18%, transparent);
+    }
+
+    /* ─── Table — Card-fied على mobile ────────────────────────────── */
+    .desktop-table { display: none; }
+    .mobile-cards { display: block; }
+
+    /* للجداول التي لا يمكن تحويلها لـ cards */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-inline: calc(var(--space-md) * -1);
+      padding-inline: var(--space-md);
+      scrollbar-gutter: stable;
+    }
+
+    /* ─── Toast — modern bottom + safe area ─────────────────────────── */
+    .toast {
+      position: fixed;
+      inset-block-end: calc(80px + var(--safe-bottom));
+      inset-inline: 50%;
+      transform: translateX(50%);
+      padding-block: var(--space-sm);
+      padding-inline: var(--space-md);
+      background: color-mix(in srgb, #1f2937 95%, transparent);
+      color: #fff;
+      border-radius: 999px;
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      z-index: 200;
+      max-inline-size: 90vw;
+      text-align: center;
+      box-shadow: 0 8px 24px color-mix(in srgb, #000 25%, transparent);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ─── Hide desktop-only ────────────────────────────────────────── */
+    .sidebar { display: none; }
+    .desktop-only { display: none; }
+
+  } /* end @media max-width: 768px */
+
+  /* ═══ شاشات صغيرة جداً (iPhone SE, etc.) ═══════════════════════ */
+  @media (max-width: 380px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    .products-grid {
+      grid-template-columns: 1fr;
+    }
+    .navbar-brand span {
+      font-size: var(--fs-sm);
+    }
+    .tab {
+      padding-inline: var(--space-sm);
+    }
+  }
+
+  /* ═══ Landscape mobile (gaming/video orientation) ═══════════════ */
+  @media (max-width: 932px) and (orientation: landscape) {
+    .stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .modal {
+      max-block-size: 95dvh;
+    }
+    .login-card {
+      padding-block: var(--space-md);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Layer 4: Accessibility & Preferences
+   ═══════════════════════════════════════════════════════════════════ */
+@layer utilities {
+
+  /* احترام تفضيل reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* احترام تفضيل dark mode (hint بسيط، لا تغيير كامل) */
+  @media (prefers-color-scheme: dark) {
+    .login-logo img {
+      filter: drop-shadow(0 2px 12px color-mix(in srgb, #000 40%, transparent));
+    }
+  }
+
+  /* Focus visible فقط (لا للماوس) */
+  *:focus { outline: none; }
+  *:focus-visible {
+    outline: 2px solid var(--primary, #1b5e20);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Selection style موحد */
+  ::selection {
+    background: color-mix(in srgb, var(--primary, #1b5e20) 30%, transparent);
+    color: inherit;
+  }
+
+  /* Scrollbar styling */
+  @supports (scrollbar-color: auto) {
+    * {
+      scrollbar-color: color-mix(in srgb, currentColor 20%, transparent) transparent;
+      scrollbar-width: thin;
+    }
+  }
+
+  /* hide scrollbar utility */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* safe-area utilities */
+  .safe-top    { padding-block-start: var(--safe-top); }
+  .safe-bottom { padding-block-end: var(--safe-bottom); }
+
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Layer 5: Overrides (apply last — يكسر inline styles عند الضرورة)
+   ═══════════════════════════════════════════════════════════════════ */
+@layer overrides {
+
+  /* iOS PWA standalone mode */
+  @media (display-mode: standalone) {
+    body {
+      padding-block-start: var(--safe-top);
+    }
+  }
+
+  /* Web App على mobile — يبدأ من 0 (no extra padding) */
+  @media (max-width: 768px) and (display-mode: browser) {
+    /* default styling سليم */
+  }
+
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 تحسينات إضافية لصفحة الماستر (master.html) — overrides دقيقة
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ─── Sidebar مخفي تماماً على mobile ──────────────────────────── */
+  .sidebar { display: none !important; }
+
+  /* ─── #appScreen عمودي بـ flex لكن مع scroll ─────────────────── */
+  #appScreen {
+    display: flex !important;
+    flex-direction: column !important;
+    inline-size: 100%;
+  }
+
+  /* ─── main-wrap: التركيز الأهم ────────────────────────────────── */
+  .main-wrap {
+    inline-size: 100% !important;
+    max-inline-size: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    padding-block-end: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* ─── كل views للماستر يأخذون padding موحد ───────────────────── */
+  #dashView,
+  #storesView,
+  #plansView,
+  #bankView,
+  #welcomeView,
+  #guideView,
+  #leadsView,
+  #pendingView,
+  #platformBotView {
+    padding: 14px !important;
+  }
+
+  /* ─── Page Header — sticky يعمل الآن ──────────────────────────── */
+  .page-header {
+    position: sticky !important;
+    inset-block-start: 0 !important;
+    z-index: 50 !important;
+    background: rgba(255,255,255,0.96) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+    backdrop-filter: blur(14px) saturate(180%) !important;
+    padding: 14px !important;
+    margin-block-end: 14px !important;
+    border-block-end: 1px solid rgba(0,0,0,0.06) !important;
+    margin-inline: -14px !important;
+  }
+
+  .page-header h1 {
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: var(--green, #16a34a) !important;
+  }
+
+  /* ─── stat-card يبدو احترافي ──────────────────────────────────── */
+  .stat-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.04) !important;
+    border-inline-end: 4px solid var(--gold, #C9A24B) !important;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .stat-card.green { border-inline-end-color: var(--green, #16a34a) !important; }
+  .stat-card.danger { border-inline-end-color: var(--danger, #dc2626) !important; }
+  .stat-card.warn { border-inline-end-color: var(--warn, #f59e0b) !important; }
+  .stat-card:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
+  }
+
+  /* ─── store-card احترافي ──────────────────────────────────────── */
+  .store-card {
+    padding: 16px !important;
+    margin-block-end: 12px !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.05) !important;
+    border-inline-end: 4px solid var(--green, #16a34a) !important;
+  }
+
+  .store-card-top {
+    margin-block-end: 14px !important;
+  }
+
+  /* ─── Bottom Nav الذي كان مكسور ─────────────────────────────── */
+  .bottom-nav {
+    display: block !important;
+    position: fixed !important;
+    inset-block-end: 0 !important;
+    inset-inline: 0 !important;
+    z-index: 100 !important;
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--green, #16a34a) 92%, transparent),
+      var(--green, #16a34a)) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    padding-block-end: env(safe-area-inset-bottom, 0px) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12) !important;
+  }
+
+  .bottom-nav-inner {
+    display: flex !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+  }
+  .bottom-nav-inner::-webkit-scrollbar { display: none !important; }
+
+  .bnav-item {
+    flex: 1 !important;
+    min-inline-size: 64px !important;
+    min-block-size: 56px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding-block: 8px !important;
+    padding-inline: 4px !important;
+    color: rgba(255,255,255,0.72) !important;
+    background: transparent !important;
+    border: 0 !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: color .15s, background .15s;
+  }
+  .bnav-item .bicon {
+    font-size: 22px !important;
+  }
+  .bnav-item.active {
+    color: #fff !important;
+    background: rgba(255,255,255,0.18) !important;
+  }
+
+  /* ─── modal على شاشة الماستر صحيح ────────────────────────────── */
+  .overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0,0,0,0.5) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    z-index: 1000 !important;
+    padding: 0 !important;
+  }
+
+  .modal {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    max-block-size: 92dvh !important;
+    border-radius: 22px 22px 0 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-shadow: 0 -12px 40px rgba(0,0,0,0.2) !important;
+    padding-block-end: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior: contain !important;
+    padding: 16px !important;
+  }
+
+  /* ─── Login screen — fully covered ───────────────────────────── */
+  #loginScreen {
+    position: relative !important;
+    min-block-size: 100dvh !important;
+    display: flex !important;
+    align-items: stretch !important;
+    background: linear-gradient(160deg, var(--green, #16a34a) 0%, #0a3d2b 100%) !important;
+    padding: 0 !important;
+  }
+
+  .login-card {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    margin-block-start: auto !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 32px 24px calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+    background: #fff !important;
+    box-shadow: 0 -16px 48px rgba(0,0,0,0.3) !important;
+    animation: cardSlideUp .5s cubic-bezier(.32, .72, 0, 1);
+  }
+
+  @keyframes cardSlideUp {
+    from { transform: translateY(20%); opacity: 0.5; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  .login-logo {
+    text-align: center !important;
+    margin-block-end: 28px !important;
+  }
+  .login-logo img {
+    block-size: 60px !important;
+    inline-size: auto !important;
+    max-inline-size: 75% !important;
+    margin-inline: auto !important;
+    object-fit: contain !important;
+  }
+  .login-logo .sub {
+    font-size: 13.5px !important;
+    color: #6b7280 !important;
+    margin-block-start: 10px !important;
+  }
+
+  .login-field input {
+    inline-size: 100% !important;
+    padding: 14px 16px !important;
+    font-size: 16px !important;
+    border-radius: 12px !important;
+    border: 1.5px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    transition: border-color .15s, background .15s;
+  }
+  .login-field input:focus {
+    border-color: var(--green, #16a34a) !important;
+    background: #fff !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.15) !important;
+  }
+
+  .login-submit {
+    inline-size: 100% !important;
+    padding: 15px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, var(--green, #16a34a), #15803d) !important;
+    color: #fff !important;
+    border: 0 !important;
+    margin-block-start: 12px !important;
+    cursor: pointer !important;
+    transition: transform .1s, box-shadow .15s;
+  }
+  .login-submit:active {
+    transform: scale(0.98);
+    box-shadow: 0 4px 12px rgba(22,163,74,0.3) !important;
+  }
+
+  /* ─── Modal مفتوح بـ flex inline (sub-panels) ────────────────── */
+  #subPanel .modal {
+    max-inline-size: 100% !important;
+  }
+
+  /* ─── Plans grid — single column on mobile ───────────────────── */
+  .plans-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* ─── إصلاح أي العنصر يخرج من الـ viewport أفقياً ────────────── */
+  .card, .stat-card, .store-card, .plan-card, .form-grid,
+  .stats-grid, .modal-body, .navbar, .page-header {
+    max-inline-size: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PWA Install Banner (custom UI لو native banner مرفوض)
+   ═══════════════════════════════════════════════════════════════════ */
+.pwa-install-banner {
+  position: fixed;
+  inset-block-end: 16px;
+  inset-inline: 16px;
+  background: linear-gradient(135deg, var(--primary, #1b5e20), #16a34a);
+  color: #fff;
+  padding: var(--space-md);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px color-mix(in srgb, #000 25%, transparent);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: bannerSlide .4s cubic-bezier(.32, .72, 0, 1);
+}
+
+@keyframes bannerSlide {
+  from { transform: translateY(120%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   تغطية شاملة لكل أنواع الشاشات (2026)
+   ───────────────────────────────────────────────────────────────────
+   شريحة | المثال                                  | العرض
+   ─────────┼──────────────────────────────────────────┼──────────
+   tiny     | Galaxy Fold مطوي                        | 280-319px
+   small    | iPhone SE, Galaxy A20                   | 320-379px
+   regular  | iPhone 12-14, Galaxy S21                | 380-429px
+   plus     | iPhone 14 Plus / 15 Pro Max             | 430-499px
+   tablet-p | iPad mini portrait, Galaxy Tab A        | 500-767px
+   tablet-l | iPad portrait, iPad Pro 11"             | 768-1023px
+   desktop  | كل ما فوق                                | 1024px+
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Tiny (Galaxy Fold طي) — 280-319px ──────────────────────────── */
+@media (max-width: 319px) {
+  :root {
+    --fs-base: 13px;
+    --space-md: 0.7rem;
+  }
+  .navbar-brand img { display: none; }
+  .navbar-brand span { font-size: 13px; }
+  .tab { padding-inline: 8px; font-size: 11px; }
+  .stat-value { font-size: 18px; }
+  .btn { padding-inline: 10px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .products-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── Small phones (iPhone SE, Galaxy A) — 320-379px ─────────────── */
+@media (min-width: 320px) and (max-width: 379px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .products-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ─── Regular phones (iPhone 12-14) — 380-429px ──────────────────── */
+@media (min-width: 380px) and (max-width: 429px) {
+  /* الـ default يعمل جيداً، تحسينات صغيرة */
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+}
+
+/* ─── Plus / Pro Max — 430-499px ─────────────────────────────────── */
+@media (min-width: 430px) and (max-width: 499px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .login-card {
+    max-inline-size: 92vw;
+    margin-inline: auto;
+    border-radius: 24px;
+  }
+}
+
+/* ─── Tablet portrait (iPad mini, Galaxy Tab) — 500-767px ────────── */
+@media (min-width: 500px) and (max-width: 767px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .login-card {
+    max-inline-size: 480px;
+    margin-inline: auto;
+    margin-block-end: var(--space-xl);
+    border-radius: 24px;
+  }
+  #loginScreen {
+    align-items: center;
+  }
+  /* tablet: نُبقي بعض tabs العادية */
+  .tab { padding-inline: var(--space-lg); }
+  /* نُظهر sidebar كـ drawer مدبوس left */
+  .modal {
+    max-inline-size: 540px;
+    margin-inline: auto;
+    border-radius: 24px;
+    max-block-size: 80dvh;
+  }
+  .overlay {
+    align-items: center;
+  }
+}
+
+/* ─── Tablet landscape & iPad (768-1023px) ───────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Hybrid: لا full mobile ولا desktop كامل */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  /* sidebar أصغر */
+  .sidebar {
+    inline-size: 200px;
+  }
+  .main-wrap {
+    margin-inline-start: 200px;
+  }
+}
+
+/* ─── Foldables expanded (Galaxy Z Fold open) — 717-840 wide ───── */
+@media (min-width: 717px) and (max-width: 884px) and (min-aspect-ratio: 4/3) {
+  /* dual screen layout — استفد من المساحة */
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .modal {
+    max-inline-size: 600px;
+  }
+}
+
+/* ─── شاشات عريضة جداً (4K+) ─────────────────────────────────────── */
+@media (min-width: 2000px) {
+  :root {
+    --fs-base: 18px;
+    --space-md: 1.5rem;
+  }
+  .main, main {
+    max-inline-size: 1600px;
+    margin-inline: auto;
+  }
+}
+
+/* ─── طباعة (لو شخص يطبع تقرير) ──────────────────────────────────── */
+@media print {
+  .sidebar, .bottom-nav, .navbar, .btn, .modal, .overlay,
+  .tabs, .toast, .pwa-install-banner {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt;
+  }
+  .card, .stat-card, .store-card {
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
+
+/* ─── ضوء/ظلام أوتوماتيكي بـ color-scheme ─────────────────────────── */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  /* نُبقي light mode على mobile لأن التصميم light-first
+     لكن نُحسّن الـ contrast فقط */
+  .login-card {
+    background: #fafafa;
+  }
+}
+
+/* ─── High Density displays (Retina) ─────────────────────────────── */
+@media (min-resolution: 2dppx) {
+  /* تحسينات لـ Retina */
+  img, svg { image-rendering: -webkit-optimize-contrast; }
+}
+
+/* ─── HDR / wide gamut displays ──────────────────────────────────── */
+@media (color-gamut: p3) {
+  :root {
+    --primary-vivid: color(display-p3 0.106 0.369 0.125);
+  }
+}
+
+/* ─── Slow connection (data-saver) ───────────────────────────────── */
+@media (prefers-reduced-data: reduce) {
+  /* أخفي background gradients ثقيلة */
+  #loginScreen {
+    background: var(--primary, #1b5e20) !important;
+  }
+}
+
+/* ─── Hover-capable devices (mouse/trackpad) ──────────────────────── */
+@media (hover: hover) and (pointer: fine) {
+  /* hover effects تبدو حقيقية فقط بـ mouse */
+  .btn:hover { filter: brightness(1.1); }
+  .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+}
+
+/* ─── Touch-only (no hover) ──────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  /* أي :hover styles نُخفيها — touch لا يحتاجها */
+  /* بدلاً منها :active animations */
+  .btn:active { transform: scale(.96); transition: transform .05s; }
+  .card:active { transform: scale(.99); transition: transform .05s; }
+}
+

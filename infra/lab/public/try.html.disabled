@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جرّب البوت مجاناً — 45 دقيقة</title>
+<style>
+:root {
+  --green:#16a34a; --green-dark:#1b5e20; --green-light:#dcfce7;
+  --wa:#25d366; --wa-dark:#128c7e;
+  --red:#dc2626; --red-lt:#fef2f2;
+  --yellow:#f59e0b; --yellow-lt:#fef3c7;
+  --blue:#3b82f6;
+  --gray:#6b7280; --border:#e5e7eb;
+  --bg:#f0fdf4; --surface:#fff;
+  --text:#111827; --text-sm:#374151;
+  --radius:16px;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;direction:rtl}
+button,input{font-family:inherit}
+a{text-decoration:none}
+
+header{background:var(--green-dark);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{color:#fff;font-size:17px;font-weight:900}
+.back-link{color:rgba(255,255,255,.75);font-size:13px;display:flex;align-items:center;gap:5px}
+.back-link:hover{color:#fff}
+
+.hero{background:linear-gradient(135deg,var(--green-dark) 0%,var(--green) 100%);padding:36px 24px 72px;text-align:center;color:#fff}
+.hero h1{font-size:clamp(20px,5vw,34px);font-weight:900;margin-bottom:8px;line-height:1.2}
+.hero h1 .accent{color:var(--wa)}
+.hero p{font-size:14px;opacity:.85;line-height:1.7;max-width:400px;margin:0 auto}
+
+.stepper-wrap{display:flex;justify-content:center;padding:0 20px;margin-top:-28px;position:relative;z-index:10}
+.stepper{display:flex;align-items:center;gap:0;background:#fff;border-radius:60px;padding:8px 20px;box-shadow:var(--shadow-lg)}
+.step{display:flex;flex-direction:column;align-items:center;position:relative}
+.step-bubble{width:42px;height:42px;border-radius:50%;background:#f3f4f6;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--gray);transition:.3s}
+.step-bubble.active{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 4px 14px rgba(22,163,74,.4)}
+.step-bubble.done{background:var(--green-dark);border-color:var(--green-dark);color:#fff}
+.step-lbl{font-size:10px;color:var(--gray);margin-top:4px;font-weight:600;white-space:nowrap}
+.step.active .step-lbl{color:var(--green);font-weight:700}
+.step-line{width:40px;height:3px;background:var(--border);margin-top:-20px;transition:.3s;flex-shrink:0}
+.step-line.done{background:var(--green)}
+
+.main{max-width:540px;margin:24px auto 80px;padding:0 16px}
+
+.card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:28px;border:1px solid var(--border);margin-bottom:16px}
+.card-title{font-size:20px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:9px}
+.card-sub{font-size:13px;color:var(--gray);margin-bottom:22px;line-height:1.7}
+
+.err-box{background:var(--red-lt);border-right:4px solid var(--red);color:var(--red);padding:11px 14px;border-radius:10px;font-size:13px;margin-bottom:14px;display:none}
+.tip-box{background:var(--green-light);border:1px solid rgba(22,163,74,.25);border-radius:11px;padding:14px;font-size:13px;color:var(--green-dark);line-height:1.7;margin-top:14px}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
+.field input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:12px;font-size:15px;outline:none;transition:border-color .15s;direction:ltr}
+.field input:focus{border-color:var(--green)}
+.field .hint{font-size:11px;color:var(--gray);margin-top:4px}
+
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:700;transition:.2s;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover:not(:disabled){background:var(--green-dark)}
+.btn-green:disabled{opacity:.55;cursor:not-allowed}
+.btn-outline{background:transparent;color:var(--green);border:2px solid var(--green);margin-top:10px}
+.btn-outline:hover:not(:disabled){background:var(--green-light)}
+.btn-sm{background:none;border:1.5px solid var(--border);color:var(--gray);padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;transition:.15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn-sm:hover{border-color:var(--green);color:var(--green)}
+
+.slots-row{display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.slots-count{font-size:14px;font-weight:700;color:var(--green-dark)}
+
+.method-tabs{display:flex;gap:8px;margin-bottom:22px}
+.method-tab{flex:1;padding:12px 8px;border-radius:12px;border:2px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--gray);text-align:center;cursor:pointer;transition:.15s;line-height:1.4}
+.method-tab.active{border-color:var(--green);color:var(--green);background:var(--green-light)}
+
+.qr-wrap{display:flex;flex-direction:column;align-items:center;padding:10px 0}
+.qr-frame{width:220px;height:220px;background:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,.1);border:3px solid var(--green);margin-bottom:12px;overflow:hidden;position:relative}
+.qr-frame canvas,.qr-frame img{display:block}
+.qr-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#fff}
+.qr-loading span{font-size:12px;color:var(--gray)}
+.spinner{width:36px;height:36px;border:4px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.qr-timer{font-size:13px;color:var(--gray);text-align:center}
+.qr-timer b{color:var(--green)}
+.qr-hint{font-size:12px;color:var(--gray);text-align:center;line-height:1.7;max-width:250px;margin-top:6px}
+.qr-expired{position:absolute;inset:0;background:rgba(255,255,255,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--gray)}
+
+.code-box{background:linear-gradient(135deg,var(--green-dark),var(--green));border-radius:14px;padding:24px 20px;text-align:center;margin:14px 0;position:relative}
+.code-lbl{color:rgba(255,255,255,.8);font-size:12px;font-weight:600;margin-bottom:8px}
+.code-val{font-size:36px;font-weight:900;color:#fff;letter-spacing:8px;font-family:monospace}
+.code-exp{color:rgba(255,255,255,.7);font-size:11px;margin-top:8px}
+.code-copy{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.18);border:none;color:#fff;padding:5px 11px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;transition:.2s}
+.code-copy:hover{background:rgba(255,255,255,.3)}
+.how-list{list-style:none;margin:16px 0}
+.how-list li{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.how-list li:last-child{border:none}
+.num{width:26px;height:26px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:2px}
+.how-text strong{display:block;font-size:13px;font-weight:700;margin-bottom:1px}
+.how-text span{font-size:11px;color:var(--gray);line-height:1.5}
+
+.status-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border-radius:11px;margin:14px 0;border:1px solid var(--border)}
+.st-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.st-dot.connecting{background:var(--yellow);animation:pulse 1.2s infinite}
+.st-dot.open{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.5)}
+.st-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.st-text{font-size:13px;font-weight:600}
+
+/* Timer */
+.timer-section{display:flex;flex-direction:column;align-items:center;padding:10px 0 18px}
+.timer-circle-wrap{position:relative;width:110px;height:110px;margin-bottom:10px}
+.timer-circle-wrap svg{transform:rotate(-90deg)}
+.timer-track{stroke:#e5e7eb;fill:none;stroke-width:8}
+.timer-progress{stroke:var(--green);fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.timer-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.timer-mm{font-size:26px;font-weight:900;color:var(--green-dark);line-height:1}
+.timer-label{font-size:10px;color:var(--gray);font-weight:600}
+.timer-caption{font-size:13px;color:var(--gray);text-align:center}
+
+/* Chat widget */
+.chat-section-title{font-size:14px;font-weight:800;color:var(--text-sm);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.wa-widget{border-radius:14px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border)}
+.wa-header{background:var(--wa-dark);padding:11px 15px;display:flex;align-items:center;gap:10px}
+.wa-avatar{width:38px;height:38px;background:var(--wa);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.wa-info{color:#fff}
+.wa-info strong{display:block;font-size:13px}
+.wa-info small{font-size:11px;opacity:.8}
+.wa-msgs{height:260px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:7px;background:#e5ddd5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' opacity='.04'%3E%3Ccircle cx='20' cy='20' r='15' fill='%23000'/%3E%3C/svg%3E") center}
+.wa-msg{max-width:80%;padding:8px 11px;border-radius:8px;font-size:13px;line-height:1.5;word-break:break-word}
+.wa-msg.bot{background:#fff;align-self:flex-start;border-radius:0 8px 8px 8px;white-space:pre-wrap}
+.wa-msg.user{background:#dcf8c6;align-self:flex-end;border-radius:8px 0 8px 8px}
+.wa-msg.typing{background:#fff;align-self:flex-start;border-radius:0 8px 8px 8px;color:var(--gray);font-style:italic;font-size:12px}
+.wa-ts{font-size:10px;color:#999;display:block;text-align:left;margin-top:2px}
+.wa-input-row{padding:9px 11px;background:#f0f0f0;display:flex;gap:7px;align-items:center}
+.wa-input{flex:1;background:#fff;border:none;border-radius:22px;padding:9px 14px;font-size:13px;outline:none;font-family:inherit;direction:rtl}
+.wa-send{width:38px;height:38px;background:var(--wa-dark);border:none;border-radius:50%;color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;flex-shrink:0}
+.wa-send:hover{background:var(--green-dark)}
+.chat-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* Real card */
+.real-card{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:14px;padding:18px;margin-top:16px}
+.real-card h4{font-size:14px;font-weight:800;color:#1d4ed8;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.real-steps{list-style:none;margin-bottom:14px}
+.real-steps li{display:flex;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid #bfdbfe}
+.real-steps li:last-child{border:none}
+.real-num{width:22px;height:22px;background:#3b82f6;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px}
+
+/* CTA */
+.cta-card{background:linear-gradient(135deg,var(--green-dark),var(--green));border-radius:14px;padding:22px;text-align:center;color:#fff;margin-top:16px}
+.cta-card h3{font-size:17px;font-weight:800;margin-bottom:6px}
+.cta-card p{font-size:12px;opacity:.85;line-height:1.6;margin-bottom:16px}
+.btn-cta{background:#fff;color:var(--green-dark);border:none;border-radius:10px;padding:12px 24px;font-size:15px;font-weight:800;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn-cta:hover{background:var(--green-light);transform:translateY(-2px)}
+
+/* Success */
+.success-banner{background:linear-gradient(135deg,var(--green-dark),var(--green));border-radius:14px;padding:20px;text-align:center;color:#fff;margin-bottom:18px}
+.success-banner .icon{font-size:42px;margin-bottom:6px}
+.success-banner h3{font-size:18px;font-weight:800;margin-bottom:4px}
+.success-banner p{font-size:12px;opacity:.85;line-height:1.6}
+
+/* Expired */
+.expired-banner{background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:14px;padding:28px;text-align:center;color:#fff}
+.expired-banner .icon{font-size:48px;margin-bottom:10px}
+.expired-banner h3{font-size:20px;font-weight:800;margin-bottom:6px}
+.expired-banner p{font-size:13px;opacity:.85;line-height:1.7;margin-bottom:20px}
+.expired-btns{display:flex;flex-direction:column;gap:10px;max-width:260px;margin:0 auto}
+.btn-white{background:#fff;color:#7c3aed;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-white:hover{background:#f3e8ff}
+.btn-outline-white{background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-outline-white:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1f2937;color:#fff;padding:12px 22px;border-radius:40px;font-size:13px;font-weight:600;opacity:0;transition:.35s;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.green{background:var(--green)}
+#toast.red{background:var(--red)}
+
+@media(max-width:520px){
+  .step-line{width:22px}
+  .stepper{padding:8px 12px}
+  .card{padding:20px 15px}
+  .qr-frame{width:185px;height:185px}
+  .code-val{font-size:28px;letter-spacing:5px}
+  .method-tab{font-size:12px;padding:10px 5px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🤖 BotHatim</span>
+  <a class="back-link" href="/">← الرئيسية</a>
+</header>
+
+<div class="hero">
+  <h1>جرّب البوت <span class="accent">مجاناً 🤖</span></h1>
+  <p>اربط رقم واتساب حقيقي خلال ثوانٍ واختبر البوت 45 دقيقة كاملة</p>
+</div>
+
+<div class="stepper-wrap">
+  <div class="stepper">
+    <div class="step" id="si1">
+      <div class="step-bubble active" id="sb1">🔐</div>
+      <div class="step-lbl">دخول</div>
+    </div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step" id="si2">
+      <div class="step-bubble" id="sb2">📱</div>
+      <div class="step-lbl">الربط</div>
+    </div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step" id="si3">
+      <div class="step-bubble" id="sb3">🎉</div>
+      <div class="step-lbl">جرّب!</div>
+    </div>
+    <div class="step-line" id="sl3"></div>
+    <div class="step" id="si4">
+      <div class="step-bubble" id="sb4">⭐</div>
+      <div class="step-lbl">اشترك</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Panel 1: Login -->
+  <div id="p1" class="card">
+    <div class="card-title">🔐 أدخل كلمة المرور</div>
+    <div class="card-sub">ادخل بكلمة مرور لوحة التحكم لبدء تجربة حقيقية مجانية لمدة 45 دقيقة</div>
+    <div id="p1err" class="err-box"></div>
+    <div id="slotsRow" class="slots-row" style="display:none">
+      <span style="font-size:13px;color:var(--gray)">الفتحات المتاحة:</span>
+      <span class="slots-count" id="slotsCount">—</span>
+      <span style="font-size:12px;color:var(--gray)">من 5</span>
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input id="passInput" type="password" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-green" id="btnLogin" onclick="doLogin()">🚀 ابدأ التجربة المجانية</button>
+  </div>
+
+  <!-- Panel 2: Connect -->
+  <div id="p2" class="card" style="display:none">
+    <div class="card-title">📱 اربط واتساب</div>
+    <div class="card-sub">اختر الطريقة المناسبة — الكود أسهل إذا كانت الكاميرا صعبة</div>
+    <div id="p2err" class="err-box"></div>
+
+    <div class="method-tabs">
+      <div class="method-tab active" id="tab-qr" onclick="switchMethod('qr')">
+        📷 QR Code<br><small style="font-weight:400;font-size:11px">امسح من واتساب</small>
+      </div>
+      <div class="method-tab" id="tab-code" onclick="switchMethod('code')">
+        🔢 Pairing Code<br><small style="font-weight:400;font-size:11px">أدخل رقم هاتفك</small>
+      </div>
+    </div>
+
+    <!-- QR -->
+    <div id="qrBlock">
+      <div class="qr-wrap">
+        <div class="qr-frame" id="qrFrame">
+          <div class="qr-loading" id="qrLoader">
+            <div class="spinner"></div>
+            <span>جاري التحضير...</span>
+          </div>
+          <div id="qrCanvas" style="display:none"></div>
+          <div class="qr-expired" id="qrExpired">
+            <span style="font-size:28px">⏱️</span>
+            <span>انتهت صلاحية QR</span>
+            <button class="btn-sm" onclick="doRefreshQR()">🔄 تحديث</button>
+          </div>
+        </div>
+        <div class="qr-timer">ينتهي خلال: <b id="qrSec">—</b> ثانية</div>
+        <div class="qr-hint">واتساب ← القائمة (⋮) ← <strong>الأجهزة المرتبطة</strong> ← <strong>ربط جهاز</strong></div>
+        <button class="btn-sm" style="margin-top:10px" onclick="doRefreshQR()">🔄 تحديث QR</button>
+      </div>
+    </div>
+
+    <!-- Pairing Code -->
+    <div id="codeBlock" style="display:none">
+      <div id="phoneStep">
+        <div class="field">
+          <label>رقم الواتساب</label>
+          <input id="phoneInput" type="tel" placeholder="966501234567" inputmode="numeric">
+          <div class="hint">مع مفتاح الدولة، بدون + أو مسافات</div>
+        </div>
+        <button class="btn btn-green" id="btnPair" onclick="doPair()">📲 احصل على الكود</button>
+      </div>
+      <div id="codeStep" style="display:none">
+        <div class="code-box">
+          <div class="code-lbl">كود الربط — أدخله في واتساب</div>
+          <div class="code-val" id="codeVal">——</div>
+          <div class="code-exp">⏱️ ينتهي خلال: <span id="codeSec">60</span> ثانية</div>
+          <button class="code-copy" onclick="copyCode()">📋 نسخ</button>
+        </div>
+        <ul class="how-list">
+          <li><div class="num">1</div><div class="how-text"><strong>افتح واتساب على هاتفك</strong><span>الهاتف الذي أدخلت رقمه</span></div></li>
+          <li><div class="num">2</div><div class="how-text"><strong>القائمة (⋮) ← الأجهزة المرتبطة</strong><span>أو الإعدادات ← الأجهزة المرتبطة</span></div></li>
+          <li><div class="num">3</div><div class="how-text"><strong>اختر "ربط برقم هاتف"</strong><span>وأدخل الكود المكوّن من 8 أحرف</span></div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="st-dot connecting" id="stDot"></div>
+      <div class="st-text" id="stText">في انتظار الربط...</div>
+    </div>
+    <button class="btn btn-outline" onclick="resetAll()">← العودة للبداية</button>
+  </div>
+
+  <!-- Panel 3: Connected -->
+  <div id="p3" class="card" style="display:none">
+
+    <div class="success-banner">
+      <div class="icon">🎉</div>
+      <h3>البوت متصل!</h3>
+      <p id="connectedPhone">رقمك مربوط — البوت جاهز للرد التلقائي</p>
+    </div>
+
+    <!-- 45-min countdown -->
+    <div class="timer-section">
+      <div class="timer-circle-wrap">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle class="timer-track" cx="55" cy="55" r="46"/>
+          <circle class="timer-progress" id="timerArc" cx="55" cy="55" r="46"
+                  stroke-dasharray="289" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-text">
+          <div class="timer-mm" id="timerDisp">45:00</div>
+          <div class="timer-label">متبقي</div>
+        </div>
+      </div>
+      <div class="timer-caption">⏳ مدة التجربة 45 دقيقة — بعدها تُفصل الجلسة تلقائياً</div>
+    </div>
+
+    <!-- Browser simulator -->
+    <div class="chat-section-title">🖥️ تجربة في المتصفح (محاكي)</div>
+    <div class="wa-widget">
+      <div class="wa-header">
+        <div class="wa-avatar">🤖</div>
+        <div class="wa-info">
+          <strong>بوت المتجر</strong>
+          <small>● متصل — محاكي</small>
+        </div>
+      </div>
+      <div class="wa-msgs" id="chatMsgs"></div>
+      <div class="wa-input-row">
+        <input class="wa-input" id="chatInput" placeholder="اكتب رسالة للبوت..."
+               onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="wa-send" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+    <div class="chat-actions">
+      <button class="btn-sm" onclick="resetChat()">🔄 إعادة</button>
+      <button class="btn-sm" onclick="sendChat('مرحبا')">👋 مرحبا</button>
+      <button class="btn-sm" onclick="sendChat('القائمة')">📋 القائمة</button>
+      <button class="btn-sm" onclick="sendChat('الطلبات')">🛒 طلب</button>
+    </div>
+
+    <!-- Real WhatsApp test -->
+    <div class="real-card" style="margin-top:20px">
+      <h4>📱 تجربة واتساب الحقيقي</h4>
+      <ul class="real-steps">
+        <li><div class="real-num">1</div><span>خذ هاتفاً <strong>ثانياً</strong> أو اطلب من شخص آخر</span></li>
+        <li><div class="real-num">2</div><span>أرسل <strong>"مرحبا"</strong> إلى رقمك المربوط من الهاتف الثاني</span></li>
+        <li><div class="real-num">3</div><span>شاهد كيف يرد البوت تلقائياً فوراً! 🚀</span></li>
+      </ul>
+      <div style="font-size:12px;color:#1d4ed8;background:#eff6ff;border-radius:8px;padding:10px;text-align:center">
+        ⚠️ يجب الإرسال من هاتف <strong>مختلف</strong> عن الهاتف المربوط
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card">
+      <h3>أعجبك البوت؟ 🌟</h3>
+      <p>احصل على نسختك الخاصة لنشاطك التجاري — ابدأ بـ 80 ريال/شهر فقط</p>
+      <a href="https://61465.github.io/cafe/docs/"><button class="btn-cta">🚀 احصل على نسختك الآن ←</button></a>
+    </div>
+
+    <button class="btn btn-outline" style="margin-top:14px" onclick="resetAll()">← تجربة جديدة</button>
+  </div>
+
+  <!-- Panel 4: Expired -->
+  <div id="p4" class="card" style="display:none">
+    <div class="expired-banner">
+      <div class="icon">⏱️</div>
+      <h3>انتهت مدة التجربة</h3>
+      <p>انقضت الـ 45 دقيقة وتم فصل الجلسة تلقائياً.<br>هل أعجبك البوت؟ احصل على نسختك الدائمة!</p>
+      <div class="expired-btns">
+        <a href="https://61465.github.io/cafe/docs/"><button class="btn-white">⭐ اشترك الآن ←</button></a>
+        <button class="btn-outline-white" onclick="resetAll()">🔄 تجربة جديدة</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const BASE = window.location.origin;
+const TTL_MS = 45 * 60 * 1000;
+
+let token   = localStorage.getItem("master_token") || null;
+let slotId  = null;
+let method  = "qr";
+let lastQR  = null;
+let pollId  = null;
+let qrCdId  = null;
+let codeCdId= null;
+let trialId = null;
+let trialEnd= null;
+const SIM_FROM = "try-sim-" + Math.random().toString(36).slice(2,8);
+
+function toast(msg, type="", dur=2800) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "show " + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ""; }, dur);
+}
+
+function goStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById("p"+i).style.display = i===n ? "" : "none";
+    const b = document.getElementById("sb"+i);
+    const icons={1:"🔐",2:"📱",3:"🎉",4:"⭐"};
+    b.className = "step-bubble" + (i<n?" done":i===n?" active":"");
+    b.textContent = i<n ? "✓" : icons[i];
+    document.getElementById("si"+i)?.classList.toggle("active", i===n);
+  });
+  [1,2,3].forEach(i => {
+    const l = document.getElementById("sl"+i);
+    if(l) l.className = "step-line" + (i<n?" done":"");
+  });
+}
+
+// ── Login ──
+async function doLogin() {
+  const pass = document.getElementById("passInput").value.trim();
+  if(!pass) return showErr("p1","أدخل كلمة المرور");
+  setLoading("btnLogin", true, "⏳ جاري التحقق...");
+  hideErr("p1");
+  try {
+    const r = await api("POST", "/master/login", { password: pass });
+    token = r.token;
+    await loadSlots();
+    setLoading("btnLogin", false, "🚀 ابدأ التجربة المجانية");
+  } catch(e) {
+    setLoading("btnLogin", false, "🚀 ابدأ التجربة المجانية");
+    showErr("p1", e.error || e.message || "كلمة المرور خاطئة");
+  }
+}
+
+async function loadSlots() {
+  const r = await api("GET", "/master/try/slots", null, { "x-master-token": token });
+  const free = r.slots.filter(s => s.status !== "open").length;
+  document.getElementById("slotsRow").style.display = "flex";
+  document.getElementById("slotsCount").textContent = free;
+  document.getElementById("slotsCount").style.color = free===0 ? "var(--red)" : "var(--green)";
+  if(free===0) return showErr("p1","جميع الفتحات مشغولة حالياً — حاول بعد قليل");
+  await claimSlot();
+}
+
+async function claimSlot() {
+  const r = await api("POST", "/master/try/claim", {}, { "x-master-token": token });
+  slotId = r.slotId;
+  goStep(2);
+  hideErr("p2");
+  startPolling();
+}
+
+function switchMethod(m) {
+  method = m;
+  document.getElementById("tab-qr").classList.toggle("active", m==="qr");
+  document.getElementById("tab-code").classList.toggle("active", m==="code");
+  document.getElementById("qrBlock").style.display   = m==="qr"   ? "" : "none";
+  document.getElementById("codeBlock").style.display = m==="code" ? "" : "none";
+}
+
+// ── QR ──
+function renderQR(data) {
+  const canvas  = document.getElementById("qrCanvas");
+  const loader  = document.getElementById("qrLoader");
+  const expired = document.getElementById("qrExpired");
+  canvas.innerHTML = "";
+  new QRCode(canvas, {
+    text: data, width:200, height:200,
+    colorDark:"#1b5e20", colorLight:"#ffffff",
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+  loader.style.display   = "none";
+  expired.style.display  = "none";
+  canvas.style.display   = "block";
+  startQRCountdown(55);
+}
+
+function startQRCountdown(sec) {
+  clearInterval(qrCdId);
+  let s = sec;
+  const el = document.getElementById("qrSec");
+  el.textContent = s; el.style.color = "var(--green)";
+  qrCdId = setInterval(() => {
+    s--;
+    el.textContent = Math.max(0,s);
+    el.style.color = s<15 ? "var(--red)" : "var(--green)";
+    if(s<=0) {
+      clearInterval(qrCdId);
+      el.textContent = "—";
+      document.getElementById("qrCanvas").style.display  = "none";
+      document.getElementById("qrExpired").style.display = "flex";
+    }
+  },1000);
+}
+
+async function doRefreshQR() {
+  if(!token||!slotId) return;
+  clearInterval(pollId); lastQR = null;
+  document.getElementById("qrLoader").style.display   = "flex";
+  document.getElementById("qrCanvas").style.display   = "none";
+  document.getElementById("qrExpired").style.display  = "none";
+  document.getElementById("qrSec").textContent = "—";
+  try {
+    await api("POST", `/master/stores/${slotId}/wa-start-qr`, {}, { "x-master-token": token });
+    startPolling();
+  } catch { toast("فشل تحديث QR","red"); }
+}
+
+// ── Pairing code ──
+async function doPair() {
+  const phone = document.getElementById("phoneInput").value.replace(/[\s\+\-\(\)]/g,"");
+  if(!/^\d{10,15}$/.test(phone)) return showErr("p2","أدخل رقم واتساب صحيح مثال: 966501234567");
+  setLoading("btnPair", true, "⏳ جاري الطلب...");
+  try {
+    const r = await api("POST", `/master/stores/${slotId}/wa-pair`, { phone }, { "x-master-token": token });
+    document.getElementById("codeVal").textContent = r.code;
+    document.getElementById("phoneStep").style.display = "none";
+    document.getElementById("codeStep").style.display  = "";
+    startCodeCountdown(60);
+    startPolling();
+  } catch(e) {
+    showErr("p2", e.error || "فشل طلب الكود — حاول مرة أخرى");
+  } finally {
+    setLoading("btnPair", false, "📲 احصل على الكود");
+  }
+}
+
+function startCodeCountdown(sec) {
+  clearInterval(codeCdId);
+  let s = sec;
+  const el = document.getElementById("codeSec");
+  if(el) el.textContent = s;
+  codeCdId = setInterval(()=>{
+    s--;
+    if(el) el.textContent = Math.max(0,s);
+    if(s<=0) clearInterval(codeCdId);
+  },1000);
+}
+
+function copyCode() {
+  const code = document.getElementById("codeVal").textContent;
+  navigator.clipboard?.writeText(code).then(()=>{
+    toast("✅ تم النسخ","green");
+    const b = document.querySelector(".code-copy");
+    if(b){b.textContent="✅";setTimeout(()=>b.textContent="📋 نسخ",2000);}
+  });
+}
+
+// ── Poll ──
+function startPolling() {
+  clearInterval(pollId);
+  pollId = setInterval(async()=>{
+    if(!token||!slotId) return;
+    try {
+      const r = await api("GET", `/master/stores/${slotId}/wa-status`, null, { "x-master-token": token });
+      updateStatus(r.status);
+      if(method==="qr" && r.qr && r.qr!==lastQR) {
+        lastQR = r.qr;
+        renderQR(r.qr);
+      }
+      if(r.status === "open") {
+        clearInterval(pollId);
+        clearInterval(qrCdId);
+        clearInterval(codeCdId);
+        const phone = r.phone ? `✅ الرقم المربوط: +${r.phone}` : "رقمك مربوط بنجاح";
+        setTimeout(()=>onConnected(phone), 600);
+      }
+    } catch{}
+  }, 2000);
+}
+
+function updateStatus(st) {
+  const dot = document.getElementById("stDot");
+  const txt = document.getElementById("stText");
+  const map = {
+    qr:           {cls:"connecting", lbl:"📷 في انتظار مسح QR..."},
+    connecting:   {cls:"connecting", lbl:"⚡ جاري الاتصال..."},
+    reconnecting: {cls:"connecting", lbl:"🔄 إعادة الاتصال..."},
+    pairing:      {cls:"connecting", lbl:"🔢 في انتظار إدخال الكود..."},
+    open:         {cls:"open",       lbl:"✅ متصل بنجاح!"},
+    disconnected: {cls:"error",      lbl:"❌ غير متصل"},
+  };
+  const s = map[st]||{cls:"connecting",lbl:st};
+  dot.className   = "st-dot " + s.cls;
+  txt.textContent = s.lbl;
+}
+
+// ── Connected ──
+async function onConnected(phoneLabel) {
+  document.getElementById("connectedPhone").textContent = phoneLabel;
+  goStep(3);
+  toast("✅ متصل! ابدأ التجربة","green",3000);
+  await resetSimChat();
+  appendChat("مرحباً! 👋\nالبوت جاهز — جرّب المحاكي في المتصفح أو أرسل من هاتف ثانٍ", "bot");
+  startTrialTimer();
+}
+
+function startTrialTimer() {
+  clearInterval(trialId);
+  trialEnd = Date.now() + TTL_MS;
+  const arc   = document.getElementById("timerArc");
+  const disp  = document.getElementById("timerDisp");
+  const total = 289;
+
+  trialId = setInterval(()=>{
+    const left = Math.max(0, trialEnd - Date.now());
+    const mm   = String(Math.floor(left/60000)).padStart(2,"0");
+    const ss   = String(Math.floor((left%60000)/1000)).padStart(2,"0");
+    disp.textContent = mm+":"+ss;
+    arc.style.strokeDashoffset = total * (1 - left/TTL_MS);
+    if(left < 5*60000) arc.style.stroke = "var(--yellow)";
+    if(left < 60000)   arc.style.stroke = "var(--red)";
+    if(left <= 0) {
+      clearInterval(trialId);
+      goStep(4);
+      toast("⏱️ انتهت مدة التجربة","",4000);
+    }
+  },1000);
+}
+
+// ── Chat simulator ──
+async function resetSimChat() {
+  try { await api("POST","/api/sim/reset",{from:SIM_FROM}); } catch{}
+  document.getElementById("chatMsgs").innerHTML = "";
+}
+
+function resetChat() {
+  resetSimChat().then(()=>{
+    appendChat("تمت إعادة المحادثة — أرسل 'مرحبا' للبدء من جديد 🔄","bot");
+  });
+}
+
+async function sendChat(preset) {
+  const input = document.getElementById("chatInput");
+  const text  = preset || input.value.trim();
+  if(!text) return;
+  if(!preset) input.value = "";
+  appendChat(text,"user");
+  const typing = appendTyping();
+  try {
+    const r = await api("POST","/api/sim",{from:SIM_FROM,message:text});
+    removeTyping(typing);
+    if(r.messages && r.messages.length) {
+      for(const m of r.messages) {
+        if(m.type === "image") {
+          appendChatImage(m.source, m.caption || "");
+        } else {
+          const body = m.body || m.text?.body || m.caption || "";
+          if(body) appendChat(body,"bot");
+        }
+      }
+    } else {
+      appendChat("⚠️ لا يوجد رد — حاول مرة أخرى","bot");
+    }
+  } catch {
+    removeTyping(typing);
+    appendChat("⚠️ خطأ في الاتصال بالخادم","bot");
+  }
+}
+
+function appendChat(text,type) {
+  const box = document.getElementById("chatMsgs");
+  const div = document.createElement("div");
+  div.className = "wa-msg "+type;
+  const ts = new Date().toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"});
+  div.innerHTML = escHtml(text).replace(/\n/g,"<br>") + `<span class="wa-ts">${ts}</span>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function appendChatImage(src, caption) {
+  const box = document.getElementById("chatMsgs");
+  const div = document.createElement("div");
+  div.className = "wa-msg bot";
+  const ts = new Date().toLocaleTimeString("ar",{hour:"2-digit",minute:"2-digit"});
+  // إذا كانت الصورة من خادمنا نحوّل الـ URL لمسار نسبي يعمل حتى لو تغيّر الـ tunnel
+  let imgSrc = src || "";
+  try {
+    const u = new URL(src);
+    if(u.pathname.startsWith("/store-images/") || u.pathname.startsWith("/invoices/")) {
+      imgSrc = u.pathname;
+    }
+  } catch { /* مسار محلي أو غير URL */ }
+  div.innerHTML = `
+    <div style="font-size:11px;color:#888;margin-bottom:4px">🖼️ صورة المنتج</div>
+    <img src="${escHtml(imgSrc)}"
+         style="max-width:100%;border-radius:8px;display:block;margin-bottom:4px;cursor:zoom-in"
+         onclick="window.open(this.src,'_blank')"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div style="display:none;align-items:center;justify-content:center;background:#f0f0f0;border-radius:8px;padding:16px;font-size:12px;color:#888;gap:6px">🖼️ <span>صورة المنتج</span></div>
+    ${caption ? `<div style="margin-top:5px;font-size:13px">${escHtml(caption).replace(/\n/g,"<br>")}</div>` : ""}
+    <span class="wa-ts">${ts}</span>`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+function appendTyping() {
+  const box = document.getElementById("chatMsgs");
+  const div = document.createElement("div");
+  div.className = "wa-msg typing";
+  div.textContent = "يكتب...";
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+function removeTyping(el) { try{el.remove();}catch{} }
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── Reset ──
+function resetAll() {
+  clearInterval(pollId); clearInterval(qrCdId);
+  clearInterval(codeCdId); clearInterval(trialId);
+  lastQR=null; slotId=null; token=null;
+  document.getElementById("passInput").value  = "";
+  document.getElementById("phoneInput").value = "";
+  document.getElementById("slotsRow").style.display        = "none";
+  document.getElementById("qrLoader").style.display        = "flex";
+  document.getElementById("qrCanvas").style.display        = "none";
+  document.getElementById("qrExpired").style.display       = "none";
+  document.getElementById("qrCanvas").innerHTML            = "";
+  document.getElementById("qrSec").textContent             = "—";
+  document.getElementById("phoneStep").style.display       = "";
+  document.getElementById("codeStep").style.display        = "none";
+  document.getElementById("chatMsgs").innerHTML            = "";
+  document.getElementById("timerDisp").textContent         = "45:00";
+  document.getElementById("timerArc").style.strokeDashoffset = "0";
+  document.getElementById("timerArc").style.stroke         = "var(--green)";
+  switchMethod("qr");
+  hideErr("p1"); hideErr("p2");
+  goStep(1);
+}
+
+// ── Helpers ──
+async function api(method, path, body, hdrs={}) {
+  const opts = { method, headers:{"Content-Type":"application/json",...hdrs} };
+  if(body !== null) opts.body = JSON.stringify(body);
+  const r = await fetch(BASE+path, opts);
+  const d = await r.json();
+  if(!r.ok) throw d;
+  return d;
+}
+function showErr(panel, msg) {
+  const el = document.getElementById(panel+"err");
+  el.textContent = "❌ "+msg; el.style.display = "";
+}
+function hideErr(panel) {
+  const el = document.getElementById(panel+"err");
+  if(el) el.style.display = "none";
+}
+function setLoading(id, loading, label) {
+  const btn = document.getElementById(id);
+  if(!btn) return;
+  btn.disabled = loading;
+  btn.textContent = label;
+}
+
+// Auto-start if already logged in from master.html
+if (token) {
+  document.getElementById("p1").style.display = "none";
+  loadSlots().catch(() => {
+    token = null;
+    document.getElementById("p1").style.display = "";
+    showErr("p1", "انتهت الجلسة — أعد تسجيل الدخول");
+  });
+}
+</script>
+</body>
+</html>

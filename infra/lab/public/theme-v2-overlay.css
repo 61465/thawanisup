@@ -1,0 +1,530 @@
+/**
+ * 🎨 Theme v2 Overlay — يحوّل store-admin.html القديم لشكل Dark+Gold+Sidebar
+ * بدون لمس HTML/JS الأصلي. يعتمد على CSS injection فقط.
+ *
+ * المبدأ:
+ * 1. body يصبح dark
+ * 2. الـ .tabs الأفقية تختفي
+ * 3. sidebar fixed على اليمين يحل محلها (يبنيه JS من نفس الـ tabs)
+ * 4. كل النصوص + الكروت تتحول لـ dark theme
+ *
+ * Override safety: نستخدم #appScreen كـ scope لتجنب التأثير على #loginScreen
+ */
+
+/* ─── Theme variables (تتجاوز :root الأصلية) ─── */
+#appScreen, #appScreen * {
+  --primary:    #1b5e20 !important;
+  --primary-md: #2e7d32 !important;
+  --primary-lt: rgba(46,125,50,0.18) !important;
+  --gold:       #C9A24B !important;
+  --gold-2:     #e0b85f !important;
+  --bg:         #08120e !important;
+  --surface:    #0e1a14 !important;
+  --surface-2:  #122821 !important;
+  --border:     rgba(201,162,75,0.18) !important;
+  --text:       #f1f5f4 !important;
+  --text-2:     #cfd8d4 !important;
+  --muted:      #8a9a92 !important;
+  --gray:       #8a9a92 !important;
+  --danger:     #dc2626 !important;
+  --danger-lt:  rgba(220,38,38,0.15) !important;
+  --warn:       #fbbf24 !important;
+  --warn-lt:    rgba(251,191,36,0.15) !important;
+}
+
+body { background: #08120e !important; color: #f1f5f4 !important; }
+#appScreen { background: #08120e !important; }
+
+/* أخفِ navbar الأفقية + الـ tabs الرئيسية فقط (#tabsBar) */
+#appScreen .navbar { display: none !important; }
+#appScreen #tabsBar { display: none !important; }
+/* sub-tabs داخل sections (مثل المحاسبة) تبقى ظاهرة بألوانها الجديدة */
+#appScreen section .tabs {
+  display: flex !important;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: rgba(0,0,0,0.2) !important;
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 14px;
+}
+#appScreen section .tabs .tab {
+  background: transparent !important;
+  color: #cfd8d4 !important;
+  border: 1px solid transparent !important;
+  padding: 8px 14px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+}
+#appScreen section .tabs .tab:hover {
+  background: rgba(201,162,75,0.08) !important;
+  color: #f1f5f4 !important;
+}
+#appScreen section .tabs .tab.active {
+  background: rgba(201,162,75,0.18) !important;
+  color: #e0b85f !important;
+  border-color: rgba(201,162,75,0.3) !important;
+  font-weight: 700 !important;
+}
+
+/* ─── Sidebar (يحقنه JS كـ <aside id="tv2-sidebar">) ─── */
+#tv2-sidebar {
+  position: fixed; right: 0; top: 0; bottom: 0;
+  width: 260px; background: #0a1410; color: #f1f5f4;
+  display: flex; flex-direction: column;
+  border-left: 1px solid rgba(201,162,75,0.18);
+  z-index: 100; overflow: hidden;
+  font-family: 'Tajawal', sans-serif;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+}
+#tv2-sidebar .tv2-header {
+  padding: 20px 18px; border-bottom: 1px solid rgba(201,162,75,0.15);
+  display: flex; align-items: center; gap: 12px;
+}
+#tv2-sidebar .tv2-logo {
+  width: 42px; height: 42px; border-radius: 11px;
+  background: linear-gradient(135deg, #C9A24B, #e0b85f);
+  color: #08120e; font-weight: 900; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+}
+#tv2-sidebar .tv2-brand {
+  display: flex; flex-direction: column;
+}
+#tv2-sidebar .tv2-brand .name { font-size: 15px; font-weight: 800; }
+#tv2-sidebar .tv2-brand .store { font-size: 11px; color: #8a9a92; }
+
+#tv2-sidebar .tv2-nav {
+  flex: 1; overflow-y: auto; padding: 12px 8px;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+#tv2-sidebar .tv2-nav::-webkit-scrollbar { width: 5px; }
+#tv2-sidebar .tv2-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+#tv2-sidebar .tv2-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-radius: 9px;
+  color: #cfd8d4; font-size: 13.5px; font-weight: 500;
+  cursor: pointer; transition: all .15s; margin-bottom: 3px;
+  border: 1px solid transparent;
+}
+#tv2-sidebar .tv2-item:hover { background: rgba(201,162,75,0.08); color: #f1f5f4; }
+#tv2-sidebar .tv2-item.active {
+  background: rgba(201,162,75,0.15); color: #e0b85f;
+  border-color: rgba(201,162,75,0.25); font-weight: 700;
+}
+#tv2-sidebar .tv2-item .tv2-badge {
+  margin-right: auto; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; background: #dc2626; color: #fff;
+}
+
+#tv2-sidebar .tv2-footer {
+  padding: 14px; border-top: 1px solid rgba(201,162,75,0.15);
+}
+#tv2-sidebar .tv2-footer button {
+  width: 100%; padding: 10px; border-radius: 9px;
+  background: rgba(220,38,38,0.15); color: #fca5a5;
+  border: 1px solid rgba(220,38,38,0.3);
+  cursor: pointer; font-weight: 700; font-size: 13px;
+}
+#tv2-sidebar .tv2-footer button:hover { background: rgba(220,38,38,0.25); }
+
+/* ─── Topbar (replaces navbar) ─── */
+#tv2-topbar {
+  position: fixed; top: 0; right: 260px; left: 0; height: 56px;
+  background: #0e1a14; border-bottom: 1px solid rgba(201,162,75,0.15);
+  display: flex; align-items: center; padding: 0 20px; gap: 14px;
+  z-index: 50;
+  max-width: calc(100vw - 260px);
+  box-sizing: border-box;
+  transition: right .28s ease, max-width .28s ease;
+}
+/* عند إخفاء sidebar في desktop: topbar يمتد كامل العرض */
+body.ux-sidebar-hidden #tv2-topbar {
+  right: 0 !important;
+  max-width: 100vw !important;
+}
+#tv2-topbar .tv2-title { font-size: 16px; font-weight: 800; color: #f1f5f4; }
+#tv2-topbar .tv2-meta { margin-right: auto; display: flex; gap: 10px; align-items: center; }
+#tv2-topbar #tv2-menu-toggle {
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(201,162,75,0.12); border: 1px solid rgba(201,162,75,0.3); color: #e0b85f;
+  font-size: 18px; font-weight: 900; cursor: pointer;
+  width: 38px; height: 38px; border-radius: 9px;
+  transition: background .2s, transform .15s;
+}
+#tv2-topbar #tv2-menu-toggle:hover { background: rgba(201,162,75,0.22); }
+#tv2-topbar #tv2-menu-toggle:active { transform: scale(0.94); }
+
+/* ─── Main content area — auto-collapse responsive ─── */
+#appScreen {
+  padding-top: 70px !important;
+  margin-right: 260px !important;
+  padding-bottom: 30px !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  max-width: calc(100vw - 260px) !important;
+  box-sizing: border-box !important;
+  transition: margin-right .2s ease, max-width .2s ease !important;
+}
+
+/* Medium desktop (1025-1400px): sidebar تنكمش لـ 64px أيقونات + المحتوى يتمدد + hover للتوسع
+   ملاحظة: التابلت (≤1024px) ينتقل إلى drawer mode (mobile breakpoint أدناه) لأن hover لا يعمل touch */
+@media (min-width: 1025px) and (max-width: 1400px) {
+  #tv2-sidebar { width: 64px !important; }
+  #tv2-sidebar .tv2-item .tv2-label,
+  #tv2-sidebar .tv2-brand,
+  #tv2-sidebar .tv2-footer button { display: none !important; }
+  #tv2-sidebar .tv2-header { justify-content: center !important; padding: 14px 6px !important; }
+  #tv2-sidebar .tv2-item { justify-content: center !important; padding: 12px 8px !important; }
+  #tv2-sidebar .tv2-nav { padding: 8px 4px !important; }
+  #appScreen {
+    margin-right: 64px !important;
+    max-width: calc(100vw - 64px) !important;
+  }
+  #tv2-topbar {
+    right: 64px !important;
+    max-width: calc(100vw - 64px) !important;
+  }
+  /* عند hover على sidebar → تتمدد مؤقتاً للاختيار */
+  #tv2-sidebar:hover { width: 240px !important; z-index: 200; box-shadow: -10px 0 30px rgba(0,0,0,.5) !important; }
+  #tv2-sidebar:hover .tv2-item .tv2-label,
+  #tv2-sidebar:hover .tv2-brand,
+  #tv2-sidebar:hover .tv2-footer button { display: revert !important; }
+  #tv2-sidebar:hover .tv2-header { justify-content: flex-start !important; padding: 20px 18px !important; }
+  #tv2-sidebar:hover .tv2-item { justify-content: flex-start !important; padding: 11px 14px !important; }
+}
+
+#appScreen > section {
+  background: #0e1a14 !important;
+  border: 1px solid rgba(201,162,75,0.15) !important;
+  border-radius: 14px !important; padding: 20px !important;
+  color: #f1f5f4 !important;
+  margin: 0 0 16px 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ─── Cards & inputs ─── */
+#appScreen .card {
+  background: #0e1a14 !important;
+  border: 1px solid rgba(201,162,75,0.15) !important;
+  color: #f1f5f4 !important;
+}
+#appScreen .card-header h2,
+#appScreen .card-title,
+#appScreen h2, #appScreen h3, #appScreen h4 { color: #f1f5f4 !important; }
+
+#appScreen input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+#appScreen textarea,
+#appScreen select {
+  background: rgba(0,0,0,0.4) !important;
+  color: #f1f5f4 !important;
+  border: 1px solid rgba(201,162,75,0.2) !important;
+}
+#appScreen input::placeholder, #appScreen textarea::placeholder { color: #6b7280 !important; }
+#appScreen input:focus, #appScreen textarea:focus, #appScreen select:focus {
+  border-color: #e0b85f !important; outline: none !important;
+}
+
+/* ─── Buttons ─── */
+#appScreen .btn-primary {
+  background: linear-gradient(135deg, #C9A24B, #e0b85f) !important;
+  color: #08120e !important; border: none !important; font-weight: 800 !important;
+}
+#appScreen .btn-outline {
+  background: transparent !important; color: #e0b85f !important;
+  border: 1px solid rgba(201,162,75,0.4) !important;
+}
+#appScreen .btn-outline:hover { background: rgba(201,162,75,0.1) !important; }
+
+/* ─── Tables ─── */
+#appScreen table { background: transparent !important; color: #f1f5f4 !important; border-collapse: collapse !important; width: 100% !important; }
+#appScreen thead { background: rgba(201,162,75,0.12) !important; }
+#appScreen th {
+  background: rgba(201,162,75,0.12) !important;
+  color: #e0b85f !important;
+  padding: 10px 12px !important;
+  text-align: right !important;
+  font-weight: 800 !important;
+  font-size: 13px !important;
+  border-bottom: 1px solid rgba(201,162,75,0.25) !important;
+}
+#appScreen td {
+  border-color: rgba(201,162,75,0.1) !important;
+  border-bottom: 1px solid rgba(201,162,75,0.08) !important;
+  color: #cfd8d4 !important;
+  padding: 10px 12px !important;
+  font-size: 13.5px !important;
+  background: transparent !important;
+}
+#appScreen tbody tr {
+  background: rgba(0,0,0,0.2) !important;
+}
+#appScreen tbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.3) !important;
+}
+#appScreen tbody tr:hover {
+  background: rgba(201,162,75,0.08) !important;
+}
+#appScreen tbody tr:hover td {
+  background: transparent !important;
+}
+/* الـ orders table specific */
+#appScreen .orders-desktop {
+  background: var(--surface, #0e1a14) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(201,162,75,0.18) !important;
+}
+#appScreen .orders-desktop table { background: transparent !important; }
+#appScreen .orders-desktop td span,
+#appScreen .orders-desktop td b,
+#appScreen .orders-desktop td strong { color: #f1f5f4 !important; }
+#appScreen .orders-desktop td small,
+#appScreen .orders-desktop td .muted,
+#appScreen .orders-desktop .order-meta { color: #cfd8d4 !important; }
+
+/* ─── Light backgrounds inline-style override ─── */
+#appScreen [style*="background:#fff"],
+#appScreen [style*="background: #fff"],
+#appScreen [style*="background:#ffffff"],
+#appScreen [style*="background: #ffffff"],
+#appScreen [style*="background:#f9fafb"],
+#appScreen [style*="background:#f3f4f6"],
+#appScreen [style*="background:#f0f9ff"],
+#appScreen [style*="background:#fafafa"] {
+  background: rgba(0,0,0,0.25) !important;
+}
+
+/* badges/pills بخلفية فاتحة + نص داكن → نُحول النص لفاتح */
+#appScreen [style*="background:#fef3c7"],
+#appScreen [style*="background:#fde68a"] {
+  background: rgba(251,191,36,0.18) !important; color: #fcd34d !important;
+}
+#appScreen [style*="background:#dcfce7"],
+#appScreen [style*="background:#d1fae5"],
+#appScreen [style*="background:#f0fdf4"] {
+  background: rgba(16,185,129,0.18) !important; color: #86efac !important;
+}
+#appScreen [style*="background:#fee2e2"],
+#appScreen [style*="background:#fef2f2"],
+#appScreen [style*="background:#fecaca"] {
+  background: rgba(220,38,38,0.18) !important; color: #fca5a5 !important;
+}
+#appScreen [style*="background:#dbeafe"],
+#appScreen [style*="background:#eff6ff"],
+#appScreen [style*="background:#e0f2fe"] {
+  background: rgba(59,130,246,0.18) !important; color: #93c5fd !important;
+}
+#appScreen [style*="background:#fce7f3"] {
+  background: rgba(236,72,153,0.18) !important; color: #f9a8d4 !important;
+}
+#appScreen [style*="background:#ede9fe"],
+#appScreen [style*="background:#e9d5ff"],
+#appScreen [style*="background:#f3e8ff"] {
+  background: rgba(139,92,246,0.18) !important; color: #c4b5fd !important;
+}
+
+/* النصوص بألوان hex داكنة → نحولها لفاتحة */
+#appScreen [style*="color:#1f2937"],
+#appScreen [style*="color: #1f2937"],
+#appScreen [style*="color:#111827"],
+#appScreen [style*="color: #111827"],
+#appScreen [style*="color:#374151"],
+#appScreen [style*="color: #374151"],
+#appScreen [style*="color:#111"] { color: #f1f5f4 !important; }
+
+#appScreen [style*="color:#6b7280"],
+#appScreen [style*="color: #6b7280"],
+#appScreen [style*="color:#4b5563"],
+#appScreen [style*="color: #4b5563"],
+#appScreen [style*="color:#9ca3af"] { color: #cfd8d4 !important; }
+
+#appScreen [style*="color:#166534"],
+#appScreen [style*="color:#14532d"],
+#appScreen [style*="color:#16a34a"] { color: #86efac !important; }
+
+#appScreen [style*="color:#92400e"],
+#appScreen [style*="color:#854d0e"],
+#appScreen [style*="color:#78350f"] { color: #fcd34d !important; }
+
+#appScreen [style*="color:#991b1b"],
+#appScreen [style*="color:#7f1d1d"],
+#appScreen [style*="color:#b91c1c"] { color: #fca5a5 !important; }
+
+/* ─── Modals — تحول للـ dark ─── */
+.overlay { background: rgba(0,0,0,0.75) !important; }
+.modal {
+  background: #0e1a14 !important;
+  color: #f1f5f4 !important;
+  border: 1px solid rgba(201,162,75,0.2) !important;
+}
+.modal h2, .modal h3, .modal .modal-header { color: #f1f5f4 !important; }
+.modal-header { border-bottom: 1px solid rgba(201,162,75,0.15) !important; }
+
+/* ─── Desktop: تمدد المحتوى عند إخفاء القائمة (مثل master.html) ─── */
+body.ux-sidebar-hidden #tv2-sidebar { transform: translateX(110%) !important; }
+body.ux-sidebar-hidden #appScreen {
+  margin-right: 0 !important;
+  max-width: 100vw !important;
+  transition: margin .28s ease, max-width .28s ease;
+}
+#tv2-sidebar { transition: transform .28s ease !important; }
+#appScreen { transition: margin .28s ease, max-width .28s ease; }
+
+/* ─── Mobile + Tablet (≤1024px) — drawer بنفس سلاسة master.html ─── */
+@media (max-width: 1024px) {
+  /* Sidebar = drawer مخفي افتراضياً — z-index مرتفع مثل master */
+  body #tv2-sidebar,
+  html body #tv2-sidebar {
+    position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important; left: auto !important;
+    width: min(82vw, 320px) !important;
+    height: 100vh !important;
+    z-index: 1500 !important;
+    transform: translateX(110%) !important;
+    transition: transform .28s ease !important;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.45) !important;
+    display: flex !important; flex-direction: column !important;
+    visibility: visible !important;
+    background: #0e1a14 !important;
+  }
+  /* يدعم كل الأسماء: tv2-open + ux-sidebar-open (بـ specificity عالي لتجاوز ux-sidebar-hidden القديم) */
+  body.ux-sidebar-open #tv2-sidebar,
+  html body.ux-sidebar-open #tv2-sidebar,
+  body.ux-sidebar-open #tv2-sidebar.tv2-open,
+  #tv2-sidebar.tv2-open { transform: translateX(0) !important; }
+  /* لو body فيه ux-sidebar-hidden قديم من desktop → امسحه عند فتح drawer */
+  body.ux-sidebar-open.ux-sidebar-hidden #tv2-sidebar { transform: translateX(0) !important; }
+
+  /* Topbar — يبقى فوق المحتوى لكن تحت drawer */
+  #tv2-topbar {
+    right: 0 !important; left: 0 !important;
+    padding: 0 12px !important;
+    max-width: 100vw !important;
+    z-index: 1300 !important;
+  }
+  #tv2-topbar .tv2-title { font-size: 14px !important; }
+
+  /* زر القائمة — fixed خارج topbar بـ z-index 1600 (مثل master) لضمان clickability */
+  #tv2-topbar #tv2-menu-toggle {
+    position: fixed !important;
+    top: 12px !important; right: 12px !important;
+    width: 44px !important; height: 44px !important;
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #c9a24b, #a07f2e) !important;
+    color: #0e1a14 !important;
+    border: none !important;
+    font-size: 22px !important; font-weight: 900 !important;
+    cursor: pointer !important;
+    z-index: 1600 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35) !important;
+    display: flex !important; align-items: center; justify-content: center;
+    padding: 0 !important;
+  }
+  #tv2-topbar #tv2-menu-toggle:active { transform: scale(0.94); }
+
+  /* المحتوى يأخذ كل العرض */
+  #appScreen {
+    margin-right: 0 !important;
+    max-width: 100vw !important;
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+    padding-top: 64px !important;
+  }
+  #appScreen > section {
+    padding: 14px !important;
+    margin: 0 0 12px 0 !important;
+    border-radius: 10px !important;
+  }
+
+  /* Backdrop — z-index بين topbar والـ drawer (مثل master) */
+  #tv2-backdrop {
+    position: fixed !important; inset: 0 !important;
+    background: rgba(0,0,0,0.55) !important;
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    z-index: 1400 !important;
+    display: none !important;
+    opacity: 0; transition: opacity .25s ease;
+  }
+  #tv2-backdrop.tv2-show { display: block !important; opacity: 1; }
+
+  /* جداول قابلة للسحب أفقياً بدل overflow */
+  #appScreen .table-wrap,
+  #appScreen [class*="table"],
+  #appScreen section { overflow-x: auto !important; }
+
+  #appScreen table {
+    min-width: 100% !important;
+    font-size: 13px !important;
+  }
+  #appScreen table th,
+  #appScreen table td {
+    padding: 8px 6px !important;
+    white-space: nowrap !important;
+  }
+
+  /* الكروت + grids */
+  #appScreen .card {
+    padding: 14px !important;
+  }
+  #appScreen [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+  #appScreen [style*="display:flex"][style*="gap"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* sub-tabs (المحاسبة) تصبح scrollable أفقياً */
+  #appScreen section .tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  #appScreen section .tabs .tab {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+  }
+
+  /* الأزرار صغيرة بدرجة معقولة */
+  #appScreen .btn { padding: 8px 14px !important; font-size: 13px !important; }
+  #appScreen .btn-sm { padding: 6px 10px !important; font-size: 12px !important; }
+
+  /* inputs تأخذ كل العرض */
+  #appScreen input, #appScreen textarea, #appScreen select {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Modals تأخذ عرض الشاشة */
+  .overlay .modal { width: calc(100% - 24px) !important; max-width: calc(100% - 24px) !important; margin: 12px !important; }
+}
+
+/* ─── Very small (≤480px) ─── */
+@media (max-width: 480px) {
+  #tv2-topbar .tv2-title { display: none; }
+  #appScreen { padding-right: 8px !important; padding-left: 8px !important; }
+  #appScreen > section { padding: 10px !important; }
+  #appScreen h1, #appScreen h2 { font-size: 16px !important; }
+  #appScreen h3 { font-size: 14px !important; }
+}
+
+/* ─── Prevent horizontal scroll on body ─── */
+html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+
+/* ─── Login screen يبقى dark أيضاً ─── */
+#loginScreen { background: linear-gradient(135deg, #08120e, #1b5e20) !important; }
+.login-card { background: #0e1a14 !important; color: #f1f5f4 !important; box-shadow: 0 25px 60px rgba(0,0,0,0.6) !important; }
+.login-card h1, .login-card h2, .login-card label { color: #f1f5f4 !important; }
+.login-card input {
+  background: rgba(0,0,0,0.4) !important; color: #f1f5f4 !important;
+  border: 1px solid rgba(201,162,75,0.25) !important;
+}
+.login-submit {
+  background: linear-gradient(135deg, #C9A24B, #e0b85f) !important;
+  color: #08120e !important; font-weight: 900 !important;
+}

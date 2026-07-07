@@ -1,0 +1,177 @@
+/* admin-plus.css — 2026-07-07 — 13 UX enhancements bundle
+   Design tokens reused from :root (--primary, --gold, --bg, --surface, --border, --text)
+   All rules are additive — nothing existing is touched
+*/
+
+/* ═════════════════════════════════════════════════════════════════
+   1) COMMAND PALETTE (Ctrl+K)
+   ═════════════════════════════════════════════════════════════════ */
+.cmdp-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:9998;display:none;padding-top:12vh;justify-content:center;align-items:flex-start;font-family:'Tajawal',sans-serif}
+.cmdp-backdrop.open{display:flex}
+.cmdp-modal{width:min(560px,92vw);background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;max-height:65vh;animation:cmdpIn .18s ease-out}
+@keyframes cmdpIn{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+.cmdp-input{width:100%;padding:16px 18px;font-size:16px;font-weight:600;border:none;outline:none;background:#fff;color:#111;border-bottom:1px solid #e5e7eb;font-family:inherit;direction:rtl}
+.cmdp-input::placeholder{color:#9ca3af;font-weight:500}
+.cmdp-results{flex:1;overflow-y:auto;padding:6px}
+.cmdp-item{padding:10px 14px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#1f2937;transition:background .1s;direction:rtl}
+.cmdp-item:hover{background:#f0f9ff}
+.cmdp-item.active{background:linear-gradient(135deg,rgba(201,162,75,.15),rgba(201,162,75,.05));border-right:3px solid #C9A24B;padding-right:11px}
+.cmdp-item mark{background:transparent;color:#C9A24B;font-weight:900}
+.cmdp-item .cmdp-kbd{margin-inline-start:auto;font-size:11px;color:#9ca3af;background:#f3f4f6;padding:2px 7px;border-radius:5px;font-family:monospace}
+.cmdp-empty{padding:36px 20px;text-align:center;color:#9ca3af;font-size:14px}
+.cmdp-footer{padding:10px 16px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;gap:14px;font-size:11px;color:#6b7280;justify-content:flex-end;flex-wrap:wrap;direction:rtl}
+.cmdp-footer kbd{background:#fff;border:1px solid #e5e7eb;border-radius:4px;padding:1px 5px;font-family:monospace;font-size:10px;box-shadow:0 1px 0 #e5e7eb}
+
+/* ═════════════════════════════════════════════════════════════════
+   2) NOTIFICATION DROPDOWN PANEL (bell icon)
+   ═════════════════════════════════════════════════════════════════ */
+.notifp-panel{position:fixed;top:70px;left:20px;right:auto;width:min(380px,92vw);max-height:70vh;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.20);z-index:9997;display:none;flex-direction:column;overflow:hidden;font-family:'Tajawal',sans-serif;direction:rtl}
+.notifp-panel.open{display:flex;animation:notifpIn .2s ease-out}
+@keyframes notifpIn{from{transform:translateY(-6px);opacity:0}to{transform:translateY(0);opacity:1}}
+.notifp-head{padding:14px 18px;background:linear-gradient(135deg,#e8f5e9,#fff);border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center}
+.notifp-head h3{font-size:15px;font-weight:900;color:#1b5e20;margin:0}
+.notifp-head-actions{display:flex;gap:6px}
+.notifp-head-actions button{background:#fff;border:1px solid #d1fae5;color:#166534;padding:5px 10px;border-radius:6px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.notifp-head-actions button:hover{background:#e8f5e9}
+.notifp-list{flex:1;overflow-y:auto;padding:8px}
+.notifp-item{padding:12px 14px;border-radius:10px;cursor:pointer;transition:background .1s;border-bottom:1px solid #f3f4f6}
+.notifp-item:hover{background:#f9fafb}
+.notifp-item.unread{background:#eff6ff}
+.notifp-item.unread:hover{background:#dbeafe}
+.notifp-item-title{font-size:13.5px;font-weight:800;color:#1f2937;margin-bottom:2px}
+.notifp-item-body{font-size:12px;color:#6b7280;line-height:1.5}
+.notifp-item-time{font-size:10.5px;color:#9ca3af;margin-top:4px}
+.notifp-empty{padding:40px 20px;text-align:center;color:#9ca3af}
+.notifp-empty-icon{font-size:36px;margin-bottom:8px}
+.notifp-foot{padding:10px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center}
+.notifp-foot button{background:transparent;border:none;color:#1b5e20;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;padding:6px 12px;border-radius:8px}
+.notifp-foot button:hover{background:#e8f5e9}
+.notifp-bell-btn{position:relative;background:transparent;border:none;font-size:22px;cursor:pointer;padding:8px;border-radius:10px;color:#fff;transition:background .15s}
+.notifp-bell-btn:hover{background:rgba(255,255,255,.15)}
+.notifp-bell-dot{position:absolute;top:6px;left:6px;width:10px;height:10px;background:#dc2626;border:2px solid #1b5e20;border-radius:50%;display:none}
+.notifp-bell-btn.has-unread .notifp-bell-dot{display:block}
+
+/* ═════════════════════════════════════════════════════════════════
+   3) STICKY ACTION BAR (bottom)
+   ═════════════════════════════════════════════════════════════════ */
+.sab-bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #e5e7eb;border-radius:999px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:6px;display:none;gap:4px;align-items:center;z-index:60;direction:rtl;font-family:'Tajawal',sans-serif}
+.sab-bar.visible{display:flex}
+.sab-btn{background:transparent;border:none;padding:8px 14px;border-radius:999px;font-weight:800;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;transition:background .12s}
+.sab-btn:hover{background:#f3f4f6;color:#1b5e20}
+.sab-btn.primary{background:#1b5e20;color:#fff}
+.sab-btn.primary:hover{background:#154d19}
+.sab-divider{width:1px;height:22px;background:#e5e7eb;margin:0 2px}
+
+/* ═════════════════════════════════════════════════════════════════
+   4) KEYBOARD SHORTCUTS HELP MODAL (?)
+   ═════════════════════════════════════════════════════════════════ */
+.kbdh-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:9998;display:none;justify-content:center;align-items:center;padding:20px;font-family:'Tajawal',sans-serif}
+.kbdh-backdrop.open{display:flex}
+.kbdh-modal{background:#fff;border-radius:16px;padding:26px 28px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto;direction:rtl;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.kbdh-modal h2{color:#1b5e20;font-size:20px;font-weight:900;margin:0 0 4px}
+.kbdh-modal .sub{color:#6b7280;font-size:13px;margin-bottom:18px}
+.kbdh-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f3f4f6}
+.kbdh-row:last-child{border-bottom:none}
+.kbdh-desc{font-size:14px;color:#1f2937;font-weight:600}
+.kbdh-keys{display:flex;gap:5px}
+.kbdh-keys kbd{background:#f9fafb;border:1px solid #e5e7eb;border-radius:5px;padding:3px 8px;font-family:monospace;font-size:12px;font-weight:700;box-shadow:0 1px 0 #e5e7eb;color:#111}
+.kbdh-close{position:absolute;top:14px;left:14px;background:#fff;border:1px solid #e5e7eb;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;color:#6b7280}
+.kbdh-close:hover{background:#f3f4f6}
+
+/* ═════════════════════════════════════════════════════════════════
+   5) SIDEBAR TOGGLE (collapse tabs on desktop)
+   ═════════════════════════════════════════════════════════════════ */
+.sbt-toggle{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:18px;font-weight:700;display:none;align-items:center;justify-content:center;transition:background .15s}
+.sbt-toggle:hover{background:rgba(255,255,255,.28)}
+@media (min-width:1025px){.sbt-toggle{display:inline-flex}}
+html.tabs-collapsed .tabs{padding:0 8px !important}
+html.tabs-collapsed .tab{font-size:0 !important;padding:12px 10px !important;min-width:44px;position:relative}
+html.tabs-collapsed .tab::first-letter{font-size:0}
+html.tabs-collapsed .tab{white-space:nowrap;overflow:hidden}
+html.tabs-collapsed .tab > *{display:none}
+html.tabs-collapsed .tab::before{content:attr(data-icon);font-size:20px !important;display:inline-block;line-height:1}
+
+/* ═════════════════════════════════════════════════════════════════
+   6) SKELETON LOADERS
+   ═════════════════════════════════════════════════════════════════ */
+.skl{display:inline-block;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:sklShimmer 1.5s infinite;border-radius:8px}
+@keyframes sklShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skl-line{height:14px;margin-bottom:8px;width:100%}
+.skl-line.w70{width:70%}
+.skl-line.w50{width:50%}
+.skl-line.w30{width:30%}
+.skl-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:12px}
+
+/* ═════════════════════════════════════════════════════════════════
+   7) EMPTY STATE CARDS (smart, actionable)
+   ═════════════════════════════════════════════════════════════════ */
+.est-smart{background:linear-gradient(135deg,#f0fdf4 0%,#fff 100%);border:1px solid #bbf7d0;border-radius:16px;padding:36px 24px;text-align:center;margin:20px 0;font-family:'Tajawal',sans-serif}
+.est-icon{font-size:56px;margin-bottom:10px;filter:drop-shadow(0 4px 8px rgba(27,94,32,.15))}
+.est-title{color:#166534;font-size:18px;font-weight:900;margin:0 0 6px}
+.est-desc{color:#16a34a;font-size:13.5px;margin:0 0 18px;max-width:400px;margin-inline:auto}
+.est-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.est-btn{background:#1b5e20;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;transition:background .15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.est-btn:hover{background:#154d19}
+.est-btn.outline{background:#fff;color:#1b5e20;border:1px solid #1b5e20}
+.est-btn.outline:hover{background:#e8f5e9}
+
+/* ═════════════════════════════════════════════════════════════════
+   8) BULK ACTIONS BAR (for orders table)
+   ═════════════════════════════════════════════════════════════════ */
+.bulk-bar{position:sticky;top:60px;background:#1b5e20;color:#fff;padding:10px 16px;border-radius:12px;margin-bottom:12px;display:none;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(27,94,32,.25);z-index:20;font-family:'Tajawal',sans-serif;direction:rtl}
+.bulk-bar.visible{display:flex}
+.bulk-count{font-weight:900;font-size:15px;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:999px}
+.bulk-actions{display:flex;gap:6px;margin-inline-start:auto}
+.bulk-actions button{background:#fff;color:#1b5e20;border:none;padding:7px 14px;border-radius:8px;font-weight:800;cursor:pointer;font-size:12.5px;font-family:inherit;transition:transform .1s}
+.bulk-actions button:hover{transform:translateY(-1px)}
+.bulk-actions button.danger{background:#fee2e2;color:#991b1b}
+
+/* ═════════════════════════════════════════════════════════════════
+   9) HEALTH CHECK WIDGET (settings)
+   ═════════════════════════════════════════════════════════════════ */
+.hc-widget{background:linear-gradient(135deg,#eff6ff 0%,#fff 100%);border:1px solid #bfdbfe;border-radius:14px;padding:18px 22px;margin-bottom:20px;font-family:'Tajawal',sans-serif;direction:rtl}
+.hc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px}
+.hc-title{font-size:15px;font-weight:900;color:#1e3a8a}
+.hc-percent{background:#1b5e20;color:#fff;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:900}
+.hc-percent.warn{background:#d97706}
+.hc-percent.danger{background:#dc2626}
+.hc-bar{height:8px;background:#dbeafe;border-radius:999px;overflow:hidden;margin-bottom:12px}
+.hc-fill{height:100%;background:linear-gradient(90deg,#1b5e20,#2e7d32);transition:width .6s ease;border-radius:999px}
+.hc-issues{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
+.hc-issue{background:#fff;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12.5px;color:#78350f;display:flex;align-items:center;gap:8px}
+.hc-issue.ok{border-color:#bbf7d0;color:#166534;background:#f0fdf4}
+.hc-issue button{margin-inline-start:auto;background:#78350f;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* ═════════════════════════════════════════════════════════════════
+   10) DASHBOARD WIDGETS (drag reorder)
+   ═════════════════════════════════════════════════════════════════ */
+.dw-grip{position:absolute;top:8px;left:8px;font-size:14px;color:#9ca3af;cursor:grab;padding:4px;border-radius:6px;opacity:.4;transition:opacity .15s}
+.dw-grip:hover{opacity:1;background:#f3f4f6}
+.dw-grip:active{cursor:grabbing}
+.dw-draggable{position:relative}
+.dw-draggable.dragging{opacity:.4}
+.dw-draggable.dw-over{outline:2px dashed #C9A24B;outline-offset:4px}
+
+/* ═════════════════════════════════════════════════════════════════
+   11) GLOBAL SEARCH INPUT IN HEADER
+   ═════════════════════════════════════════════════════════════════ */
+.gh-search{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;width:220px;transition:width .2s,background .15s;direction:rtl}
+.gh-search::placeholder{color:rgba(255,255,255,.6)}
+.gh-search:focus{outline:none;background:rgba(255,255,255,.25);width:280px;border-color:#C9A24B}
+@media (max-width:900px){.gh-search{display:none}}
+
+/* ═════════════════════════════════════════════════════════════════
+   12) STATUS DOT (connected/disconnected indicator)
+   ═════════════════════════════════════════════════════════════════ */
+.gh-status{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;color:#fff;font-family:inherit}
+.gh-status-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.3);animation:pulse 2s infinite}
+.gh-status.off .gh-status-dot{background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.3);animation:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.3)}50%{box-shadow:0 0 0 6px rgba(34,197,94,.1)}}
+
+/* ═════════════════════════════════════════════════════════════════
+   13) MISC POLISH
+   ═════════════════════════════════════════════════════════════════ */
+/* smooth scroll for the whole app */
+html{scroll-behavior:smooth}
+/* subtle focus ring for accessibility */
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #C9A24B;outline-offset:2px}

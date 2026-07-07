@@ -1,0 +1,92 @@
+/**
+ * 🎨 Theme v2 Overlay لـ Master — يحول master.html للـ Dark theme فقط
+ * بدون لمس sidebar الأصلية (تبقى لكن بألوان داكنة).
+ */
+
+#appScreen, #appScreen * {
+  --green: #1b5e20 !important;
+  --green-mid: #2e7d32 !important;
+  --gold: #C9A24B !important;
+  --gold-2: #e0b85f !important;
+  --bg: #08120e !important;
+  --surface: #0e1a14 !important;
+  --surface-2: #122821 !important;
+  --border: rgba(201,162,75,0.18) !important;
+  --text: #f1f5f4 !important;
+  --text-2: #cfd8d4 !important;
+  --muted: #8a9a92 !important;
+  --gray: #8a9a92 !important;
+}
+
+body, #appScreen { background: #08120e !important; color: #f1f5f4 !important; }
+
+.sidebar { background: #0a1410 !important; border-left: 1px solid rgba(201,162,75,0.15) !important; }
+.sidebar h2 { color: #f1f5f4 !important; }
+.sidebar .nav-item { color: #cfd8d4 !important; }
+.sidebar .nav-item:hover { background: rgba(201,162,75,0.08) !important; color: #f1f5f4 !important; }
+.sidebar .nav-item.active { background: rgba(201,162,75,0.15) !important; color: #e0b85f !important; }
+
+.main-wrap { background: #08120e !important; }
+.main-wrap > section { background: #0e1a14 !important; border: 1px solid rgba(201,162,75,0.15) !important; border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+
+.card { background: #0e1a14 !important; color: #f1f5f4 !important; border: 1px solid rgba(201,162,75,0.15) !important; }
+.card-header h1, .card-header h2, .card-title, h1, h2, h3 { color: #f1f5f4 !important; }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea, select {
+  background: rgba(0,0,0,0.4) !important;
+  color: #f1f5f4 !important;
+  border: 1px solid rgba(201,162,75,0.2) !important;
+}
+input::placeholder, textarea::placeholder { color: #6b7280 !important; }
+input:focus, textarea:focus, select:focus { border-color: #e0b85f !important; outline: none !important; }
+
+table { background: transparent !important; color: #f1f5f4 !important; }
+th { background: rgba(201,162,75,0.08) !important; color: #e0b85f !important; }
+td { border-color: rgba(255,255,255,0.06) !important; color: #cfd8d4 !important; }
+tr:hover td { background: rgba(201,162,75,0.05) !important; }
+
+.btn-primary { background: linear-gradient(135deg, #C9A24B, #e0b85f) !important; color: #08120e !important; font-weight: 800; }
+.btn-outline { background: transparent !important; color: #e0b85f !important; border: 1px solid rgba(201,162,75,0.4) !important; }
+.btn-outline:hover { background: rgba(201,162,75,0.1) !important; }
+
+.overlay { background: rgba(0,0,0,0.75) !important; }
+.modal { background: #0e1a14 !important; color: #f1f5f4 !important; border: 1px solid rgba(201,162,75,0.2) !important; }
+.modal h2, .modal h3, .modal-header { color: #f1f5f4 !important; }
+
+/* light backgrounds → dark */
+[style*="background:#fff"], [style*="background: #fff"], [style*="background:#ffffff"],
+[style*="background:#f9fafb"], [style*="background:#f3f4f6"], [style*="background:#fafafa"] {
+  background: rgba(0,0,0,0.25) !important;
+}
+
+/* Tags بألوان */
+[style*="background:#fef3c7"], [style*="background:#fde68a"] { background: rgba(251,191,36,0.18) !important; color: #fcd34d !important; }
+[style*="background:#dcfce7"], [style*="background:#d1fae5"], [style*="background:#f0fdf4"] { background: rgba(16,185,129,0.18) !important; color: #86efac !important; }
+[style*="background:#fee2e2"], [style*="background:#fef2f2"] { background: rgba(220,38,38,0.18) !important; color: #fca5a5 !important; }
+[style*="background:#dbeafe"], [style*="background:#eff6ff"], [style*="background:#f0f9ff"], [style*="background:#e0f2fe"] { background: rgba(59,130,246,0.18) !important; color: #93c5fd !important; }
+[style*="background:#fce7f3"] { background: rgba(236,72,153,0.18) !important; color: #f9a8d4 !important; }
+[style*="background:#ede9fe"], [style*="background:#f3e8ff"] { background: rgba(139,92,246,0.18) !important; color: #c4b5fd !important; }
+
+/* dark text → light */
+[style*="color:#1f2937"], [style*="color: #1f2937"],
+[style*="color:#111827"], [style*="color: #111827"],
+[style*="color:#374151"], [style*="color: #374151"],
+[style*="color:#111"] { color: #f1f5f4 !important; }
+
+[style*="color:#6b7280"], [style*="color: #6b7280"],
+[style*="color:#4b5563"], [style*="color: #4b5563"],
+[style*="color:#9ca3af"] { color: #cfd8d4 !important; }
+
+[style*="color:#166534"], [style*="color:#14532d"], [style*="color:#16a34a"] { color: #86efac !important; }
+[style*="color:#92400e"], [style*="color:#854d0e"], [style*="color:#78350f"] { color: #fcd34d !important; }
+[style*="color:#991b1b"], [style*="color:#7f1d1d"], [style*="color:#b91c1c"] { color: #fca5a5 !important; }
+[style*="color:#1e40af"], [style*="color:#2563eb"] { color: #93c5fd !important; }
+[style*="color:#6b21a8"], [style*="color:#7c3aed"] { color: #c4b5fd !important; }
+
+/* login screen */
+#loginScreen { background: linear-gradient(135deg, #08120e, #1b5e20) !important; }
+.login-card { background: #0e1a14 !important; color: #f1f5f4 !important; }
+.login-card label, .login-card input { color: #f1f5f4 !important; }
+.login-card input { background: rgba(0,0,0,0.4) !important; border-color: rgba(201,162,75,0.25) !important; }
+.login-submit { background: linear-gradient(135deg, #C9A24B, #e0b85f) !important; color: #08120e !important; }

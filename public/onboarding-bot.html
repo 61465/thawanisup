@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل البوت 🤖 — منصة ثواني</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#1b5e20;--primary-md:#2e7d32;--wa:#25d366;--bg:#f8fafc;--text:#1f2937;--gray:#6b7280;--green:#16a34a;--green-lt:#dcfce7;--surface:#fff;--border:#e5e7eb}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Tajawal,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;padding:0 0 60px}
+  .hero{background:linear-gradient(135deg,#dcfce7 0%,#bbf7d0 100%);padding:46px 24px 36px;text-align:center;color:#14532d}
+  .hero h1{font-size:2rem;font-weight:900;margin-bottom:10px}
+  .hero p{font-size:1.05rem;max-width:640px;margin:0 auto 14px;color:#166534}
+  .badge{display:inline-block;background:#fff;color:var(--wa);padding:6px 16px;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid var(--wa)}
+  .wrap{max-width:860px;margin:36px auto;padding:0 20px}
+  .section{margin-bottom:36px}
+  .sec-title{display:flex;align-items:center;gap:12px;font-size:1.4rem;font-weight:800;color:var(--primary);margin-bottom:18px}
+  .num{background:linear-gradient(135deg,var(--wa),#1ea952);color:#fff;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:1rem;flex-shrink:0}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .card h3{font-size:1.05rem;font-weight:800;margin-bottom:12px;color:var(--text)}
+  .steps{list-style:none}
+  .steps li{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .steps li:last-child{border-bottom:none}
+  .steps li::before{content:"✓";flex-shrink:0;background:var(--green-lt);color:var(--green);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:.85rem}
+  .step-body strong{display:block;margin-bottom:3px;font-size:.95rem}
+  .step-body span{font-size:.88rem;color:var(--gray)}
+  .alert{display:flex;gap:12px;padding:14px 16px;border-radius:10px;margin:12px 0;font-size:.9rem;line-height:1.7}
+  .alert.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .alert.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e}
+  .alert.green{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+  .ic{font-size:1.3rem;flex-shrink:0}
+  .checklist{list-style:none}
+  .checklist li{padding:9px 0;display:flex;gap:10px;align-items:flex-start}
+  .checklist li::before{content:"✓";color:var(--green);font-weight:900;flex-shrink:0;font-size:1.1rem}
+  .btn{display:inline-block;background:var(--wa);color:#fff;padding:10px 22px;border-radius:9px;text-decoration:none;font-weight:700;margin-top:14px}
+  .switch{text-align:center;margin:24px auto;padding:14px;background:#fff;border:1px dashed var(--border);border-radius:12px;max-width:520px}
+  .switch a{color:var(--primary);text-decoration:none;font-weight:700;font-size:.95rem}
+  .cmd-box{background:#0a3d2b;color:#dcfce7;padding:12px 16px;border-radius:8px;font-family:monospace;font-size:.9rem;margin:8px 0;direction:ltr;text-align:right}
+  @media(max-width:640px){.hero h1{font-size:1.5rem}.wrap{padding:0 12px}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div style="font-size:3rem;margin-bottom:10px">🤖</div>
+  <h1>دليل البوت (WhatsApp Bot)</h1>
+  <p>رقم واتساب يرد تلقائياً على عملائك — يقدّم القائمة، يأخذ الطلبات، يجمع البيانات</p>
+  <div class="badge">⏱️ وقت الإعداد: 10 دقائق</div>
+</div>
+
+<div class="wrap">
+
+  <div class="switch">
+    🛍️ هل تستخدم السلة أيضاً؟ <a href="/onboarding-cart.html">افتح دليل السلة 🛍️ →</a>
+  </div>
+
+  <!-- ما يقدمه البوت -->
+  <div class="section">
+    <div class="sec-title"><div class="num">✓</div> ما يقدمه البوت</div>
+    <div class="card">
+      <ul class="checklist">
+        <li>بوت واتس يرد على عملائك ويستقبل الطلبات 24/7 (بالأزرار أو الأرقام)</li>
+        <li>🧠 ذكاء اصطناعي (Groq+Claude+Gemini) يفهم العربية بالكلام الطبيعي</li>
+        <li>قائمة منتجات تفاعلية بالصور + سلة محادثة</li>
+        <li>🆕 نظام حجوزات للصالونات/العيادات + تذكير قبل 24س</li>
+        <li>🆕 تنبيهات مخزون منخفض (gaming/digital products)</li>
+        <li>🆕 إضافات (toppings) للأطعمة في وقت الطلب</li>
+        <li>12 قالب بث جاهز (ترحيب/خصم/رمضان/VIP)</li>
+        <li>نقاط ولاء + تقييمات بعد التسليم</li>
+        <li>أوامر سريعة للمالك (قبول/رفض/تم/في الطريق)</li>
+        <li>تذكير السلات المتروكة بعد 30 دقيقة</li>
+        <li>handoff تلقائي للإنسان عند طلب العميل</li>
+        <li>حماية متقدمة من حظر الرقم (rate limits + delays)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 1: ربط واتس -->
+  <div class="section">
+    <div class="sec-title"><div class="num">1</div> ربط البوت بواتساب</div>
+    <div class="alert info"><div class="ic">ℹ️</div><div>البوت يعمل بـ <strong>QR Code</strong> مثل واتساب ويب — لا تحتاج حساب مطوّر أو Meta API.</div></div>
+    <div class="card">
+      <h3>📷 خطوات الربط</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>افتح لوحة التحكم</strong><span>/store-admin.html ← سجّل دخولك</span></div></li>
+        <li><div class="step-body"><strong>اذهب لتبويب 📱 ربط واتساب</strong><span>اضغط "📷 طلب QR جديد"</span></div></li>
+        <li><div class="step-body"><strong>امسح الرمز من هاتف المتجر</strong><span>افتح واتساب ← الإعدادات ← الأجهزة المرتبطة ← ربط جهاز</span></div></li>
+        <li><div class="step-body"><strong>تم! "تم الربط بنجاح 🎉"</strong><span>البوت جاهز لاستقبال رسائل عملائك</span></div></li>
+      </ul>
+      <div class="alert warn"><div class="ic">⚠️</div><div>الرقم المربوط مخصص للبوت فقط ولن يعمل كواتساب عادي على الهاتف. استخدم شريحة ثانية أو رقم عمل.</div></div>
+    </div>
+  </div>
+
+  <!-- خطوة 2: المسارات الـ 3 للعميل -->
+  <div class="section">
+    <div class="sec-title"><div class="num">2</div> المسارات الـ 3 للعميل (في الإعدادات)</div>
+    <div class="card">
+      <p style="margin-bottom:12px;color:var(--gray)">عند أول رسالة، البوت يعرض 3 طرق للطلب. تستطيع تفعيل/تعطيل أي منها:</p>
+      <ul class="steps">
+        <li><div class="step-body"><strong>🔗 رابط الطلب التفاعلي (Webview)</strong><span>صفحة فيها كل المنتجات بالصور — العميل يطلب بالنقر</span></div></li>
+        <li><div class="step-body"><strong>🔢 الاختيار بالأرقام</strong><span>"اكتب 1 للقائمة، 2 للطلب، 3 للموقع..."</span></div></li>
+        <li><div class="step-body"><strong>💬 الكتابة الحرة (AI)</strong><span>"اكتب طلبك بكلامك" — مدعوم بذكاء اصطناعي</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 3: المنتجات -->
+  <div class="section">
+    <div class="sec-title"><div class="num">3</div> أضف منتجاتك</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>تبويب 📋 القائمة ← أضف الأصناف</strong><span>مثلاً: مشروبات/معجنات/حلويات</span></div></li>
+        <li><div class="step-body"><strong>أضف المنتجات</strong><span>اسم + سعر + وصف + صورة (موصى بها 800×800)</span></div></li>
+        <li><div class="step-body"><strong>🆕 إضافات (toppings)</strong><span>للأطعمة: "جبنة +5، صلصة حارة +2" — يختارها العميل عبر البوت</span></div></li>
+        <li><div class="step-body"><strong>المخزون</strong><span>اختياري — لو محدد، البوت يمنع الطلب عند النفاد</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 4: الحجوزات (للصالونات/العيادات) -->
+  <div class="section">
+    <div class="sec-title"><div class="num">4</div> نظام الحجوزات 🆕 (للصالونات/العيادات/الخدمات)</div>
+    <div class="card">
+      <p style="margin-bottom:12px;color:var(--gray)">يظهر تلقائياً لو نوع البيزنس: salon / clinic / spa / barber / services / home_services / car_services</p>
+      <ul class="steps">
+        <li><div class="step-body"><strong>اذهب لتبويب 📅 الحجوزات</strong><span>اضغط "➕ حجز جديد"</span></div></li>
+        <li><div class="step-body"><strong>اسم العميل + رقم + الخدمة + التاريخ والوقت + المدة</strong><span>البوت يفحص تعارض المواعيد تلقائياً</span></div></li>
+        <li><div class="step-body"><strong>قبول الحجز</strong><span>زر ✅ تأكيد — سيرسل البوت تذكير للعميل قبل 24 ساعة تلقائياً</span></div></li>
+        <li><div class="step-body"><strong>عميل يكتب "احجز" أو "موعد"</strong><span>البوت يرد تلقائياً برسالة الترحيب بالحجز + يبلّغك بالطلب</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 5: أوامر المالك السريعة -->
+  <div class="section">
+    <div class="sec-title"><div class="num">5</div> أوامر سريعة من واتساب</div>
+    <div class="card">
+      <p style="margin-bottom:12px;color:var(--gray)">اكتب الأمر في محادثة العميل مباشرة من هاتفك — البوت ينفذ:</p>
+      <div class="cmd-box">قبول → يؤكد الطلب ويبعت ETA</div>
+      <div class="cmd-box">رفض السبب — مثلاً: رفض الكاكاو نفد</div>
+      <div class="cmd-box">جاهز → "طلبك جاهز للاستلام"</div>
+      <div class="cmd-box">خرج → "المندوب في الطريق"</div>
+      <div class="cmd-box">تم → "تم التسليم بنجاح"</div>
+    </div>
+  </div>
+
+  <!-- خطوة 6: البث -->
+  <div class="section">
+    <div class="sec-title"><div class="num">6</div> البث (Broadcast)</div>
+    <div class="card">
+      <ul class="steps">
+        <li><div class="step-body"><strong>تبويب 📢 بث رسالة</strong><span>12 قالب جاهز: ترحيب، خصم، رمضان، VIP، عيد، استرداد عميل...</span></div></li>
+        <li><div class="step-body"><strong>اختر القالب أو اكتب رسالتك</strong><span>يدعم الصور والـ video</span></div></li>
+        <li><div class="step-body"><strong>اختر الجمهور</strong><span>كل العملاء / VIP / آخر 30 يوم / مخصص</span></div></li>
+        <li><div class="step-body"><strong>بث آمن (anti-ban)</strong><span>يبعت 1-2 رسالة/ثانية + content variation + delays عشوائية</span></div></li>
+      </ul>
+      <div class="alert green"><div class="ic">🛡️</div><div>نظام Ban Protection يحمي رقمك تلقائياً — حد 100 رسالة/ساعة + delay 2-4s بين الرسائل النظامية.</div></div>
+    </div>
+  </div>
+
+  <!-- خطوة 7: نقاط الولاء + التقييمات -->
+  <div class="section">
+    <div class="sec-title"><div class="num">7</div> نقاط الولاء + التقييمات</div>
+    <div class="card">
+      <h3>🏆 نظام النقاط</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>كل طلب = نقاط</strong><span>أنت تحدد المعدل (مثلاً: 1 نقطة لكل 10 ر.س)</span></div></li>
+        <li><div class="step-body"><strong>العميل يكتب "نقاطي"</strong><span>البوت يرد بالرصيد + ما يمكن استبداله</span></div></li>
+        <li><div class="step-body"><strong>تفعيل خصم تلقائي</strong><span>عند جمع X نقطة → كوبون آلي</span></div></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⭐ التقييمات (Ratings)</h3>
+      <ul class="steps">
+        <li><div class="step-body"><strong>بعد تأكيد التسليم</strong><span>البوت يرسل للعميل "كيف كانت تجربتك؟ ⭐"</span></div></li>
+        <li><div class="step-body"><strong>العميل يقيّم</strong><span>تقييم من 1-5 + تعليق اختياري</span></div></li>
+        <li><div class="step-body"><strong>أنت ترى الإحصائيات</strong><span>من تبويب ⭐ التقييمات — متوسط النجوم + قائمة التعليقات</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- خطوة 8: تنبيهات مخزون (gaming) -->
+  <div class="section">
+    <div class="sec-title"><div class="num">8</div> تنبيهات مخزون 🆕 (للأكواد الرقمية)</div>
+    <div class="card">
+      <p style="margin-bottom:12px;color:var(--gray)">يظهر لو businessType=gaming_topup</p>
+      <ul class="steps">
+        <li><div class="step-body"><strong>اذهب لـ ⚙️ الإعدادات → 🚨 تنبيهات المخزون</strong><span>حدد الحد الأدنى (افتراضي: 5 أكواد)</span></div></li>
+        <li><div class="step-body"><strong>بعد كل تسليم</strong><span>إن وصل المخزون للحد → تنبيه واتس فوري للمالك</span></div></li>
+        <li><div class="step-body"><strong>عند نفاد الأكواد كلياً</strong><span>تنبيه "🚨 نفدت أكواد X" + رابط لإدارة الـ pool</span></div></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="switch">
+    🛍️ هل تستخدم السلة أيضاً؟ <a href="/onboarding-cart.html">افتح دليل السلة 🛍️ →</a>
+  </div>
+
+  <p style="text-align:center;color:var(--gray);margin-top:30px;font-size:.85rem">
+    لأي استفسار: <a href="https://wa.me/966508572902" style="color:var(--green);font-weight:700">تواصل مع دعم منصة ثواني</a>
+  </p>
+
+</div>
+</body>
+</html>

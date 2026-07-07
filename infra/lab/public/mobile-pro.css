@@ -1,0 +1,1257 @@
+/* ═══════════════════════════════════════════════════════════════════
+   🚨 CRITICAL OVERFLOW FIX — Top priority (un-layered, max specificity)
+   يمنع أي عنصر من الخروج من الشاشة على mobile
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Universal max-width — أهم قاعدة في الملف كله */
+  *,
+  *::before,
+  *::after {
+    max-inline-size: 100% !important;
+    min-inline-size: 0 !important;
+  }
+
+  /* استثناءات للعناصر التي يجب أن تخرج (modals, overlays) */
+  .overlay,
+  .modal,
+  .bottom-nav,
+  .navbar,
+  .toast,
+  #toast,
+  .pwa-install-banner {
+    max-inline-size: 100vw !important;
+  }
+
+  /* html و body */
+  html, body {
+    inline-size: 100% !important;
+    max-inline-size: 100vw !important;
+    overflow-x: clip !important;
+  }
+
+  /* Containers الرئيسية */
+  #appScreen,
+  #loginScreen,
+  .main-wrap,
+  main,
+  .main,
+  .container,
+  .wrap,
+  .wrapper {
+    inline-size: 100% !important;
+    max-inline-size: 100vw !important;
+    overflow-x: clip !important;
+    box-sizing: border-box !important;
+  }
+
+  /* الأقسام */
+  section,
+  article,
+  aside,
+  .card,
+  .stat-card,
+  .store-card,
+  .plan-card,
+  .form-grid,
+  .stats-grid,
+  .modal-body,
+  .modal-header,
+  .modal-footer,
+  .login-card,
+  .alert-banner,
+  .page-header,
+  .bank-card,
+  .empty-state {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* صور لا تخرج */
+  img, svg, video, picture, iframe, embed, object {
+    max-inline-size: 100% !important;
+    block-size: auto;
+    box-sizing: border-box !important;
+  }
+
+  /* جداول — تكون scrollable داخل wrapper */
+  table {
+    inline-size: 100% !important;
+    max-inline-size: 100% !important;
+    table-layout: auto !important;
+  }
+
+  /* عناصر النص تأتي مع word-break */
+  h1, h2, h3, h4, h5, h6,
+  p, span, div, a, li, td, th, label {
+    overflow-wrap: anywhere !important;
+    word-wrap: break-word !important;
+  }
+
+  /* inputs لا تخرج */
+  input, select, textarea, button {
+    max-inline-size: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* code/pre — scroll داخلي بدل overflow */
+  pre, code {
+    max-inline-size: 100% !important;
+    overflow-x: auto !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  /* أي عنصر بـ display: flex لا يكسر بسبب children */
+  [class*="flex"],
+  [style*="display:flex"],
+  [style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+
+  /* استثناء flex-wrap للـ tabs (horizontal scroll) */
+  .tabs,
+  .bottom-nav-inner,
+  .navbar-right,
+  .sc-meta-item .scm-val,
+  [data-no-wrap="true"] {
+    flex-wrap: nowrap !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   منصة ثواني — Professional Mobile Design System
+   ───────────────────────────────────────────────────────────────────
+   مستوحى من:
+   • Stripe Dashboard Mobile (typography + spacing + soft shadows)
+   • Shopify Admin Mobile (bottom nav + cards)
+   • Linear (spring animations + transitions)
+   • Notion (clean typography hierarchy + emphasis)
+   • Apple Human Interface Guidelines (touch targets, safe area)
+   • Material Design 3 (state layers + elevation)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 Design Tokens (Stripe-grade)
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  /* ─── Colors — Stripe-inspired palette ─── */
+  --pro-brand:        #0a3d2b;
+  --pro-brand-light:  #16a34a;
+  --pro-brand-50:     #f0fdf4;
+  --pro-brand-100:    #dcfce7;
+  --pro-brand-600:    #16a34a;
+  --pro-brand-700:    #15803d;
+  --pro-brand-800:    #166534;
+
+  --pro-gold:         #C9A24B;
+  --pro-gold-light:   #fef3c7;
+
+  /* Neutrals (Stripe gray scale) */
+  --pro-gray-50:      #f9fafb;
+  --pro-gray-100:     #f3f4f6;
+  --pro-gray-200:     #e5e7eb;
+  --pro-gray-300:     #d1d5db;
+  --pro-gray-400:     #9ca3af;
+  --pro-gray-500:     #6b7280;
+  --pro-gray-600:     #4b5563;
+  --pro-gray-700:     #374151;
+  --pro-gray-800:     #1f2937;
+  --pro-gray-900:     #111827;
+
+  /* Semantic */
+  --pro-success:      #10b981;
+  --pro-success-bg:   #d1fae5;
+  --pro-danger:       #ef4444;
+  --pro-danger-bg:    #fee2e2;
+  --pro-warning:      #f59e0b;
+  --pro-warning-bg:   #fef3c7;
+  --pro-info:         #3b82f6;
+  --pro-info-bg:      #dbeafe;
+
+  /* ─── Shadows (Stripe-grade soft) ─── */
+  --shadow-xs:  0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm:  0 1px 3px rgba(16, 24, 40, 0.10), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md:  0 4px 8px -2px rgba(16, 24, 40, 0.10), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg:  0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-xl:  0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03);
+  --shadow-2xl: 0 24px 48px -12px rgba(16, 24, 40, 0.18);
+
+  /* ─── Radii (Apple-inspired) ─── */
+  --radius-xs:  6px;
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-full: 9999px;
+
+  /* ─── Typography Scale (Apple SF Pro inspired) ─── */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Tajawal', 'SF Pro Text',
+               'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Mono', monospace;
+
+  /* Weights */
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold: 600;
+  --fw-bold:    700;
+  --fw-extrabold: 800;
+  --fw-black:   900;
+
+  /* ─── Spring Easings (Linear-inspired) ─── */
+  --ease-out-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-back:      cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart:     cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ─── Durations ─── */
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
+  --duration-slower: 700ms;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎬 Spring Animations Library
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes spring-up {
+  0%   { transform: translateY(100%); opacity: 0; }
+  60%  { transform: translateY(-8px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes spring-in {
+  0%   { transform: scale(0.92); opacity: 0; }
+  60%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   📱 PROFESSIONAL MOBILE STYLES (max-width: 768px)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ─── Body + Font Refinement ──────────────────────────────────── */
+  body {
+    font-family: var(--font-sans) !important;
+    font-feature-settings: 'cv01', 'cv02', 'cv03', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--pro-gray-50) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.011em; /* Apple-style tightening */
+  }
+
+  /* Better focus rings (a11y) */
+  *:focus-visible {
+    outline: 2.5px solid var(--pro-brand-light) !important;
+    outline-offset: 2px !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  /* ─── Typography Hierarchy (Notion-inspired) ──────────────────── */
+  h1 {
+    font-size: 1.75rem !important;
+    font-weight: var(--fw-extrabold) !important;
+    letter-spacing: -0.022em !important;
+    line-height: 1.15 !important;
+    color: var(--pro-gray-900) !important;
+  }
+
+  h2 {
+    font-size: 1.375rem !important;
+    font-weight: var(--fw-extrabold) !important;
+    letter-spacing: -0.019em !important;
+    line-height: 1.2 !important;
+  }
+
+  h3 {
+    font-size: 1.125rem !important;
+    font-weight: var(--fw-bold) !important;
+    letter-spacing: -0.014em !important;
+    line-height: 1.3 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎯 Navbar (Shopify Admin style)
+     ═══════════════════════════════════════════════════════════════ */
+  .navbar {
+    position: sticky !important;
+    inset-block-start: 0 !important;
+    z-index: 50 !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
+    backdrop-filter: saturate(180%) blur(20px) !important;
+    border-block-end: 1px solid var(--pro-gray-200) !important;
+    padding: 12px 16px !important;
+    padding-block-start: max(12px, env(safe-area-inset-top, 0px)) !important;
+    min-block-size: 56px !important;
+    color: var(--pro-gray-900) !important;
+  }
+
+  .navbar-brand {
+    color: var(--pro-gray-900) !important;
+  }
+
+  .navbar-brand img {
+    filter: none !important;
+    block-size: 28px !important;
+  }
+
+  .navbar-brand span {
+    color: var(--pro-gray-900) !important;
+    font-size: 16px !important;
+    font-weight: var(--fw-bold) !important;
+    letter-spacing: -0.014em !important;
+  }
+
+  /* Navbar buttons — pill style (Stripe-like) */
+  .navbar-right > button,
+  .navbar-right > .logout-btn {
+    background: var(--pro-gray-100) !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    color: var(--pro-gray-700) !important;
+    border-radius: var(--radius-full) !important;
+    box-shadow: var(--shadow-xs);
+    transition: all var(--duration-fast) var(--ease-out-quart);
+  }
+  .navbar-right > button:active,
+  .navbar-right > .logout-btn:active {
+    background: var(--pro-gray-200) !important;
+    transform: scale(0.95) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📑 Tabs (Linear/Stripe segmented control style)
+     ═══════════════════════════════════════════════════════════════ */
+  .tabs {
+    background: rgba(255, 255, 255, 0.85) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
+    backdrop-filter: saturate(180%) blur(20px) !important;
+    border-block-end: 1px solid var(--pro-gray-200) !important;
+    padding-block: 4px !important;
+    inset-block-start: 56px !important;
+  }
+
+  .tab {
+    color: var(--pro-gray-500) !important;
+    font-weight: var(--fw-semibold) !important;
+    font-size: 14px !important;
+    padding: 10px 16px !important;
+    margin: 0 2px !important;
+    border-radius: var(--radius-md) !important;
+    border: 0 !important;
+    background: transparent !important;
+    transition: all var(--duration-fast) var(--ease-out-quart);
+    letter-spacing: -0.006em;
+    min-block-size: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .tab:active {
+    background: var(--pro-gray-100) !important;
+    transform: scale(0.97);
+  }
+
+  .tab.active {
+    color: var(--pro-brand-700) !important;
+    background: var(--pro-brand-100) !important;
+    border-block-end: 0 !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pro-brand-700) 15%, transparent) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📊 Stat Cards (Stripe Dashboard style)
+     ═══════════════════════════════════════════════════════════════ */
+  .stats-grid {
+    gap: 12px !important;
+    margin-block-end: 20px !important;
+  }
+
+  .stat-card {
+    background: #fff !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-xs) !important;
+    transition: all var(--duration-normal) var(--ease-out-quart);
+    /* Border-inline-end accent بدلاً من border-right الصلب */
+    position: relative !important;
+    overflow: hidden;
+    border-inline-end: 0 !important;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    inline-size: 4px;
+    block-size: 100%;
+    background: var(--pro-gold);
+    border-start-end-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
+  }
+
+  .stat-card.green::before  { background: var(--pro-brand-600); }
+  .stat-card.danger::before { background: var(--pro-danger); }
+  .stat-card.warn::before   { background: var(--pro-warning); }
+
+  .stat-card:active {
+    transform: scale(0.985);
+    box-shadow: var(--shadow-md) !important;
+  }
+
+  .stat-label {
+    color: var(--pro-gray-500) !important;
+    font-size: 12px !important;
+    font-weight: var(--fw-semibold) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-block-end: 6px !important;
+  }
+
+  .stat-value {
+    color: var(--pro-gray-900) !important;
+    font-size: 26px !important;
+    font-weight: var(--fw-extrabold) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.024em;
+    /* tabular numbers — مهم للأرقام */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .stat-sub {
+    color: var(--pro-gray-500) !important;
+    font-size: 11.5px !important;
+    margin-block-start: 6px !important;
+    font-weight: var(--fw-medium);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📦 Cards (Linear-inspired)
+     ═══════════════════════════════════════════════════════════════ */
+  .card {
+    background: #fff !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-xs) !important;
+    margin-block-end: 14px !important;
+  }
+
+  .card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-block-end: 14px !important;
+    padding-block-end: 12px !important;
+    border-block-end: 1px solid var(--pro-gray-100) !important;
+  }
+
+  .card-title {
+    font-size: 16px !important;
+    font-weight: var(--fw-bold) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.014em;
+    margin: 0 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🏪 Store Cards (Stripe Customer cards style)
+     ═══════════════════════════════════════════════════════════════ */
+  .store-card {
+    background: #fff !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 16px !important;
+    box-shadow: var(--shadow-xs) !important;
+    transition: all var(--duration-fast) var(--ease-out-quart);
+    margin-block-end: 12px !important;
+    border-inline-end: 0 !important;
+    position: relative !important;
+    overflow: hidden;
+  }
+
+  .store-card::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    inline-size: 3px;
+    block-size: 100%;
+    background: var(--pro-brand-600);
+  }
+
+  .store-card:active {
+    transform: scale(0.99);
+    box-shadow: var(--shadow-md) !important;
+  }
+
+  .store-card-info .sn {
+    font-size: 15.5px !important;
+    font-weight: var(--fw-bold) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.014em;
+    margin-block-end: 4px !important;
+  }
+
+  .store-card-info .so {
+    font-size: 13px !important;
+    color: var(--pro-gray-500) !important;
+    font-weight: var(--fw-medium);
+  }
+
+  .store-card-info .so a {
+    color: var(--pro-brand-700) !important;
+    text-decoration: none;
+    font-weight: var(--fw-semibold) !important;
+  }
+
+  /* Metadata items inside store card */
+  .sc-meta-item {
+    background: var(--pro-gray-50) !important;
+    border: 1px solid var(--pro-gray-100) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 12px !important;
+  }
+
+  .sc-meta-item .scm-lbl {
+    color: var(--pro-gray-500) !important;
+    font-size: 10.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-block-end: 4px !important;
+  }
+
+  .sc-meta-item .scm-val {
+    color: var(--pro-gray-900) !important;
+    font-size: 14px !important;
+    font-weight: var(--fw-bold) !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Action buttons inside store card */
+  .sc-btn {
+    background: var(--pro-gray-100) !important;
+    color: var(--pro-gray-700) !important;
+    border: 1px solid transparent !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 8px !important;
+    font-size: 12.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    min-block-size: 40px !important;
+    transition: all var(--duration-fast) var(--ease-out-quart);
+  }
+  .sc-btn:active {
+    background: var(--pro-gray-200) !important;
+    transform: scale(0.96);
+  }
+  .sc-btn.primary {
+    background: var(--pro-brand-100) !important;
+    color: var(--pro-brand-800) !important;
+  }
+  .sc-btn.primary:active {
+    background: color-mix(in srgb, var(--pro-brand-100) 70%, var(--pro-brand-light)) !important;
+  }
+  .sc-btn.danger {
+    background: var(--pro-danger-bg) !important;
+    color: var(--pro-danger) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎛 Plan Select Inline (Shopify-style)
+     ═══════════════════════════════════════════════════════════════ */
+  .plan-select-inline {
+    background: var(--pro-gray-50) !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    font-weight: var(--fw-semibold) !important;
+    color: var(--pro-gray-900) !important;
+    /* Custom arrow */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-position: left 12px center !important;
+    background-repeat: no-repeat !important;
+    padding-inline-start: 36px !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🔘 Buttons (Stripe-grade)
+     ═══════════════════════════════════════════════════════════════ */
+  .btn {
+    min-block-size: 44px !important;
+    padding: 11px 18px !important;
+    font-size: 14.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    letter-spacing: -0.006em !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    transition: all var(--duration-fast) var(--ease-out-quart) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    font-family: var(--font-sans) !important;
+  }
+
+  .btn:active { transform: scale(0.97) !important; }
+
+  /* Primary — gradient + shadow */
+  .btn-primary,
+  .btn.primary,
+  .login-submit {
+    background: linear-gradient(180deg,
+      var(--pro-brand-light) 0%,
+      var(--pro-brand-700) 100%) !important;
+    color: #fff !important;
+    box-shadow:
+      var(--shadow-sm),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+  .btn-primary:active,
+  .btn.primary:active,
+  .login-submit:active {
+    box-shadow: var(--shadow-xs) !important;
+    filter: brightness(0.95);
+  }
+
+  /* Secondary */
+  .btn-secondary,
+  .btn.secondary {
+    background: #fff !important;
+    border-color: var(--pro-gray-300) !important;
+    color: var(--pro-gray-700) !important;
+    box-shadow: var(--shadow-xs) !important;
+  }
+
+  /* Ghost */
+  .btn-ghost,
+  .btn.ghost {
+    background: transparent !important;
+    color: var(--pro-gray-600) !important;
+  }
+
+  /* Danger */
+  .btn-danger,
+  .btn.danger {
+    background: var(--pro-danger) !important;
+    color: #fff !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  /* Small */
+  .btn-sm {
+    min-block-size: 36px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  /* Icon button */
+  .btn-icon {
+    min-inline-size: 40px !important;
+    min-block-size: 40px !important;
+    padding: 0 !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📝 Forms (Stripe Checkout style)
+     ═══════════════════════════════════════════════════════════════ */
+  .field label {
+    display: block !important;
+    font-size: 13.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    color: var(--pro-gray-700) !important;
+    margin-block-end: 6px !important;
+    letter-spacing: -0.006em;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    inline-size: 100% !important;
+    padding: 12px 14px !important;
+    font-size: 16px !important;
+    font-weight: var(--fw-medium) !important;
+    color: var(--pro-gray-900) !important;
+    background: #fff !important;
+    border: 1px solid var(--pro-gray-300) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-xs) !important;
+    transition: all var(--duration-fast) var(--ease-out-quart) !important;
+    font-family: var(--font-sans) !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: var(--pro-gray-400) !important;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    outline: none !important;
+    border-color: var(--pro-brand-light) !important;
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--pro-brand-light) 20%, transparent),
+      var(--shadow-sm) !important;
+  }
+
+  .field .hint {
+    color: var(--pro-gray-500) !important;
+    font-size: 12px !important;
+    margin-block-start: 6px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🔐 Login Card (Stripe Onboarding inspired)
+     ═══════════════════════════════════════════════════════════════ */
+  #loginScreen {
+    background: linear-gradient(165deg,
+      var(--pro-brand) 0%,
+      #061f15 50%,
+      #061f15 100%) !important;
+    /* Subtle pattern overlay */
+    background-image:
+      linear-gradient(165deg, var(--pro-brand) 0%, #061f15 50%, #061f15 100%),
+      radial-gradient(circle at 20% 30%, rgba(22, 163, 74, 0.15), transparent 50%) !important;
+  }
+
+  .login-card {
+    background: #fff !important;
+    border-radius: 28px 28px 0 0 !important;
+    padding: 36px 24px calc(36px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow:
+      0 -1px 0 var(--pro-gray-200),
+      0 -20px 80px rgba(0, 0, 0, 0.35) !important;
+    animation: spring-up var(--duration-slower) var(--ease-out-spring) !important;
+  }
+
+  .login-logo {
+    text-align: center !important;
+    margin-block-end: 32px !important;
+  }
+
+  .login-logo img {
+    block-size: 56px !important;
+    inline-size: auto !important;
+    max-inline-size: 70% !important;
+    margin-inline: auto !important;
+    object-fit: contain !important;
+    margin-block-end: 14px !important;
+  }
+
+  .login-logo .sub {
+    color: var(--pro-gray-500) !important;
+    font-size: 14px !important;
+    font-weight: var(--fw-medium) !important;
+    letter-spacing: -0.006em;
+  }
+
+  .login-field {
+    margin-block-end: 14px !important;
+  }
+
+  .login-field input {
+    inline-size: 100% !important;
+    padding: 14px 16px !important;
+    font-size: 16px !important;
+    font-weight: var(--fw-medium) !important;
+    border: 1.5px solid var(--pro-gray-300) !important;
+    border-radius: var(--radius-md) !important;
+    background: #fff !important;
+    box-shadow: var(--shadow-xs) !important;
+    transition: all var(--duration-fast) var(--ease-out-quart) !important;
+  }
+
+  .login-field input:focus {
+    outline: none !important;
+    border-color: var(--pro-brand-light) !important;
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--pro-brand-light) 20%, transparent),
+      var(--shadow-sm) !important;
+  }
+
+  .login-submit {
+    inline-size: 100% !important;
+    padding: 14px !important;
+    font-size: 16px !important;
+    font-weight: var(--fw-bold) !important;
+    letter-spacing: -0.006em !important;
+    border-radius: var(--radius-md) !important;
+    margin-block-start: 16px !important;
+    min-block-size: 50px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🪟 Modal (Apple iOS sheet style)
+     ═══════════════════════════════════════════════════════════════ */
+  .overlay {
+    background: rgba(0, 0, 0, 0.45) !important;
+    -webkit-backdrop-filter: blur(4px) saturate(180%) !important;
+    backdrop-filter: blur(4px) saturate(180%) !important;
+    animation: fade-in var(--duration-normal) var(--ease-out-quart) !important;
+  }
+
+  .modal {
+    background: var(--pro-gray-50) !important;
+    border-radius: 24px 24px 0 0 !important;
+    box-shadow: var(--shadow-2xl) !important;
+    animation: spring-up var(--duration-slow) var(--ease-out-spring) !important;
+  }
+
+  /* Drag handle (Apple style) */
+  .modal::before {
+    inline-size: 36px !important;
+    block-size: 5px !important;
+    background: var(--pro-gray-300) !important;
+    border-radius: var(--radius-full) !important;
+    margin-block-start: 8px !important;
+  }
+
+  .modal-header {
+    padding: 4px 20px 12px !important;
+  }
+
+  .modal-header h2 {
+    font-size: 19px !important;
+    font-weight: var(--fw-extrabold) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.019em !important;
+    margin: 0 !important;
+  }
+
+  .modal-body {
+    padding: 16px 20px !important;
+    background: #fff !important;
+  }
+
+  .modal-footer {
+    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    background: #fff !important;
+    border-block-start: 1px solid var(--pro-gray-200) !important;
+    gap: 10px !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎨 Bottom Nav (iOS native style)
+     ═══════════════════════════════════════════════════════════════ */
+  .bottom-nav {
+    background: rgba(255, 255, 255, 0.92) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+    backdrop-filter: saturate(180%) blur(24px) !important;
+    border-block-start: 1px solid var(--pro-gray-200) !important;
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.02) !important;
+  }
+
+  .bnav-item {
+    color: var(--pro-gray-400) !important;
+    font-size: 10.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    gap: 2px !important;
+    padding-block: 8px !important;
+    transition: color var(--duration-fast) var(--ease-out-quart) !important;
+    background: transparent !important;
+    position: relative;
+  }
+
+  .bnav-item .bicon {
+    font-size: 22px !important;
+    transition: transform var(--duration-fast) var(--ease-out-spring);
+  }
+
+  .bnav-item:active .bicon {
+    transform: scale(0.88);
+  }
+
+  .bnav-item.active {
+    color: var(--pro-brand-700) !important;
+    background: transparent !important;
+  }
+
+  .bnav-item.active .bicon {
+    animation: spring-in var(--duration-normal) var(--ease-out-spring);
+  }
+
+  /* Active indicator pill */
+  .bnav-item.active::after {
+    content: '';
+    position: absolute;
+    inset-block-end: 4px;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    inline-size: 24px;
+    block-size: 3px;
+    background: var(--pro-brand-700);
+    border-radius: var(--radius-full);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🌟 Badges (Stripe pill badges)
+     ═══════════════════════════════════════════════════════════════ */
+  .wa-badge,
+  .badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 4px 10px !important;
+    border-radius: var(--radius-full) !important;
+    font-size: 11.5px !important;
+    font-weight: var(--fw-bold) !important;
+    letter-spacing: -0.006em !important;
+    text-transform: none !important;
+  }
+
+  .wa-badge.connected {
+    background: var(--pro-success-bg) !important;
+    color: #047857 !important;
+  }
+  .wa-badge.disconnected {
+    background: var(--pro-danger-bg) !important;
+    color: #b91c1c !important;
+  }
+  .wa-badge.pairing,
+  .wa-badge.reconnecting {
+    background: var(--pro-warning-bg) !important;
+    color: #92400e !important;
+  }
+
+  /* Live dot indicator (Linear-style) */
+  .wa-badge.connected::before {
+    content: '';
+    inline-size: 6px;
+    block-size: 6px;
+    border-radius: 50%;
+    background: var(--pro-success);
+    box-shadow: 0 0 0 0 var(--pro-success);
+    animation: pulse-ring 1.5s ease-out infinite;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎯 Plans Cards (Stripe Pricing style)
+     ═══════════════════════════════════════════════════════════════ */
+  .plan-card {
+    background: #fff !important;
+    border: 1px solid var(--pro-gray-200) !important;
+    border-radius: var(--radius-xl) !important;
+    padding: 20px !important;
+    box-shadow: var(--shadow-xs) !important;
+    margin-block-end: 14px !important;
+    overflow: hidden;
+  }
+
+  .plan-card.featured,
+  .plan-card.recommended {
+    border-color: var(--pro-brand-light) !important;
+    box-shadow:
+      0 0 0 1px var(--pro-brand-light),
+      var(--shadow-md) !important;
+    position: relative;
+  }
+
+  .plan-card.featured::before {
+    content: 'الأكثر شعبية';
+    position: absolute;
+    inset-block-start: -1px;
+    inset-inline-end: 16px;
+    background: var(--pro-brand-light);
+    color: #fff;
+    padding: 4px 12px;
+    font-size: 10.5px;
+    font-weight: var(--fw-bold);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    letter-spacing: 0.02em;
+  }
+
+  .plan-name {
+    font-size: 17px !important;
+    font-weight: var(--fw-extrabold) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.014em !important;
+  }
+
+  .plan-emoji {
+    font-size: 32px !important;
+  }
+
+  .plan-price-input {
+    font-size: 30px !important;
+    font-weight: var(--fw-extrabold) !important;
+    font-variant-numeric: tabular-nums !important;
+    color: var(--pro-brand-700) !important;
+  }
+
+  .plan-features {
+    padding: 14px 0 0 !important;
+  }
+
+  .plan-features li {
+    padding: 8px 0 !important;
+    font-size: 13.5px !important;
+    color: var(--pro-gray-700) !important;
+    line-height: 1.5 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🏦 Bank Card (Apple Wallet style)
+     ═══════════════════════════════════════════════════════════════ */
+  .bank-card {
+    background: linear-gradient(135deg,
+      var(--pro-brand) 0%,
+      var(--pro-brand-700) 100%) !important;
+    color: #fff !important;
+    border-radius: var(--radius-xl) !important;
+    padding: 24px !important;
+    box-shadow: var(--shadow-lg) !important;
+    border: 0 !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bank-card::before {
+    content: '';
+    position: absolute;
+    inset-block-start: -50%;
+    inset-inline-end: -20%;
+    inline-size: 200px;
+    block-size: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%);
+    border-radius: 50%;
+  }
+
+  .bank-card-label {
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: var(--fw-semibold);
+    margin-block-end: 18px !important;
+  }
+
+  .bank-card-iban {
+    font-family: var(--font-mono) !important;
+    font-size: 14px !important;
+    letter-spacing: 1.5px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    padding: 12px 14px !important;
+    border-radius: var(--radius-md) !important;
+    margin-block-start: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎁 Empty States (Stripe-grade)
+     ═══════════════════════════════════════════════════════════════ */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+  }
+
+  .empty-state-emoji {
+    font-size: 48px;
+    margin-block-end: 14px;
+    opacity: 0.6;
+  }
+
+  .empty-state-title {
+    font-size: 17px;
+    font-weight: var(--fw-bold);
+    color: var(--pro-gray-700);
+    margin-block-end: 6px;
+  }
+
+  .empty-state-desc {
+    font-size: 13.5px;
+    color: var(--pro-gray-500);
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     ✨ Skeleton Loaders (Stripe shimmer)
+     ═══════════════════════════════════════════════════════════════ */
+  .skeleton {
+    background: linear-gradient(90deg,
+      var(--pro-gray-100) 0%,
+      var(--pro-gray-200) 50%,
+      var(--pro-gray-100) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+    border-radius: var(--radius-md);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📊 Tables (Linear style)
+     ═══════════════════════════════════════════════════════════════ */
+  table {
+    inline-size: 100% !important;
+    font-size: 13.5px !important;
+  }
+
+  th {
+    color: var(--pro-gray-500) !important;
+    font-weight: var(--fw-semibold) !important;
+    font-size: 11.5px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 10px 12px !important;
+    background: var(--pro-gray-50) !important;
+    border-block-end: 1px solid var(--pro-gray-200) !important;
+    text-align: start !important;
+  }
+
+  td {
+    padding: 12px !important;
+    color: var(--pro-gray-700) !important;
+    border-block-end: 1px solid var(--pro-gray-100) !important;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:last-child td {
+    border-block-end: 0 !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎨 Toast (Linear-style success toast)
+     ═══════════════════════════════════════════════════════════════ */
+  .toast,
+  #toast {
+    background: var(--pro-gray-900) !important;
+    color: #fff !important;
+    border-radius: var(--radius-full) !important;
+    padding: 12px 22px !important;
+    font-size: 13.5px !important;
+    font-weight: var(--fw-semibold) !important;
+    box-shadow: var(--shadow-2xl) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    inset-block-end: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📱 Section spacing & padding
+     ═══════════════════════════════════════════════════════════════ */
+  #dashView,
+  #storesView,
+  #plansView,
+  #bankView,
+  #welcomeView,
+  #guideView,
+  #leadsView,
+  #pendingView,
+  #platformBotView {
+    padding: 16px !important;
+  }
+
+  /* Page header — bigger title, more breathing room */
+  .page-header {
+    background: transparent !important;
+    border-block-end: 0 !important;
+    margin-block-end: 18px !important;
+    padding: 4px 0 !important;
+    position: relative !important;
+    inset: auto !important;
+  }
+
+  .page-header h1 {
+    font-size: 24px !important;
+    font-weight: var(--fw-extrabold) !important;
+    color: var(--pro-gray-900) !important;
+    letter-spacing: -0.024em !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🔮 Glass effects للـ modals تحتية
+     ═══════════════════════════════════════════════════════════════ */
+  .alert-banner {
+    background: linear-gradient(135deg,
+      var(--pro-warning-bg),
+      color-mix(in srgb, var(--pro-warning-bg) 70%, white)) !important;
+    border: 1px solid color-mix(in srgb, var(--pro-warning) 30%, transparent) !important;
+    color: #92400e !important;
+    border-radius: var(--radius-lg) !important;
+    padding: 12px 16px !important;
+    font-size: 13.5px !important;
+    font-weight: var(--fw-semibold) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     📱 Store Admin specific polish
+     ═══════════════════════════════════════════════════════════════ */
+  .navbar {
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+  .navbar-brand img {
+    filter: none !important; /* logo بألوانه الأصلية */
+  }
+  .navbar-brand span {
+    color: var(--pro-gray-900) !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     🎬 Click ripple effect (Material-style بدون JS)
+     ═══════════════════════════════════════════════════════════════ */
+  .btn,
+  .tab,
+  .sc-btn,
+  .bnav-item,
+  .nav-item {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🌈 Small screens refinements (< 380px)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 379px) {
+  .stat-value { font-size: 22px !important; }
+  .page-header h1 { font-size: 20px !important; }
+  .login-logo img { block-size: 48px !important; }
+  .modal-header h2 { font-size: 17px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 Pro Tablet (500-1023px) — يستفيد من المساحة
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 500px) and (max-width: 1023px) {
+  .stat-card { padding: 20px !important; }
+  .stat-value { font-size: 30px !important; }
+  .card { padding: 20px !important; }
+  .store-card { padding: 20px !important; }
+}

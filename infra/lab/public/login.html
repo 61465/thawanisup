@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دخول التاجر — منصة ثواني</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; width: 100%; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #08120e 0%, #0e1a14 60%, #1b5e20 200%);
+    font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+    color: #f1f5f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .login-card {
+    background: #0e1a14;
+    border: 1px solid rgba(201,162,75,0.28);
+    border-radius: 18px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .brand { text-align: center; margin-bottom: 22px; }
+  .brand-logo { width: 68px; height: 68px; border-radius: 16px; background: linear-gradient(135deg, #c9a24b, #e0b85f); color: #08120e; font-weight: 900; font-size: 30px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; box-shadow: 0 8px 20px rgba(201,162,75,0.3); }
+  .brand-name { font-size: 22px; font-weight: 800; color: #f1f5f4; }
+  .brand-tag { font-size: 12px; color: #e0b85f; margin-top: 4px; }
+  label { display: block; font-size: 12px; font-weight: 700; color: #cfd8d4; margin-bottom: 6px; margin-top: 14px; }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(201,162,75,0.25);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.4);
+    color: #f1f5f4;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  input:focus { outline: none; border-color: #e0b85f; }
+  input[type="tel"] { direction: ltr; text-align: left; }
+  .btn-primary-big {
+    width: 100%;
+    margin-top: 22px;
+    padding: 13px;
+    background: linear-gradient(135deg, #c9a24b, #e0b85f);
+    color: #08120e;
+    border: none;
+    border-radius: 11px;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-primary-big:hover { transform: translateY(-1px); box-shadow: 0 8px 16px rgba(201,162,75,0.3); }
+  .btn-primary-big:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .err {
+    background: rgba(220,38,38,0.15);
+    color: #fca5a5;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+    border: 1px solid rgba(220,38,38,0.3);
+  }
+  .footer-line { text-align: center; margin-top: 20px; font-size: 12px; color: #94a3a0; }
+  .footer-line a { color: #e0b85f; text-decoration: none; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-logo">T</div>
+      <div class="brand-name">منصة ثواني</div>
+      <div class="brand-tag">لوحة تاجر</div>
+    </div>
+
+    <label for="phone">رقم الجوال</label>
+    <input id="phone" type="tel" placeholder="9665XXXXXXXX" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <label for="pass">كلمة المرور</label>
+    <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <button id="btnLogin" class="btn-primary-big" onclick="doLogin()">دخول ←</button>
+    <div id="err" class="err"></div>
+
+    <div id="storePicker" style="display:none;margin-top:14px">
+      <div style="font-weight:700;margin-bottom:8px;text-align:center">🏪 لديك أكثر من متجر — اختر واحداً:</div>
+      <div id="storeList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <div class="footer-line">
+      منصة ثواني — لوحة تحكم التاجر
+    </div>
+  </div>
+
+<script>
+  // إعادة توجيه تلقائية لو الـ token موجود مسبقاً
+  if (localStorage.getItem("store_token")) {
+    location.replace("/store-admin.html");
+  }
+
+  function showErr(msg) {
+    const e = document.getElementById("err");
+    e.textContent = msg || "";
+    e.style.display = msg ? "block" : "none";
+  }
+
+  async function doLogin(chosenStoreId) {
+    const phone = document.getElementById("phone").value.replace(/[\s\+\-\(\)]/g, "");
+    const pass  = document.getElementById("pass").value;
+    if (!phone || !pass) return showErr("أدخل رقم الجوال وكلمة المرور");
+    showErr("");
+    const btn = document.getElementById("btnLogin");
+    btn.disabled = true; btn.textContent = "جاري الدخول...";
+    try {
+      const body = { phone, password: pass };
+      if (chosenStoreId) body.storeId = chosenStoreId;
+      const r = await fetch("/store/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw d;
+
+      // 🏪 لديه أكثر من متجر بنفس الرقم والباسورد — اعرض الاختيار
+      if (d.needsStoreSelection && Array.isArray(d.stores)) {
+        const picker = document.getElementById("storePicker");
+        const list   = document.getElementById("storeList");
+        list.innerHTML = "";
+        d.stores.forEach(s => {
+          const b = document.createElement("button");
+          b.className = "btn-primary-big";
+          b.style.cssText = "background:#fff;color:#333;border:2px solid var(--gold, #c9a24a);text-align:right";
+          b.textContent = `🏪 ${s.storeName || s.storeId}`;
+          b.onclick = () => doLogin(s.storeId);
+          list.appendChild(b);
+        });
+        picker.style.display = "block";
+        return;
+      }
+
+      if (d.token) localStorage.setItem("store_token", d.token);
+      if (d.storeId) localStorage.setItem("store_id", d.storeId);
+      localStorage.setItem("store_phone", phone);
+      // 🎯 تحويل للوحة الكاملة (كل الميزات: settings، adaptive UI، 17 tab)
+      location.href = "/store-admin.html";
+    } catch (e) {
+      showErr((e && e.error) || "رقم الجوال أو كلمة المرور خاطئة ❌");
+    } finally {
+      btn.disabled = false; btn.textContent = "دخول ←";
+    }
+  }
+</script>
+</body>
+</html>

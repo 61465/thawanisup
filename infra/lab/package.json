@@ -1,0 +1,40 @@
+{
+  "name": "whatsapp-cafe-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Commerce Bot — قابل للنسخ لأي متجر محلي عربي",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "simulate": "node test/simulate.js",
+    "test": "node test/security.test.js && node test/flow.test.js",
+    "test:security": "node test/security.test.js",
+    "test:flow": "node test/flow.test.js",
+    "migrate:passwords": "node scripts/migrate-plaintext-passwords.js",
+    "backup": "bash scripts/backup-encrypted.sh",
+    "backup:verify": "bash scripts/restore-drill.sh"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "axios": "^1.7.7",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.2.5",
+    "helmet": "^8.2.0",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4",
+    "stripe": "^22.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

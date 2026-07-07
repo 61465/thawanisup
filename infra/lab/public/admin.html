@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0;url=/store-admin.html">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جاري التحويل...</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+    min-height: 100vh;
+    padding: 24px;
+    color: #1f2937;
+  }
+  .container { max-width: 1280px; margin: 0 auto; }
+  header {
+    background: white;
+    border-radius: 18px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  h1 { font-size: 28px; color: #1b5e20; font-weight: 800; }
+  h1 .emoji { font-size: 32px; margin-left: 8px; }
+  .subtitle { color: #6b7280; font-size: 14px; margin-top: 4px; }
+  .actions { display: flex; gap: 12px; align-items: center; }
+  .refresh-btn {
+    background: #1b5e20;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: #2e7d32; transform: translateY(-1px); }
+  .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-right: 4px solid #C9A24B;
+  }
+  .stat-label { font-size: 13px; color: #6b7280; font-weight: 500; }
+  .stat-value { font-size: 26px; font-weight: 800; color: #1b5e20; margin-top: 6px; }
+
+  .orders-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .order-card {
+    background: white;
+    border-radius: 14px;
+    padding: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .order-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
+  .order-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #fff8e7 0%, #fefcf5 100%);
+    border-bottom: 1px solid #f3e5b5;
+  }
+  .order-id { font-weight: 700; color: #1b5e20; font-size: 17px; }
+  .order-time { font-size: 12px; color: #6b7280; }
+  .order-body { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) {
+    .order-body { grid-template-columns: 1fr; }
+  }
+  .info-block .label { font-size: 12px; color: #9ca3af; font-weight: 500; margin-bottom: 4px; }
+  .info-block .value { font-size: 14px; color: #1f2937; font-weight: 500; }
+  .items-list { margin-top: 12px; }
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px dashed #e5e7eb;
+    font-size: 13px;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .order-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: #fafafa;
+    border-top: 1px solid #e5e7eb;
+  }
+  .total {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1b5e20;
+  }
+  .invoice-btn {
+    background: white;
+    color: #1b5e20;
+    border: 2px solid #1b5e20;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 13px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .invoice-btn:hover { background: #1b5e20; color: white; }
+
+  .empty {
+    background: white;
+    border-radius: 14px;
+    padding: 60px 20px;
+    text-align: center;
+    color: #6b7280;
+  }
+  .empty .icon { font-size: 64px; margin-bottom: 12px; }
+  .empty h3 { color: #1f2937; margin-bottom: 8px; }
+
+  .login-box {
+    max-width: 420px;
+    margin: 80px auto;
+    background: white;
+    padding: 32px;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .login-box h2 { color: #1b5e20; margin-bottom: 20px; text-align: center; }
+  .login-box label { display: block; margin-bottom: 8px; font-size: 14px; color: #4b5563; }
+  .login-box input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+  .login-box input:focus { outline: none; border-color: #1b5e20; }
+  .login-box button {
+    width: 100%;
+    background: #1b5e20;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .error { color: #dc2626; font-size: 13px; margin-bottom: 12px; text-align: center; }
+  .auto-refresh {
+    color: white;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<div id="login" class="login-box" style="display:none">
+  <h2>🌴 لوحة طلبات مقهى النخيل</h2>
+  <div id="loginError" class="error" style="display:none"></div>
+  <label>رمز الدخول (رقم صاحب المتجر)</label>
+  <input id="tokenInput" type="text" placeholder="رقم صاحب المتجر" />
+  <button onclick="login()">دخول</button>
+</div>
+
+<div id="app" class="container" style="display:none">
+  <header>
+    <div>
+      <h1><span class="emoji">🌴</span>لوحة طلبات مقهى النخيل</h1>
+      <div class="subtitle">عرض جميع الطلبات الواردة عبر البوت</div>
+    </div>
+    <div class="actions">
+      <div class="auto-refresh"><span class="pulse"></span>تحديث تلقائي كل 10ث</div>
+      <button class="refresh-btn" id="refreshBtn" onclick="loadOrders()">🔄 تحديث</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+  <div class="orders-grid" id="orders"></div>
+</div>
+
+<script>
+const PUBLIC_URL = window.location.origin;
+let TOKEN = localStorage.getItem("admin_token") || "";
+
+function init() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("token")) {
+    TOKEN = params.get("token");
+    localStorage.setItem("admin_token", TOKEN);
+  }
+  if (TOKEN) {
+    document.getElementById("app").style.display = "";
+    loadOrders();
+    setInterval(loadOrders, 10000);
+  } else {
+    document.getElementById("login").style.display = "";
+  }
+}
+
+function login() {
+  const t = document.getElementById("tokenInput").value.trim();
+  if (!t) return;
+  TOKEN = t;
+  localStorage.setItem("admin_token", TOKEN);
+  // Try fetching to verify
+  fetch(`${PUBLIC_URL}/orders?token=${encodeURIComponent(TOKEN)}&limit=1`)
+    .then(r => {
+      if (r.status === 403) throw new Error("الرمز خاطئ");
+      return r.json();
+    })
+    .then(() => {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("app").style.display = "";
+      loadOrders();
+      setInterval(loadOrders, 10000);
+    })
+    .catch(e => {
+      const el = document.getElementById("loginError");
+      el.textContent = e.message || "خطأ في الدخول";
+      el.style.display = "";
+    });
+}
+
+async function loadOrders() {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${PUBLIC_URL}/orders?token=${encodeURIComponent(TOKEN)}&limit=100`);
+    if (r.status === 403) {
+      localStorage.removeItem("admin_token");
+      location.reload();
+      return;
+    }
+    const data = await r.json();
+    renderStats(data.orders);
+    renderOrders(data.orders);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderStats(orders) {
+  const today = new Date().toISOString().slice(0,10);
+  const todayOrders = orders.filter(o => (o.timestamp||"").slice(0,10) === today);
+  const totalRevenue = orders.reduce((s,o) => s + (o.total || 0), 0);
+  const todayRevenue = todayOrders.reduce((s,o) => s + (o.total || 0), 0);
+
+  document.getElementById("stats").innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">إجمالي الطلبات</div>
+      <div class="stat-value">${orders.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">طلبات اليوم</div>
+      <div class="stat-value">${todayOrders.length}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">إجمالي المبيعات</div>
+      <div class="stat-value">${totalRevenue.toFixed(0)} ر.س</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">مبيعات اليوم</div>
+      <div class="stat-value">${todayRevenue.toFixed(0)} ر.س</div>
+    </div>
+  `;
+}
+
+function renderOrders(orders) {
+  const container = document.getElementById("orders");
+  if (orders.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="icon">📭</div>
+        <h3>لا توجد طلبات بعد</h3>
+        <p>ستظهر الطلبات هنا فور وصولها عبر البوت</p>
+      </div>`;
+    return;
+  }
+  // Newest first
+  orders.sort((a,b) => (b.timestamp||"").localeCompare(a.timestamp||""));
+  container.innerHTML = orders.map(orderCard).join("");
+}
+
+function orderCard(o) {
+  const time = o.timestamp ? new Date(o.timestamp).toLocaleString("ar-EG", {
+    year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"
+  }) : "—";
+  const items = (o.items || []).map(i =>
+    `<div class="item-row"><span>${escapeHtml(i.name)} × ${i.qty}</span><span>${(i.price*i.qty).toFixed(2)} ر.س</span></div>`
+  ).join("");
+  const invoiceUrl = `${PUBLIC_URL}/invoices/${o.orderId}.png`;
+  return `
+    <div class="order-card">
+      <div class="order-head">
+        <div class="order-id">🧾 ${escapeHtml(o.orderId || "—")}</div>
+        <div class="order-time">${time}</div>
+      </div>
+      <div class="order-body">
+        <div>
+          <div class="info-block">
+            <div class="label">👤 العميل</div>
+            <div class="value">${escapeHtml(o.customerName || "—")}</div>
+          </div>
+          <div class="info-block" style="margin-top:12px">
+            <div class="label">📱 رقم الجوال</div>
+            <div class="value">${escapeHtml(o.customerPhone || "—")}</div>
+          </div>
+          <div class="info-block" style="margin-top:12px">
+            <div class="label">📍 العنوان</div>
+            <div class="value">${escapeHtml(o.customerLocation || "—")}</div>
+          </div>
+        </div>
+        <div>
+          <div class="label">🛒 المنتجات</div>
+          <div class="items-list">${items}</div>
+          <div class="item-row" style="margin-top:8px;font-weight:600">
+            <span>رسوم التوصيل</span><span>${(o.deliveryFee||0).toFixed(2)} ر.س</span>
+          </div>
+        </div>
+      </div>
+      <div class="order-foot">
+        <a class="invoice-btn" href="${invoiceUrl}" target="_blank">🖼️ عرض الفاتورة</a>
+        <div class="total">الإجمالي: ${(o.total||0).toFixed(2)} ر.س</div>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  }[c]));
+}
+
+init();
+</script>
+</body>
+</html>

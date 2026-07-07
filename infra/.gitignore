@@ -1,0 +1,5 @@
+# لا ترفع backups أو بيانات اللاب لـ git
+backups/
+lab/data/
+lab/.env
+lab/*.log
