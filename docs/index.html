@@ -1673,7 +1673,7 @@ footer a:hover{opacity:.8}
           <div class="mpv2-compare-head">
             <div class="mpv2-compare-icon">🚀</div>
             <div>
-              <div class="mpv2-compare-name">Baileys</div>
+              <div class="mpv2-compare-name">بوت المنصة</div>
               <div class="mpv2-compare-tagline">الحل الاقتصادي المتين</div>
             </div>
           </div>
@@ -1920,20 +1920,20 @@ footer a:hover{opacity:.8}
             <div class="rp-card" id="rpc-starter" onclick="pickPlan('starter',this)">
               <div class="rp-emoji">🌱</div>
               <div class="rp-name">الأساسية</div>
-              <div class="rp-price"><sup>ر.س</sup>80<sub>/شهر</sub></div>
+              <div class="rp-price"><sup>ر.س</sup>29<sub>/شهر</sub></div>
               <div class="rp-feats">طلبات غير محدودة<br>قائمة + فيديو منتجات<br>لوحة تحكم + إدارة مخزون</div>
             </div>
             <div class="rp-card sel" id="rpc-pro" onclick="pickPlan('pro',this)">
               <div class="rp-badge">⭐ الأكثر طلباً</div>
               <div class="rp-emoji">⭐</div>
               <div class="rp-name">الاحترافية</div>
-              <div class="rp-price"><sup>ر.س</sup>150<sub>/شهر</sub></div>
+              <div class="rp-price"><sup>ر.س</sup>69<sub>/شهر</sub></div>
               <div class="rp-feats">+ محاسب ذكي 💼<br>+ تحليل أسباب الرفض ⚠️<br>+ فواتير صور + بث آمن</div>
             </div>
             <div class="rp-card" id="rpc-premium" onclick="pickPlan('premium',this)">
               <div class="rp-emoji">👑</div>
               <div class="rp-name">المتقدمة</div>
-              <div class="rp-price"><sup>ر.س</sup>250<sub>/شهر</sub></div>
+              <div class="rp-price"><sup>ر.س</sup>129<sub>/شهر</sub></div>
               <div class="rp-feats">+ نقاط ولاء + دفع<br>+ حماية بنكية 🛡️<br>+ نسخ مشفّر + 2FA</div>
             </div>
           </div>
@@ -2248,7 +2248,7 @@ async function submitReg(){
     document.getElementById("regSuccess").scrollIntoView({behavior:"smooth",block:"center"});
   }catch(e){
     alert("حدث خطأ: "+e.message+"\nسيتم تحويلك لواتساب كبديل.");
-    const pn={starter:"🌱 الأساسية — 80 ر.س/شهر",pro:"⭐ الاحترافية — 150 ر.س/شهر",premium:"👑 المتقدمة — 250 ر.س/شهر"};
+    const pn={starter:"🌱 الأساسية — 29 ر.س/شهر",pro:"⭐ الاحترافية — 69 ر.س/شهر",premium:"👑 المتقدمة — 129 ر.س/شهر"};
     const tn={cart:"🛍️ سلة فقط",bot:"🤖 بوت واتساب"};
     const msg=`🤖 طلب اشتراك جديد — منصة ثواني\n\nالاسم: ${regD.name}\nواتساب: ${regD.phone}\nالمتجر: ${regD.store}\nنوع المشروع: ${regD.type}\nالمدينة: ${regD.city||"—"}\nالنظام: ${tn[regD.track]||"—"}\nالباقة: ${pn[regD.plan]}`;
     window.open(`https://wa.me/966508572902?text=${encodeURIComponent(msg)}`,"_blank");
@@ -2258,11 +2258,11 @@ async function submitReg(){
 
 // ══ PLANS ══
 const PLANS={
-  starter:{emoji:"🌱",nameAr:"الأساسية",price:80,featured:false,
+  starter:{emoji:"🌱",nameAr:"الأساسية",price:29,featured:false,
     feats:[{y:true,t:"استقبال طلبات غير محدودة"},{y:true,t:"قائمة منتجات تفاعلية + فيديو"},{y:true,t:"لوحة تحكم كاملة"},{y:true,t:"إشعارات فورية للمالك"},{y:true,t:"تقرير يومي تلقائي"},{y:true,t:"إدارة مخزون أساسية"},{y:true,t:"تحويل لمسؤول بشري"},{y:false,t:"فاتورة صورة للعميل"},{y:false,t:"سجل عملاء وبث رسائل"},{y:false,t:"محاسب ذكي + تحليلات"}]},
-  pro:{emoji:"⭐",nameAr:"الاحترافية",price:150,featured:true,badge:"الأكثر طلباً",
+  pro:{emoji:"⭐",nameAr:"الاحترافية",price:69,featured:true,badge:"الأكثر طلباً",
     feats:[{y:true,t:"كل مميزات الأساسية"},{y:true,t:"فاتورة صورة تُرسل تلقائياً"},{y:true,t:"سجل عملاء VIP كامل"},{y:true,t:"بث رسائل آمن (anti-ban)"},{y:true,t:"كوبونات خصم"},{y:true,t:"محاسب ذكي مدمج 💼"},{y:true,t:"تحليل أسباب الرفض ⚠️"},{y:true,t:"أرشيف شهري + إغلاق السنة"},{y:false,t:"نقاط الولاء والمكافآت"},{y:false,t:"دفع إلكتروني"}]},
-  premium:{emoji:"👑",nameAr:"المتقدمة",price:250,featured:false,
+  premium:{emoji:"👑",nameAr:"المتقدمة",price:129,featured:false,
     feats:[{y:true,t:"كل مميزات الاحترافية"},{y:true,t:"نقاط الولاء والمكافآت 🏆"},{y:true,t:"دفع إلكتروني بالبطاقة"},{y:true,t:"حماية بنكية (2FA + تشفير)"},{y:true,t:"نسخ احتياطي يومي مشفّر"},{y:true,t:"سجل تدقيق كامل"},{y:true,t:"أولوية الدعم الفني 24/7"},{y:true,t:"تحليلات AI متقدمة"}]}
 };
 function renderPlans(data){
