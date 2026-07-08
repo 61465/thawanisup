@@ -32,6 +32,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
+/* Prevent auto-scroll to hash-fragments on initial load unless intentional */
+:target{scroll-margin-top:80px}
 body{font-family:'Tajawal',system-ui,sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow-x:hidden;line-height:1.6}
 a{text-decoration:none;color:inherit}
 img{max-width:100%;display:block}
@@ -1039,9 +1041,9 @@ footer a:hover{opacity:.8}
 
     /* The 3D Box */
     .mpv2-box-scene {
-      perspective: 1200px; height: 200px; position: relative;
+      perspective: 1200px; height: 500px; position: relative;
       display: flex; align-items: center; justify-content: center;
-      margin: 20px auto;
+      margin: 20px auto; max-width: 100%; overflow: visible;
     }
     .mpv2-box {
       width: 180px; height: 180px; position: relative;
@@ -1096,13 +1098,14 @@ footer a:hover{opacity:.8}
       display: flex; align-items: center; justify-content: center;
     }
     .mpv2-feature-card {
-      position: absolute; width: 180px; padding: 16px 14px;
+      position: absolute; width: 130px; padding: 12px 10px;
       background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,255,255,0.9));
       border: 1px solid rgba(201,162,75,0.4);
       border-radius: 14px; text-align: center;
       opacity: 0; transform: scale(0);
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
       backdrop-filter: blur(10px);
+      left: 50%; top: 50%; margin-left: -65px; margin-top: -35px;
     }
     .mpv2-feature-card.show {
       animation: flyOut 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
@@ -1486,7 +1489,17 @@ footer a:hover{opacity:.8}
       .mpv2-boosts-grid { grid-template-columns: 1fr; }
       .mpv2-compare-cards { grid-template-columns: 1fr; }
       #meta-plans { padding: 60px 15px; }
-      .mpv2-feature-showcase { padding: 30px 20px; }
+      .mpv2-feature-showcase { padding: 30px 15px; overflow: hidden; }
+      .mpv2-box-scene { height: 420px; }
+      .mpv2-feature-card { width: 110px; padding: 10px 8px; margin-left: -55px; margin-top: -30px; }
+      .mpv2-feature-card .mpv2-fc-icon { font-size: 22px; }
+      .mpv2-feature-card .mpv2-fc-text { font-size: 11px; }
+    }
+    @media (max-width: 560px) {
+      .mpv2-box-scene { height: 380px; }
+      .mpv2-feature-card { width: 95px; padding: 8px 6px; margin-left: -47px; margin-top: -26px; }
+      .mpv2-feature-card .mpv2-fc-icon { font-size: 20px; margin-bottom: 2px; }
+      .mpv2-feature-card .mpv2-fc-text { font-size: 10px; line-height: 1.3; }
     }
   </style>
 
@@ -1745,10 +1758,36 @@ footer a:hover{opacity:.8}
   </div>
 
   <script>
+    // Adjust feature card positions based on screen size
+    function mpv2AdjustFeaturePositions() {
+      var w = window.innerWidth;
+      var scale = 1;
+      if (w <= 560) scale = 0.42;        // small mobile
+      else if (w <= 900) scale = 0.55;   // tablet
+      else scale = 1;                     // desktop
+
+      var cards = document.querySelectorAll('.mpv2-feature-card');
+      var basePositions = [
+        {tx: -240, ty: -80},  {tx: -240, ty: 80},
+        {tx: -110, ty: -140}, {tx: 0, ty: -180},
+        {tx: 110, ty: -140},  {tx: 240, ty: -80},
+        {tx: 240, ty: 80},    {tx: 110, ty: 140},
+        {tx: 0, ty: 180},     {tx: -110, ty: 140}
+      ];
+      cards.forEach(function(card, i) {
+        var pos = basePositions[i] || {tx: 0, ty: 0};
+        card.style.setProperty('--tx', Math.round(pos.tx * scale) + 'px');
+        card.style.setProperty('--ty', Math.round(pos.ty * scale) + 'px');
+      });
+    }
+    mpv2AdjustFeaturePositions();
+    window.addEventListener('resize', mpv2AdjustFeaturePositions);
+
     function mpv2OpenBox() {
       var box = document.getElementById('mpv2Box');
       var features = document.querySelectorAll('.mpv2-feature-card');
       if (box.classList.contains('opening')) return;
+      mpv2AdjustFeaturePositions();
       box.classList.add('opening');
       features.forEach(function(f) {
         var delay = parseFloat(f.dataset.delay) * 1000 + 500;
@@ -2424,6 +2463,18 @@ document.getElementById("startBtn").onclick=function(){
   demoIdx=0;demoVars={};demoWaitInput=false;
   runBot();
 };
+
+// Ensure page starts at top on load (prevent hash-based auto-scroll from URL params)
+if (window.location.hash === '' || window.location.hash === '#') {
+  window.scrollTo(0, 0);
+}
+// Also intercept unintentional scroll on page load
+window.addEventListener('load', function() {
+  // If no explicit navigation to a section, ensure we start at top
+  if (!window.location.hash) {
+    setTimeout(function() { window.scrollTo({ top: 0, behavior: 'instant' }); }, 50);
+  }
+});
 </script>
 </body>
 </html>
