@@ -950,476 +950,820 @@ footer a:hover{opacity:.8}
 <!-- ════════════════ PRICING ════════════════ -->
 <!-- Meta Plans Section — for docs/index.html — 2026-07-08 -->
 
-<section id="meta-plans" class="meta-plans-section">
+<!-- Meta Plans Section v2 — 3D + Interactive (2026-07-08) -->
+<section id="meta-plans" class="mpv2-section">
   <style>
+    /* ═══════════════════════════════════════════════════════════
+       META PLANS v2 — 3D + INTERACTIVE + ANIMATIONS
+       ═══════════════════════════════════════════════════════════ */
     #meta-plans {
       direction: rtl;
       font-family: 'Tajawal', sans-serif;
-      padding: 80px 20px;
-      background: linear-gradient(180deg, #f4f6f4 0%, #ffffff 100%);
+      padding: 100px 20px;
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(201,162,75,0.08), transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(13,61,26,0.06), transparent 40%),
+        linear-gradient(180deg, #fafcfa 0%, #f4f6f4 100%);
     }
-    #meta-plans .mp-container { max-width: 1200px; margin: 0 auto; }
 
-    /* ─── Section Header ─── */
-    #meta-plans .mp-badge {
-      display: inline-block; background: linear-gradient(135deg, #C9A24B, #b78e3d);
+    /* Floating background shapes */
+    #meta-plans::before,
+    #meta-plans::after {
+      content: ''; position: absolute; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,162,75,0.15), transparent 70%);
+      pointer-events: none; animation: floatBg 20s ease-in-out infinite;
+    }
+    #meta-plans::before { width: 400px; height: 400px; top: -100px; right: -100px; }
+    #meta-plans::after { width: 500px; height: 500px; bottom: -150px; left: -150px; animation-delay: -10s; }
+    @keyframes floatBg {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(30px, -30px); }
+    }
+
+    .mpv2-container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ─── Section Header with animated badge ─── */
+    .mpv2-header { text-align: center; margin-bottom: 40px; }
+    .mpv2-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #C9A24B, #b78e3d);
+      color: #0d3d1a; padding: 8px 20px; border-radius: 999px;
+      font-size: 13px; font-weight: 900; margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(201, 162, 75, 0.35);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 10px 30px rgba(201,162,75,0.35); }
+      50% { transform: scale(1.05); box-shadow: 0 14px 40px rgba(201,162,75,0.55); }
+    }
+    .mpv2-title {
+      font-size: clamp(32px, 5.5vw, 52px);
+      font-weight: 900;
+      background: linear-gradient(135deg, #0d3d1a 0%, #1a5d2e 50%, #C9A24B 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 14px; line-height: 1.15;
+    }
+    .mpv2-subtitle {
+      font-size: clamp(16px, 2.3vw, 19px); color: #4b5563;
+      max-width: 700px; margin: 0 auto; line-height: 1.7;
+    }
+
+    /* ─── Interactive Feature Box (click to open animation) ─── */
+    .mpv2-feature-showcase {
+      background: linear-gradient(135deg, #0d3d1a 0%, #1a5d2e 100%);
+      border-radius: 32px; padding: 50px 40px;
+      margin: 60px auto; max-width: 900px;
+      position: relative; overflow: hidden;
+      box-shadow:
+        0 30px 80px rgba(13, 61, 26, 0.35),
+        inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    .mpv2-feature-showcase::before {
+      content: ''; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='10' height='10' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23ffffff' opacity='0.08'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23p)'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .mpv2-showcase-title {
+      color: #C9A24B; font-size: 15px; font-weight: 700;
+      letter-spacing: 2px; text-align: center; margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .mpv2-showcase-headline {
+      color: #fff; font-size: clamp(22px, 3.5vw, 30px);
+      font-weight: 900; text-align: center; margin: 0 0 30px;
+      line-height: 1.4;
+    }
+
+    /* The 3D Box */
+    .mpv2-box-scene {
+      perspective: 1200px; height: 200px; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      margin: 20px auto;
+    }
+    .mpv2-box {
+      width: 180px; height: 180px; position: relative;
+      transform-style: preserve-3d;
+      cursor: pointer;
+      transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      animation: idleFloat 3s ease-in-out infinite;
+    }
+    @keyframes idleFloat {
+      0%, 100% { transform: translateY(0) rotateY(0); }
+      50% { transform: translateY(-8px) rotateY(15deg); }
+    }
+    .mpv2-box:hover { animation: none; transform: rotateY(25deg) rotateX(-10deg); }
+    .mpv2-box.opening {
+      animation: openBox 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes openBox {
+      0% { transform: rotateY(0) scale(1); }
+      50% { transform: rotateY(360deg) scale(1.2); }
+      100% { transform: rotateY(720deg) scale(0.3); opacity: 0; }
+    }
+
+    .mpv2-box-face {
+      position: absolute; width: 180px; height: 180px;
+      background: linear-gradient(135deg, #C9A24B, #b78e3d);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 70px; font-weight: 900; color: #0d3d1a;
+      box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        inset 0 2px 0 rgba(255,255,255,0.3),
+        inset 0 -2px 20px rgba(0,0,0,0.15);
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    .mpv2-box-face.front { transform: translateZ(90px); }
+    .mpv2-box-face.back { transform: rotateY(180deg) translateZ(90px); }
+    .mpv2-box-face.right { transform: rotateY(90deg) translateZ(90px); }
+    .mpv2-box-face.left { transform: rotateY(-90deg) translateZ(90px); }
+    .mpv2-box-face.top { transform: rotateX(90deg) translateZ(90px); }
+    .mpv2-box-face.bottom { transform: rotateX(-90deg) translateZ(90px); }
+
+    .mpv2-box-label {
+      position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%);
+      color: #fff; font-size: 14px; font-weight: 700; white-space: nowrap;
+      background: rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 999px;
+      backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    /* Feature cards that fly out */
+    .mpv2-features-explosion {
+      position: absolute; inset: 0; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mpv2-feature-card {
+      position: absolute; width: 180px; padding: 16px 14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,255,255,0.9));
+      border: 1px solid rgba(201,162,75,0.4);
+      border-radius: 14px; text-align: center;
+      opacity: 0; transform: scale(0);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      backdrop-filter: blur(10px);
+    }
+    .mpv2-feature-card.show {
+      animation: flyOut 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes flyOut {
+      0% { opacity: 0; transform: scale(0) translate(0, 0); }
+      100% { opacity: 1; transform: scale(1) translate(var(--tx, 0), var(--ty, 0)); }
+    }
+    .mpv2-feature-card .mpv2-fc-icon { font-size: 26px; margin-bottom: 4px; }
+    .mpv2-feature-card .mpv2-fc-text { font-size: 12.5px; font-weight: 800; color: #0d3d1a; line-height: 1.4; }
+
+    .mpv2-cta-open {
+      display: block; margin: 40px auto 0;
+      background: linear-gradient(135deg, #C9A24B, #e0b85f);
+      color: #0d3d1a; border: none;
+      padding: 14px 32px; border-radius: 12px;
+      font-weight: 900; font-size: 15px; cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 6px 20px rgba(201,162,75,0.4);
+      transition: transform 0.15s;
+    }
+    .mpv2-cta-open:hover { transform: translateY(-2px) scale(1.03); }
+
+    /* ─── Plans Grid — 3D cards ─── */
+    .mpv2-plans-wrapper {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+      max-width: 1100px; margin: 80px auto 60px;
+      perspective: 1500px;
+    }
+    .mpv2-plan {
+      position: relative; background: #fff;
+      border-radius: 24px; padding: 36px 28px;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s;
+      box-shadow:
+        0 4px 20px rgba(13, 61, 26, 0.06),
+        0 20px 40px rgba(13, 61, 26, 0.04);
+      border: 1px solid rgba(13, 61, 26, 0.08);
+    }
+    .mpv2-plan:hover {
+      transform: translateY(-12px) rotateX(4deg);
+      box-shadow:
+        0 20px 40px rgba(13, 61, 26, 0.15),
+        0 30px 60px rgba(13, 61, 26, 0.1);
+    }
+    .mpv2-plan.featured {
+      background: linear-gradient(180deg, #ffffff 0%, #fff9ec 100%);
+      border: 2px solid #C9A24B;
+      transform: scale(1.05);
+      box-shadow: 0 20px 60px rgba(201, 162, 75, 0.25);
+    }
+    .mpv2-plan.featured:hover { transform: scale(1.05) translateY(-12px) rotateX(4deg); }
+
+    .mpv2-plan-badge {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      background: linear-gradient(135deg, #C9A24B, #b78e3d);
       color: #0d3d1a; padding: 6px 18px; border-radius: 999px;
-      font-size: 13px; font-weight: 900; margin-bottom: 16px;
-      box-shadow: 0 3px 12px rgba(201, 162, 75, 0.3);
+      font-size: 12.5px; font-weight: 900; white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(201,162,75,0.4);
+      animation: badgeGlow 2s ease-in-out infinite;
     }
-    #meta-plans .mp-title {
-      font-size: clamp(28px, 5vw, 44px); font-weight: 900; color: #0d3d1a;
-      text-align: center; margin: 0 0 12px; line-height: 1.2;
+    @keyframes badgeGlow {
+      0%, 100% { box-shadow: 0 6px 16px rgba(201,162,75,0.4); }
+      50% { box-shadow: 0 10px 24px rgba(201,162,75,0.7); }
     }
-    #meta-plans .mp-subtitle {
-      font-size: clamp(15px, 2.2vw, 18px); color: #4b5563;
-      text-align: center; max-width: 720px; margin: 0 auto 40px;
+
+    .mpv2-plan-icon-wrap {
+      width: 72px; height: 72px; border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 18px; font-size: 36px;
+      transform: translateZ(20px);
+      transition: transform 0.4s;
+    }
+    .mpv2-plan:hover .mpv2-plan-icon-wrap {
+      transform: translateZ(30px) scale(1.1) rotate(-8deg);
+    }
+    .mpv2-plan[data-plan="starter"] .mpv2-plan-icon-wrap {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    }
+    .mpv2-plan[data-plan="growth"] .mpv2-plan-icon-wrap {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    }
+    .mpv2-plan[data-plan="pro"] .mpv2-plan-icon-wrap {
+      background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+    }
+
+    .mpv2-plan-name {
+      font-size: 24px; font-weight: 900; color: #0d3d1a;
+      margin: 0 0 6px;
+    }
+    .mpv2-plan-tagline {
+      font-size: 13.5px; color: #6b7280;
+      margin: 0 0 22px; line-height: 1.6;
+    }
+    .mpv2-plan-price-row {
+      display: flex; align-items: baseline; gap: 6px;
+      padding-bottom: 20px; margin-bottom: 20px;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    .mpv2-plan-price-num {
+      font-size: 48px; font-weight: 900; color: #0d3d1a;
+      background: linear-gradient(135deg, #0d3d1a, #1a5d2e);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .mpv2-plan-price-cur { font-size: 18px; font-weight: 800; color: #0d3d1a; }
+    .mpv2-plan-price-per { font-size: 13px; color: #6b7280; margin-inline-start: auto; }
+
+    .mpv2-plan-convs {
+      background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+      border-radius: 12px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .mpv2-plan-convs-icon { font-size: 22px; }
+    .mpv2-plan-convs-text { font-weight: 900; color: #166534; font-size: 15px; }
+
+    .mpv2-plan-features {
+      list-style: none; padding: 0; margin: 0 0 26px;
+    }
+    .mpv2-plan-features li {
+      padding: 10px 0; font-size: 13.5px; color: #374151; line-height: 1.5;
+      display: flex; gap: 8px; align-items: flex-start;
+      border-bottom: 1px solid #f9fafb;
+    }
+    .mpv2-plan-features li:last-child { border: none; }
+    .mpv2-plan-features li::before {
+      content: '✓'; color: #16a34a; font-weight: 900; font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .mpv2-plan-cta {
+      background: #0d3d1a; color: #fff; border: none;
+      padding: 15px 20px; border-radius: 14px; width: 100%;
+      font-weight: 900; font-size: 15px; cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+      text-decoration: none; display: block; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .mpv2-plan-cta::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, #C9A24B, #b78e3d);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .mpv2-plan-cta span { position: relative; z-index: 1; }
+    .mpv2-plan-cta:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(13,61,26,0.3);
+    }
+    .mpv2-plan-cta:hover::before { opacity: 1; }
+    .mpv2-plan-cta:hover span { color: #0d3d1a; }
+    .mpv2-plan.featured .mpv2-plan-cta {
+      background: linear-gradient(135deg, #C9A24B, #b78e3d);
+      color: #0d3d1a;
+    }
+    .mpv2-plan.featured .mpv2-plan-cta::before {
+      background: linear-gradient(135deg, #0d3d1a, #1a5d2e);
+    }
+    .mpv2-plan.featured .mpv2-plan-cta:hover span { color: #fff; }
+
+    /* ─── Boost Row — floating cards ─── */
+    .mpv2-boost-section {
+      background:
+        radial-gradient(circle at 30% 20%, rgba(201,162,75,0.15), transparent 50%),
+        linear-gradient(135deg, #fff8ec 0%, #ffffff 100%);
+      border-radius: 28px; padding: 40px 32px;
+      margin: 60px auto; max-width: 1000px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(120, 53, 15, 0.08);
+    }
+    .mpv2-boost-header { text-align: center; margin-bottom: 30px; }
+    .mpv2-boost-title {
+      font-size: 26px; font-weight: 900; color: #78350f;
+      margin: 0 0 8px;
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .mpv2-boost-sub {
+      font-size: 14.5px; color: #92400e; line-height: 1.7;
+      max-width: 600px; margin: 0 auto;
+    }
+    .mpv2-boosts-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+      perspective: 1000px;
+    }
+    .mpv2-boost {
+      background: #fff; border-radius: 18px; padding: 22px 20px;
+      text-align: center; position: relative;
+      border: 2px solid transparent;
+      transform-style: preserve-3d;
+      transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  border-color 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+    .mpv2-boost:hover {
+      transform: translateY(-8px) rotateX(6deg);
+      border-color: #C9A24B;
+      box-shadow: 0 20px 40px rgba(201, 162, 75, 0.2);
+    }
+    .mpv2-boost-icon {
+      font-size: 40px; margin-bottom: 8px;
+      display: inline-block;
+      transition: transform 0.4s;
+    }
+    .mpv2-boost:hover .mpv2-boost-icon {
+      transform: scale(1.2) rotate(-10deg);
+    }
+    .mpv2-boost-name {
+      font-size: 17px; font-weight: 900; color: #78350f;
+      margin-bottom: 6px;
+    }
+    .mpv2-boost-convs {
+      font-size: 13.5px; color: #6b7280; margin-bottom: 12px;
+    }
+    .mpv2-boost-price {
+      font-size: 24px; font-weight: 900; color: #0d3d1a;
+    }
+    .mpv2-boost-price small { font-size: 13px; color: #6b7280; font-weight: 700; }
+
+    /* ─── Comparison — clean, animated ─── */
+    .mpv2-compare-section {
+      max-width: 900px; margin: 80px auto;
+    }
+    .mpv2-compare-title {
+      font-size: clamp(26px, 4vw, 34px); font-weight: 900;
+      text-align: center; color: #0d3d1a; margin: 0 0 12px;
+    }
+    .mpv2-compare-sub {
+      text-align: center; color: #4b5563;
+      font-size: 15px; max-width: 620px; margin: 0 auto 30px;
       line-height: 1.7;
     }
-    #meta-plans .mp-value-badges {
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-      margin-bottom: 50px;
+    .mpv2-compare-cards {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+      perspective: 1200px;
     }
-    #meta-plans .mp-vb {
-      background: #fff; border: 1px solid #d1e6d5; padding: 10px 18px;
-      border-radius: 999px; font-size: 13.5px; font-weight: 700; color: #0d3d1a;
-      display: flex; align-items: center; gap: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    .mpv2-compare-card {
+      background: #fff; border-radius: 20px; padding: 30px 26px;
+      border: 1px solid #e5e7eb;
+      transition: transform 0.4s, box-shadow 0.4s;
+      transform-style: preserve-3d;
     }
+    .mpv2-compare-card:hover {
+      transform: translateY(-6px) rotateY(-3deg);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+    }
+    .mpv2-compare-card.official {
+      background: linear-gradient(135deg, #0d3d1a 0%, #1a5d2e 100%);
+      color: #fff; border: none;
+      position: relative;
+    }
+    .mpv2-compare-card.official::before {
+      content: '⭐ الأفضل'; position: absolute; top: 12px; left: 12px;
+      background: #C9A24B; color: #0d3d1a; padding: 4px 12px;
+      border-radius: 999px; font-size: 11px; font-weight: 900;
+    }
+    .mpv2-compare-card.official:hover { transform: translateY(-6px) rotateY(3deg); }
 
-    /* ─── Plans Grid ─── */
-    #meta-plans .mp-plans-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
-      max-width: 1100px; margin: 0 auto 50px;
+    .mpv2-compare-head {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.06);
+      margin-bottom: 18px;
     }
-    #meta-plans .mp-plan {
-      background: #fff; border-radius: 20px; padding: 32px 26px;
-      border: 1px solid #e5e7eb; position: relative;
-      transition: transform .25s ease, box-shadow .25s ease;
-      display: flex; flex-direction: column;
+    .mpv2-compare-card.official .mpv2-compare-head {
+      border-bottom-color: rgba(255,255,255,0.15);
     }
-    #meta-plans .mp-plan:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 40px rgba(13, 61, 26, 0.12);
-    }
-    #meta-plans .mp-plan.featured {
-      border: 2px solid #C9A24B;
-      background: linear-gradient(180deg, #ffffff 0%, #fff9ec 100%);
-      transform: scale(1.03);
-    }
-    #meta-plans .mp-plan.featured:hover { transform: scale(1.03) translateY(-6px); }
-    #meta-plans .mp-plan .mp-featured-badge {
-      position: absolute; top: -14px; right: 50%; transform: translateX(50%);
-      background: linear-gradient(135deg, #C9A24B, #b78e3d); color: #0d3d1a;
-      padding: 6px 18px; border-radius: 999px; font-size: 12.5px; font-weight: 900;
-      box-shadow: 0 4px 12px rgba(201, 162, 75, 0.4); white-space: nowrap;
-    }
-    #meta-plans .mp-plan-icon { font-size: 42px; margin-bottom: 10px; }
-    #meta-plans .mp-plan-name {
-      font-size: 22px; font-weight: 900; color: #0d3d1a; margin: 0 0 4px;
-    }
-    #meta-plans .mp-plan-tagline {
-      font-size: 13px; color: #6b7280; margin: 0 0 18px; line-height: 1.5;
-    }
-    #meta-plans .mp-plan-price {
-      display: flex; align-items: baseline; gap: 4px;
-      color: #0d3d1a; margin-bottom: 20px;
-    }
-    #meta-plans .mp-plan-price-num { font-size: 42px; font-weight: 900; }
-    #meta-plans .mp-plan-price-cur { font-size: 15px; font-weight: 700; }
-    #meta-plans .mp-plan-price-per { font-size: 14px; color: #6b7280; margin-inline-start: auto; }
-    #meta-plans .mp-plan-convs {
-      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;
-      padding: 8px 12px; text-align: center; margin-bottom: 20px;
-      font-weight: 800; color: #166534; font-size: 14px;
-    }
-    #meta-plans .mp-plan.featured .mp-plan-convs {
-      background: rgba(201, 162, 75, 0.15); border-color: #C9A24B; color: #78350f;
-    }
-    #meta-plans .mp-plan-features {
-      list-style: none; padding: 0; margin: 0 0 24px; flex: 1;
-    }
-    #meta-plans .mp-plan-features li {
-      padding: 8px 0; font-size: 13.5px; color: #374151; line-height: 1.6;
-      display: flex; gap: 6px; align-items: flex-start;
-    }
-    #meta-plans .mp-plan-cta {
-      background: #0d3d1a; color: #fff; border: none;
-      padding: 14px 20px; border-radius: 12px; width: 100%;
-      font-weight: 900; font-size: 15px; cursor: pointer;
-      font-family: inherit; transition: background .15s, transform .15s;
-      text-decoration: none; display: inline-block; text-align: center;
-    }
-    #meta-plans .mp-plan-cta:hover {
-      background: #0a2e14; transform: translateY(-2px);
-    }
-    #meta-plans .mp-plan.featured .mp-plan-cta {
-      background: linear-gradient(135deg, #C9A24B, #b78e3d); color: #0d3d1a;
-    }
-    #meta-plans .mp-plan.featured .mp-plan-cta:hover {
-      background: linear-gradient(135deg, #b78e3d, #a17d34);
-    }
-
-    /* ─── Boost Row ─── */
-    #meta-plans .mp-boost-section {
-      background: linear-gradient(135deg, #fff8ec 0%, #fff 100%);
-      border: 1px solid #f0d998; border-radius: 20px;
-      padding: 30px 26px; margin-bottom: 50px;
-    }
-    #meta-plans .mp-boost-title {
-      font-size: 22px; font-weight: 900; color: #78350f;
-      margin: 0 0 4px; display: flex; align-items: center; gap: 8px;
-    }
-    #meta-plans .mp-boost-sub {
-      font-size: 14px; color: #6b7280; margin: 0 0 20px; line-height: 1.6;
-    }
-    #meta-plans .mp-boosts-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
-    }
-    #meta-plans .mp-boost {
-      background: #fff; border: 1px solid #fde68a; border-radius: 14px;
-      padding: 18px 20px; text-align: center; transition: all .15s;
-    }
-    #meta-plans .mp-boost:hover {
-      border-color: #C9A24B; transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(201, 162, 75, 0.15);
-    }
-    #meta-plans .mp-boost-icon { font-size: 32px; margin-bottom: 6px; }
-    #meta-plans .mp-boost-name { font-size: 15px; font-weight: 800; color: #78350f; margin-bottom: 4px; }
-    #meta-plans .mp-boost-convs { font-size: 13px; color: #6b7280; margin-bottom: 8px; }
-    #meta-plans .mp-boost-price {
+    .mpv2-compare-icon { font-size: 40px; }
+    .mpv2-compare-name {
       font-size: 20px; font-weight: 900; color: #0d3d1a;
     }
-    #meta-plans .mp-boost-price small { font-size: 12px; color: #6b7280; font-weight: 600; }
-
-    /* ─── Comparison Table ─── */
-    #meta-plans .mp-compare-title {
-      font-size: 24px; font-weight: 900; color: #0d3d1a;
-      text-align: center; margin: 40px 0 20px;
+    .mpv2-compare-card.official .mpv2-compare-name { color: #C9A24B; }
+    .mpv2-compare-tagline {
+      font-size: 12.5px; color: #6b7280; margin-top: 2px;
     }
-    #meta-plans .mp-table-wrap {
-      overflow-x: auto; border-radius: 16px; box-shadow: 0 3px 12px rgba(0,0,0,.06);
-      max-width: 900px; margin: 0 auto 50px;
+    .mpv2-compare-card.official .mpv2-compare-tagline { color: rgba(255,255,255,0.7); }
+    .mpv2-compare-features {
+      list-style: none; padding: 0; margin: 0;
     }
-    #meta-plans .mp-table {
-      width: 100%; border-collapse: collapse; background: #fff;
+    .mpv2-compare-features li {
+      padding: 10px 0; font-size: 13.5px; line-height: 1.6;
+      display: flex; gap: 10px; align-items: flex-start;
     }
-    #meta-plans .mp-table th {
-      background: #0d3d1a; color: #fff; padding: 14px 18px;
-      font-weight: 900; font-size: 14px; text-align: center;
+    .mpv2-compare-features li::before {
+      content: '✓'; color: #16a34a; font-weight: 900; font-size: 16px;
+      flex-shrink: 0;
     }
-    #meta-plans .mp-table th:first-child { text-align: right; }
-    #meta-plans .mp-table td {
-      padding: 14px 18px; font-size: 13.5px; color: #374151;
-      border-bottom: 1px solid #f3f4f6; text-align: center;
-    }
-    #meta-plans .mp-table td:first-child { text-align: right; font-weight: 700; }
-    #meta-plans .mp-table tr:last-child td { border-bottom: none; }
-    #meta-plans .mp-table td.yes { color: #166534; font-weight: 900; }
-    #meta-plans .mp-table td.no { color: #991b1b; }
-    #meta-plans .mp-table th.meta-col { background: linear-gradient(135deg, #C9A24B, #b78e3d); color: #0d3d1a; }
+    .mpv2-compare-card.official .mpv2-compare-features li::before { color: #C9A24B; }
+    .mpv2-compare-card.official .mpv2-compare-features li { color: rgba(255,255,255,0.95); }
 
     /* ─── FAQ ─── */
-    #meta-plans .mp-faq-title {
-      font-size: 24px; font-weight: 900; color: #0d3d1a;
-      text-align: center; margin: 40px 0 20px;
+    .mpv2-faq-title {
+      font-size: clamp(26px, 4vw, 32px); font-weight: 900;
+      color: #0d3d1a; text-align: center;
+      margin: 60px 0 24px;
     }
-    #meta-plans .mp-faq {
-      max-width: 800px; margin: 0 auto 50px;
+    .mpv2-faq { max-width: 780px; margin: 0 auto 60px; }
+    .mpv2-faq details {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 16px; margin-bottom: 12px; overflow: hidden;
+      transition: all 0.3s;
     }
-    #meta-plans .mp-faq details {
-      background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
-      margin-bottom: 10px; padding: 0; overflow: hidden;
-      transition: box-shadow .2s;
-    }
-    #meta-plans .mp-faq details[open] {
-      box-shadow: 0 6px 20px rgba(13, 61, 26, 0.08);
+    .mpv2-faq details[open] {
       border-color: #C9A24B;
+      box-shadow: 0 8px 25px rgba(201,162,75,0.15);
+      transform: translateY(-2px);
     }
-    #meta-plans .mp-faq summary {
-      list-style: none; cursor: pointer; padding: 16px 20px;
+    .mpv2-faq summary {
+      list-style: none; cursor: pointer; padding: 18px 22px;
       font-weight: 800; font-size: 15px; color: #0d3d1a;
       display: flex; justify-content: space-between; align-items: center;
     }
-    #meta-plans .mp-faq summary::-webkit-details-marker { display: none; }
-    #meta-plans .mp-faq summary::after {
-      content: '+'; font-size: 24px; font-weight: 700; color: #C9A24B;
-      transition: transform .2s;
+    .mpv2-faq summary::-webkit-details-marker { display: none; }
+    .mpv2-faq summary::after {
+      content: '+'; width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(201,162,75,0.15); color: #C9A24B;
+      border-radius: 50%; font-size: 20px; font-weight: 700;
+      transition: transform 0.3s;
     }
-    #meta-plans .mp-faq details[open] summary::after {
-      content: '−';
+    .mpv2-faq details[open] summary::after {
+      content: '−'; transform: rotate(180deg);
     }
-    #meta-plans .mp-faq .mp-faq-body {
-      padding: 0 20px 18px; font-size: 13.5px; color: #4b5563;
-      line-height: 1.8; border-top: 1px solid #f3f4f6; padding-top: 14px;
+    .mpv2-faq-body {
+      padding: 0 22px 20px; font-size: 14px; color: #4b5563;
+      line-height: 1.8; padding-top: 14px;
+      border-top: 1px solid #f3f4f6;
     }
-
-    /* ─── Info box ─── */
-    #meta-plans .mp-info-box {
-      background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%);
-      border: 1.5px solid #86efac; border-radius: 16px;
-      padding: 22px 26px; max-width: 800px; margin: 0 auto 30px;
-      display: flex; gap: 16px; align-items: flex-start;
-    }
-    #meta-plans .mp-info-box-icon { font-size: 40px; flex-shrink: 0; }
-    #meta-plans .mp-info-box-title { font-weight: 900; color: #166534; font-size: 17px; margin-bottom: 4px; }
-    #meta-plans .mp-info-box-desc { color: #15803d; font-size: 13.5px; line-height: 1.7; }
 
     /* ─── Final CTA ─── */
-    #meta-plans .mp-final-cta {
-      background: linear-gradient(135deg, #0d3d1a 0%, #1a5d2e 100%);
-      border-radius: 20px; padding: 40px 30px; text-align: center;
-      color: #fff; max-width: 900px; margin: 40px auto 0;
-      box-shadow: 0 12px 40px rgba(13, 61, 26, 0.2);
+    .mpv2-final {
+      background:
+        radial-gradient(circle at 20% 30%, rgba(201,162,75,0.2), transparent 50%),
+        linear-gradient(135deg, #0d3d1a 0%, #1a5d2e 50%, #0d3d1a 100%);
+      border-radius: 32px; padding: 60px 40px;
+      text-align: center; color: #fff;
+      max-width: 900px; margin: 60px auto 0;
+      box-shadow: 0 30px 80px rgba(13,61,26,0.3);
+      position: relative; overflow: hidden;
     }
-    #meta-plans .mp-final-cta h3 {
-      font-size: clamp(22px, 3.5vw, 32px); font-weight: 900;
-      margin: 0 0 8px;
+    .mpv2-final::before {
+      content: '🚀'; position: absolute;
+      font-size: 200px; opacity: 0.05;
+      top: 50%; right: 40px; transform: translateY(-50%);
     }
-    #meta-plans .mp-final-cta p {
-      font-size: 15px; opacity: .9; margin: 0 0 20px; line-height: 1.7;
+    .mpv2-final-head {
+      color: #C9A24B; font-size: 15px; font-weight: 700;
+      letter-spacing: 2px; margin-bottom: 10px;
     }
-    #meta-plans .mp-final-cta .mp-cta-btn {
-      background: linear-gradient(135deg, #C9A24B, #b78e3d); color: #0d3d1a;
-      border: none; padding: 16px 40px; border-radius: 12px;
-      font-weight: 900; font-size: 16px; cursor: pointer;
+    .mpv2-final h3 {
+      font-size: clamp(28px, 4.5vw, 40px); font-weight: 900;
+      margin: 0 0 12px; line-height: 1.3;
+    }
+    .mpv2-final p {
+      font-size: 16px; opacity: .9; margin: 0 0 28px;
+      line-height: 1.8; max-width: 600px; margin-inline: auto;
+    }
+    .mpv2-final .mpv2-final-btn {
+      background: linear-gradient(135deg, #C9A24B, #e0b85f);
+      color: #0d3d1a; border: none;
+      padding: 18px 44px; border-radius: 14px;
+      font-weight: 900; font-size: 17px; cursor: pointer;
       font-family: inherit; text-decoration: none; display: inline-block;
-      box-shadow: 0 6px 20px rgba(201, 162, 75, 0.4);
-      transition: transform .15s;
+      box-shadow: 0 10px 30px rgba(201,162,75,0.5);
+      transition: all 0.3s;
+      margin-bottom: 20px;
     }
-    #meta-plans .mp-final-cta .mp-cta-btn:hover { transform: translateY(-3px); }
-    #meta-plans .mp-final-cta .mp-urgency {
-      margin-top: 14px; font-size: 12.5px; opacity: .75;
+    .mpv2-final .mpv2-final-btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 15px 40px rgba(201,162,75,0.7);
+    }
+    .mpv2-final-urgency {
+      font-size: 13px; opacity: 0.75;
+      margin-top: 4px;
     }
 
-    /* ─── Mobile ─── */
+    /* ─── Mobile Responsive ─── */
     @media (max-width: 900px) {
-      #meta-plans .mp-plans-grid { grid-template-columns: 1fr; max-width: 480px; }
-      #meta-plans .mp-plan.featured { transform: none; }
-      #meta-plans .mp-plan.featured:hover { transform: translateY(-6px); }
-      #meta-plans .mp-boosts-grid { grid-template-columns: 1fr; }
+      .mpv2-plans-wrapper { grid-template-columns: 1fr; max-width: 480px; }
+      .mpv2-plan.featured { transform: scale(1); }
+      .mpv2-plan.featured:hover { transform: translateY(-12px); }
+      .mpv2-boosts-grid { grid-template-columns: 1fr; }
+      .mpv2-compare-cards { grid-template-columns: 1fr; }
+      #meta-plans { padding: 60px 15px; }
+      .mpv2-feature-showcase { padding: 30px 20px; }
     }
   </style>
 
-  <div class="mp-container">
+  <div class="mpv2-container">
     <!-- Header -->
-    <div style="text-align:center">
-      <span class="mp-badge">🌟 جديد — WhatsApp Business الرسمي</span>
-      <h2 class="mp-title">الواتساب الرسمي لمطاعمك</h2>
-      <p class="mp-subtitle">حل معتمد من ميتا — بدون مقاطعات أو مخاطر حظر. اتصال مباشر مع عملائك بضمان استقرار كامل</p>
+    <div class="mpv2-header">
+      <span class="mpv2-badge">🌟 جديد • WhatsApp Business الرسمي</span>
+      <h2 class="mpv2-title">قوة WhatsApp الرسمية<br>بين يديك</h2>
+      <p class="mpv2-subtitle">حل معتمد من Meta — بضمان استقرار كامل وحماية شاملة لعملك</p>
     </div>
 
-    <!-- Value badges -->
-    <div class="mp-value-badges">
-      <div class="mp-vb">✅ استقرار 99.9% — بدون حظر</div>
-      <div class="mp-vb">💰 سعر ثابت — بدون مفاجآت</div>
-      <div class="mp-vb">🛡️ دعم فني — حلول سريعة</div>
-    </div>
+    <!-- Interactive Feature Showcase -->
+    <div class="mpv2-feature-showcase">
+      <div class="mpv2-showcase-title">تفاعل معنا</div>
+      <h3 class="mpv2-showcase-headline">اضغط الصندوق لتكتشف ما يقدمه لك اشتراكك</h3>
 
-    <!-- Info box: Service = Free -->
-    <div class="mp-info-box">
-      <div class="mp-info-box-icon">♾️</div>
-      <div>
-        <div class="mp-info-box-title">محادثات الخدمة مجانية بالكامل من Meta!</div>
-        <div class="mp-info-box-desc">عندما يكتب لك العميل أولاً، تستطيع الرد لمدة 24 ساعة كاملة بلا حدود ولا تكلفة. الباقات أدناه للـ "utility templates" فقط (إشعارات الطلبات، تأكيدات، تذكيرات).</div>
+      <div class="mpv2-box-scene">
+        <div class="mpv2-box" id="mpv2Box" onclick="mpv2OpenBox()">
+          <div class="mpv2-box-face front">📦</div>
+          <div class="mpv2-box-face back">📦</div>
+          <div class="mpv2-box-face right">📦</div>
+          <div class="mpv2-box-face left">📦</div>
+          <div class="mpv2-box-face top">✨</div>
+          <div class="mpv2-box-face bottom">💎</div>
+          <div class="mpv2-box-label">اضغطني!</div>
+        </div>
+
+        <!-- Feature cards that fly out -->
+        <div class="mpv2-features-explosion" id="mpv2Features">
+          <div class="mpv2-feature-card" style="--tx: -240px; --ty: -80px" data-delay="0">
+            <div class="mpv2-fc-icon">🛡️</div>
+            <div class="mpv2-fc-text">حماية Meta<br>الرسمية</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: -240px; --ty: 80px" data-delay="0.1">
+            <div class="mpv2-fc-icon">✅</div>
+            <div class="mpv2-fc-text">حساب<br>موثّق رسمي</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: -110px; --ty: -140px" data-delay="0.2">
+            <div class="mpv2-fc-icon">📊</div>
+            <div class="mpv2-fc-text">تقارير دقيقة<br>لكل رسالة</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 0; --ty: -180px" data-delay="0.3">
+            <div class="mpv2-fc-icon">🎯</div>
+            <div class="mpv2-fc-text">Templates<br>معتمدة</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 110px; --ty: -140px" data-delay="0.4">
+            <div class="mpv2-fc-icon">♾️</div>
+            <div class="mpv2-fc-text">محادثات خدمة<br>بلا حدود</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 240px; --ty: -80px" data-delay="0.5">
+            <div class="mpv2-fc-icon">🌟</div>
+            <div class="mpv2-fc-text">Green tick<br>للـ Pro</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 240px; --ty: 80px" data-delay="0.6">
+            <div class="mpv2-fc-icon">🚀</div>
+            <div class="mpv2-fc-text">استقرار<br>99.9%</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 110px; --ty: 140px" data-delay="0.7">
+            <div class="mpv2-fc-icon">💬</div>
+            <div class="mpv2-fc-text">دعم فني<br>مباشر</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: 0; --ty: 180px" data-delay="0.8">
+            <div class="mpv2-fc-icon">🔒</div>
+            <div class="mpv2-fc-text">أمان<br>عالي</div>
+          </div>
+          <div class="mpv2-feature-card" style="--tx: -110px; --ty: 140px" data-delay="0.9">
+            <div class="mpv2-fc-icon">⚡</div>
+            <div class="mpv2-fc-text">سرعة<br>لحظية</div>
+          </div>
+        </div>
       </div>
+
+      <button class="mpv2-cta-open" onclick="mpv2ResetBox()">🔄 أعد الاكتشاف</button>
     </div>
 
     <!-- Plans Grid -->
-    <div class="mp-plans-grid">
-      <!-- Starter -->
-      <div class="mp-plan">
-        <div class="mp-plan-icon">🟢</div>
-        <h3 class="mp-plan-name">الأساسية</h3>
-        <p class="mp-plan-tagline">مطاعم صغيرة تبدأ رحلة النمو الرقمي</p>
-        <div class="mp-plan-price">
-          <span class="mp-plan-price-num">50</span>
-          <span class="mp-plan-price-cur">ر.س</span>
-          <span class="mp-plan-price-per">/ شهر</span>
+    <div class="mpv2-plans-wrapper">
+      <div class="mpv2-plan" data-plan="starter">
+        <div class="mpv2-plan-icon-wrap">🟢</div>
+        <h3 class="mpv2-plan-name">الأساسية</h3>
+        <p class="mpv2-plan-tagline">مطاعم صغيرة تبدأ رحلة النمو</p>
+        <div class="mpv2-plan-price-row">
+          <span class="mpv2-plan-price-num">50</span>
+          <span class="mpv2-plan-price-cur">ر.س</span>
+          <span class="mpv2-plan-price-per">/ شهرياً</span>
         </div>
-        <div class="mp-plan-convs">📨 1,000 محادثة شهرياً</div>
-        <ul class="mp-plan-features">
-          <li>✅ WhatsApp Business API الرسمي</li>
-          <li>✅ حساب موثّق (verified)</li>
-          <li>✅ محادثات خدمة غير محدودة</li>
-          <li>✅ 1,000 محادثة utility شهرياً</li>
-          <li>✅ دعم فني عادي</li>
+        <div class="mpv2-plan-convs">
+          <span class="mpv2-plan-convs-icon">📨</span>
+          <span class="mpv2-plan-convs-text">1,000 محادثة</span>
+        </div>
+        <ul class="mpv2-plan-features">
+          <li>WhatsApp Business API الرسمي</li>
+          <li>حساب verified</li>
+          <li>محادثات خدمة غير محدودة</li>
+          <li>دعم فني عادي</li>
         </ul>
-        <a href="#signup" class="mp-plan-cta">ابدأ الآن</a>
+        <a href="#signup" class="mpv2-plan-cta"><span>ابدأ الآن</span></a>
       </div>
 
-      <!-- Growth (featured) -->
-      <div class="mp-plan featured">
-        <div class="mp-featured-badge">⭐ الأكثر شعبية</div>
-        <div class="mp-plan-icon">🔵</div>
-        <h3 class="mp-plan-name">النمو</h3>
-        <p class="mp-plan-tagline">مطاعم متوسطة تطلب المزيد من العملاء</p>
-        <div class="mp-plan-price">
-          <span class="mp-plan-price-num">120</span>
-          <span class="mp-plan-price-cur">ر.س</span>
-          <span class="mp-plan-price-per">/ شهر</span>
+      <div class="mpv2-plan featured" data-plan="growth">
+        <div class="mpv2-plan-badge">⭐ الأكثر شعبية</div>
+        <div class="mpv2-plan-icon-wrap">🔵</div>
+        <h3 class="mpv2-plan-name">النمو</h3>
+        <p class="mpv2-plan-tagline">للمطاعم المتوسطة النشطة</p>
+        <div class="mpv2-plan-price-row">
+          <span class="mpv2-plan-price-num">120</span>
+          <span class="mpv2-plan-price-cur">ر.س</span>
+          <span class="mpv2-plan-price-per">/ شهرياً</span>
         </div>
-        <div class="mp-plan-convs">📨 1,500 محادثة شهرياً</div>
-        <ul class="mp-plan-features">
-          <li>✅ كل مميزات الأساسية</li>
-          <li>✅ 500 محادثة إضافية</li>
-          <li>✅ دعم أولوية</li>
-          <li>✅ Green tick (مؤهل)</li>
-          <li>✅ تحليلات متقدمة</li>
+        <div class="mpv2-plan-convs">
+          <span class="mpv2-plan-convs-icon">📨</span>
+          <span class="mpv2-plan-convs-text">1,500 محادثة</span>
+        </div>
+        <ul class="mpv2-plan-features">
+          <li>كل مميزات الأساسية</li>
+          <li>500 محادثة إضافية</li>
+          <li>دعم أولوية</li>
+          <li>Green tick مؤهل</li>
+          <li>تحليلات متقدمة</li>
         </ul>
-        <a href="#signup" class="mp-plan-cta">رقّي مستوى تواصلك</a>
+        <a href="#signup" class="mpv2-plan-cta"><span>رقّي مستوى تواصلك</span></a>
       </div>
 
-      <!-- Pro -->
-      <div class="mp-plan">
-        <div class="mp-plan-icon">🟣</div>
-        <h3 class="mp-plan-name">المتقدمة</h3>
-        <p class="mp-plan-tagline">سلاسل مطاعم تحتاج قوة اتصال غير محدودة</p>
-        <div class="mp-plan-price">
-          <span class="mp-plan-price-num">250</span>
-          <span class="mp-plan-price-cur">ر.س</span>
-          <span class="mp-plan-price-per">/ شهر</span>
+      <div class="mpv2-plan" data-plan="pro">
+        <div class="mpv2-plan-icon-wrap">🟣</div>
+        <h3 class="mpv2-plan-name">المتقدمة</h3>
+        <p class="mpv2-plan-tagline">للسلاسل الكبرى وقطاع الأعمال</p>
+        <div class="mpv2-plan-price-row">
+          <span class="mpv2-plan-price-num">250</span>
+          <span class="mpv2-plan-price-cur">ر.س</span>
+          <span class="mpv2-plan-price-per">/ شهرياً</span>
         </div>
-        <div class="mp-plan-convs">📨 2,500 محادثة شهرياً</div>
-        <ul class="mp-plan-features">
-          <li>✅ كل مميزات النمو</li>
-          <li>✅ 1,500 محادثة إضافية</li>
-          <li>✅ دعم متعدد المستخدمين</li>
-          <li>✅ Templates مخصصة</li>
-          <li>✅ مدير حساب مخصص</li>
-          <li>✅ دعم 24/7</li>
+        <div class="mpv2-plan-convs">
+          <span class="mpv2-plan-convs-icon">📨</span>
+          <span class="mpv2-plan-convs-text">2,500 محادثة</span>
+        </div>
+        <ul class="mpv2-plan-features">
+          <li>كل مميزات النمو</li>
+          <li>1,500 محادثة إضافية</li>
+          <li>دعم متعدد المستخدمين</li>
+          <li>Templates مخصصة</li>
+          <li>مدير حساب مخصص</li>
+          <li>دعم 24/7</li>
         </ul>
-        <a href="#signup" class="mp-plan-cta">احصل على الحزمة</a>
+        <a href="#signup" class="mpv2-plan-cta"><span>احصل على الحزمة</span></a>
       </div>
     </div>
 
-    <!-- Boost Packages -->
-    <div class="mp-boost-section">
-      <h3 class="mp-boost-title">🔋 شحن محادثات طارئة</h3>
-      <p class="mp-boost-sub">انتهت المحادثات في منتصف الشهر؟ لا يتوقف بوتك. حزم تعزيز إضافية بأسعار تنافسية — تُضاف على رصيدك فوراً وتبقى حتى تستخدمها.</p>
-      <div class="mp-boosts-grid">
-        <div class="mp-boost">
-          <div class="mp-boost-icon">🔥</div>
-          <div class="mp-boost-name">صغير</div>
-          <div class="mp-boost-convs">+200 محادثة</div>
-          <div class="mp-boost-price">30 <small>ر.س</small></div>
+    <!-- Boost Section -->
+    <div class="mpv2-boost-section">
+      <div class="mpv2-boost-header">
+        <h3 class="mpv2-boost-title">🔋 شحن رصيد طارئ</h3>
+        <p class="mpv2-boost-sub">انتهت محادثات باقتك في منتصف الشهر؟ اشحن رصيداً إضافياً بضغطة واحدة — يُضاف على رصيدك فوراً ويبقى حتى تستخدمه.</p>
+      </div>
+      <div class="mpv2-boosts-grid">
+        <div class="mpv2-boost">
+          <div class="mpv2-boost-icon">🔥</div>
+          <div class="mpv2-boost-name">صغير</div>
+          <div class="mpv2-boost-convs">+200 محادثة</div>
+          <div class="mpv2-boost-price">30 <small>ر.س</small></div>
         </div>
-        <div class="mp-boost">
-          <div class="mp-boost-icon">⚡</div>
-          <div class="mp-boost-name">متوسط</div>
-          <div class="mp-boost-convs">+500 محادثة</div>
-          <div class="mp-boost-price">65 <small>ر.س</small></div>
+        <div class="mpv2-boost">
+          <div class="mpv2-boost-icon">⚡</div>
+          <div class="mpv2-boost-name">متوسط</div>
+          <div class="mpv2-boost-convs">+500 محادثة</div>
+          <div class="mpv2-boost-price">65 <small>ر.س</small></div>
         </div>
-        <div class="mp-boost">
-          <div class="mp-boost-icon">🌋</div>
-          <div class="mp-boost-name">كبير</div>
-          <div class="mp-boost-convs">+1,500 محادثة</div>
-          <div class="mp-boost-price">180 <small>ر.س</small></div>
+        <div class="mpv2-boost">
+          <div class="mpv2-boost-icon">🌋</div>
+          <div class="mpv2-boost-name">كبير</div>
+          <div class="mpv2-boost-convs">+1,500 محادثة</div>
+          <div class="mpv2-boost-price">180 <small>ر.س</small></div>
         </div>
       </div>
     </div>
 
-    <!-- Comparison Table -->
-    <h3 class="mp-compare-title">💚 الرسمي vs غير الرسمي</h3>
-    <div class="mp-table-wrap">
-      <table class="mp-table">
-        <thead>
-          <tr>
-            <th>الميزة</th>
-            <th>Baileys (غير رسمي)</th>
-            <th class="meta-col">🌟 Meta الرسمي</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>مخاطر الحظر</td>
-            <td class="no">❌ مرتفعة</td>
-            <td class="yes">✅ منعدمة</td>
-          </tr>
-          <tr>
-            <td>الاستقرار</td>
-            <td>85-90%</td>
-            <td class="yes">99.9%</td>
-          </tr>
-          <tr>
-            <td>الرقم المستخدم</td>
-            <td>رقم شخصي</td>
-            <td class="yes">رقم تجاري verified</td>
-          </tr>
-          <tr>
-            <td>Green tick</td>
-            <td class="no">❌ غير متاح</td>
-            <td class="yes">✅ متاح</td>
-          </tr>
-          <tr>
-            <td>Templates تسويقية</td>
-            <td class="no">❌ محدودة</td>
-            <td class="yes">✅ رسمية معتمدة</td>
-          </tr>
-          <tr>
-            <td>Delivery reports</td>
-            <td>تقريبية</td>
-            <td class="yes">دقيقة 100%</td>
-          </tr>
-          <tr>
-            <td>السعر الشهري</td>
-            <td>80-250 ر.س</td>
-            <td class="yes">50-250 ر.س</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Comparison -->
+    <div class="mpv2-compare-section">
+      <h3 class="mpv2-compare-title">💚 كل خطة ومميزاتها</h3>
+      <p class="mpv2-compare-sub">اختر الحل الأنسب لمرحلة نمو متجرك — كلا الخيارين آمن ويعمل بكفاءة، لكن Meta الرسمي يقدم ضماناً أعلى واستقراراً كاملاً.</p>
+
+      <div class="mpv2-compare-cards">
+        <div class="mpv2-compare-card">
+          <div class="mpv2-compare-head">
+            <div class="mpv2-compare-icon">🚀</div>
+            <div>
+              <div class="mpv2-compare-name">Baileys</div>
+              <div class="mpv2-compare-tagline">الحل الاقتصادي المتين</div>
+            </div>
+          </div>
+          <ul class="mpv2-compare-features">
+            <li>حل شغّال بكفاءة عالية</li>
+            <li>13 طبقة حماية ذكية</li>
+            <li>يعمل مع أي رقم واتساب</li>
+            <li>رسائل نصية وصور بلا حدود</li>
+            <li>متابعة حالة الرسائل</li>
+            <li>رقم شخصي مألوف للعملاء</li>
+            <li>مثالي للمتاجر الصغيرة والناشئة</li>
+          </ul>
+        </div>
+
+        <div class="mpv2-compare-card official">
+          <div class="mpv2-compare-head">
+            <div class="mpv2-compare-icon">🌟</div>
+            <div>
+              <div class="mpv2-compare-name">Meta الرسمي</div>
+              <div class="mpv2-compare-tagline">الحل الأأمن والأكثر ثقة</div>
+            </div>
+          </div>
+          <ul class="mpv2-compare-features">
+            <li>معتمد رسمياً من WhatsApp</li>
+            <li>حماية Meta الكاملة + ضمان استمرارية</li>
+            <li>حساب verified + Green tick متاح</li>
+            <li>Templates تسويقية معتمدة رسمياً</li>
+            <li>تقارير دقيقة 100% لكل رسالة</li>
+            <li>رقم Business موثّق يعزز الثقة</li>
+            <li>مثالي للمتاجر الجادة والسلاسل الكبرى</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <!-- FAQ -->
-    <h3 class="mp-faq-title">❓ أسئلة شائعة</h3>
-    <div class="mp-faq">
+    <h3 class="mpv2-faq-title">❓ أسئلة شائعة</h3>
+    <div class="mpv2-faq">
       <details>
         <summary>ماذا يحدث لو تجاوزت عدد محادثاتي؟</summary>
-        <div class="mp-faq-body">
-          يتوقف البوت مؤقتاً عن الإرسال لحمايتك من رسوم إضافية غير متوقعة. تستطيع شحن حزمة تعزيز طارئة فوراً (من 30 ر.س) ويستأنف البوت العمل خلال دقائق.
-        </div>
+        <div class="mpv2-faq-body">يتوقف البوت مؤقتاً عن الإرسال لحمايتك من رسوم إضافية غير متوقعة. تستطيع شحن حزمة تعزيز طارئة فوراً (من 30 ر.س) ويستأنف البوت العمل خلال دقائق.</div>
       </details>
       <details>
         <summary>هل المحادثات غير المستخدمة تنتقل للشهر التالي؟</summary>
-        <div class="mp-faq-body">
-          المحادثات الشهرية تُصفَّر مع كل شهر جديد (مثل باقات الجوال). لكن حزم التعزيز المشحونة تبقى معك حتى تستخدمها كاملة — لا تنتهي صلاحيتها.
-        </div>
+        <div class="mpv2-faq-body">المحادثات الشهرية تُصفَّر مع كل شهر جديد (مثل باقات الجوال). لكن حزم التعزيز المشحونة تبقى معك حتى تستخدمها كاملة — لا تنتهي صلاحيتها.</div>
       </details>
       <details>
         <summary>هل أستطيع الترقية في منتصف الشهر؟</summary>
-        <div class="mp-faq-body">
-          نعم! تستطيع الترقية أو التخفيض في أي وقت. الفرق يُحسب بشكل تناسبي. المحادثات المضافة تصبح متاحة فوراً.
-        </div>
-      </details>
-      <details>
-        <summary>كيف تختلف هذه عن باقات Baileys؟</summary>
-        <div class="mp-faq-body">
-          Baileys حل غير رسمي قد يتعرض للحظر من WhatsApp. Meta الرسمي معتمد 100% — بدون مخاطر، بدون قلق، مع دعم مباشر من ثواني وضمان استمرارية الخدمة.
-        </div>
+        <div class="mpv2-faq-body">نعم! تستطيع الترقية أو التخفيض في أي وقت. الفرق يُحسب بشكل تناسبي، والمحادثات المضافة تصبح متاحة فوراً.</div>
       </details>
       <details>
         <summary>هل أحتاج تغيير رقمي الحالي؟</summary>
-        <div class="mp-faq-body">
-          لا! خدمة Coexistence تسمح لك بربط نفس رقمك الحالي (المُعرَّف عند عملائك) مع API الرسمي. تحتفظ بمحادثاتك القديمة، وبنفس الرقم يعمل كل شيء.
-        </div>
+        <div class="mpv2-faq-body">لا! خدمة Coexistence تسمح لك بربط نفس رقمك الحالي (المُعرَّف عند عملائك) مع API الرسمي. تحتفظ بمحادثاتك القديمة، وبنفس الرقم يعمل كل شيء.</div>
       </details>
       <details>
         <summary>هل الاشتراك بدفع شهري أم سنوي؟</summary>
-        <div class="mp-faq-body">
-          شهري بالكامل — بدون التزامات طويلة. تستطيع الإلغاء في أي وقت وتفعّل مرة أخرى متى أردت.
-        </div>
+        <div class="mpv2-faq-body">شهري بالكامل — بدون التزامات طويلة. تستطيع الإلغاء في أي وقت وتفعّل مرة أخرى متى أردت.</div>
       </details>
     </div>
 
     <!-- Final CTA -->
-    <div class="mp-final-cta">
-      <h3>🚀 جاهز للانتقال للرسمي؟</h3>
-      <p>احصل على أعلى مستوى موثوقية + توثيق رسمي + راحة بال كاملة<br>ابدأ من 50 ر.س فقط شهرياً</p>
-      <a href="#signup" class="mp-cta-btn">🌟 اطلب Meta الرسمي</a>
-      <div class="mp-urgency">✨ التفعيل خلال 5-14 يوم عمل — سجّل الآن للحصول على أولوية المعالجة</div>
+    <div class="mpv2-final">
+      <div class="mpv2-final-head">🌟 جاهز للانطلاق؟</div>
+      <h3>ابدأ رحلتك مع WhatsApp الرسمي اليوم</h3>
+      <p>احصل على أعلى مستوى موثوقية + توثيق رسمي + راحة بال كاملة<br>من 50 ر.س فقط شهرياً</p>
+      <a href="#signup" class="mpv2-final-btn">🚀 اطلب Meta الرسمي</a>
+      <div class="mpv2-final-urgency">✨ التفعيل خلال 5-14 يوم عمل • أولوية معالجة للمسجّلين الأوائل</div>
     </div>
   </div>
+
+  <script>
+    function mpv2OpenBox() {
+      var box = document.getElementById('mpv2Box');
+      var features = document.querySelectorAll('.mpv2-feature-card');
+      if (box.classList.contains('opening')) return;
+      box.classList.add('opening');
+      features.forEach(function(f) {
+        var delay = parseFloat(f.dataset.delay) * 1000 + 500;
+        setTimeout(function() { f.classList.add('show'); }, delay);
+      });
+    }
+    function mpv2ResetBox() {
+      var box = document.getElementById('mpv2Box');
+      var features = document.querySelectorAll('.mpv2-feature-card');
+      box.classList.remove('opening');
+      features.forEach(function(f) { f.classList.remove('show'); });
+    }
+  </script>
 </section>
+
 
 
 <section id="pricing">
