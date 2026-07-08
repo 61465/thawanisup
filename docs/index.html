@@ -3,6 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+// ⚡ Force scroll to top on load (before any rendering)
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if (window.location.hash) {
+  // Remove hash without triggering scroll
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+window.scrollTo(0, 0);
+</script>
 <title>منصة ثواني — بوت واتساب ذكي للمطاعم والكافيهات والخدمات</title>
 <meta name="description" content="حوّل واتساب إلى موظف لا يتعب — استقبل الطلبات والحجوزات تلقائياً لأي نشاط تجاري برقمك الخاص، ربطه في 5 دقائق بدون أي خبرة تقنية.">
 <meta property="og:title" content="منصة ثواني — بوت واتساب للمطاعم والكافيهات والخدمات">
@@ -31,8 +40,7 @@
   --max:1120px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-/* Prevent auto-scroll to hash-fragments on initial load unless intentional */
+html{scroll-behavior:smooth;scroll-padding-top:0}
 :target{scroll-margin-top:80px}
 body{font-family:'Tajawal',system-ui,sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow-x:hidden;line-height:1.6}
 a{text-decoration:none;color:inherit}
@@ -2464,17 +2472,6 @@ document.getElementById("startBtn").onclick=function(){
   runBot();
 };
 
-// Ensure page starts at top on load (prevent hash-based auto-scroll from URL params)
-if (window.location.hash === '' || window.location.hash === '#') {
-  window.scrollTo(0, 0);
-}
-// Also intercept unintentional scroll on page load
-window.addEventListener('load', function() {
-  // If no explicit navigation to a section, ensure we start at top
-  if (!window.location.hash) {
-    setTimeout(function() { window.scrollTo({ top: 0, behavior: 'instant' }); }, 50);
-  }
-});
 </script>
 </body>
 </html>
